@@ -64,7 +64,7 @@ async function updateCodecBlockers() {
   }
 
   try {
-    await chrome.scripting.unregisterContentScripts({ ids: ['block-av1', 'block-vp9', 'block-60fps'] }).catch(() => {});
+    await chrome.scripting.unregisterContentScripts({ ids: ['block-av1', 'block-vp9', 'block-60fps'] }).catch((err) => { console.debug('[Aura] Unregister note:', err); });
     if (scriptsToRegister.length > 0) {
       await chrome.scripting.registerContentScripts(scriptsToRegister);
     }
@@ -85,8 +85,12 @@ async function updateCodecBlockers() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'AD_BLOCKED') {
     (async () => {
-      const { adblockCount = 0 } = await chrome.storage.sync.get('adblockCount');
-      await chrome.storage.sync.set({ adblockCount: adblockCount + (message.count || 1) });
+      try {
+        const { adblockCount = 0 } = await chrome.storage.sync.get('adblockCount');
+        await chrome.storage.sync.set({ adblockCount: adblockCount + (message.count || 1) });
+      } catch (err) {
+        console.error('[Aura] Failed to update adblock count:', err);
+      }
     })();
   }
   // No async response needed, don't return true
