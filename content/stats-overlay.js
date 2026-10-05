@@ -51,6 +51,13 @@
 
   function statsLoop(now) {
     if (!updateInterval) return;
+    
+    // Stop the rAF loop if the video is paused/ended and CineGlow rendering has settled.
+    if (video && (video.paused || video.ended) && window.CineGlowMetrics && lastSeenRenderCount === window.CineGlowMetrics.renderCount) {
+      rafLoopId = 0;
+      return;
+    }
+    
     displayFrames++;
     
     let currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
@@ -135,24 +142,34 @@
 
   function clampOverlayPosition() {
     if (!overlayEl) return;
-    const rect = overlayEl.getBoundingClientRect();
-    const parentRect = overlayEl.parentElement ? overlayEl.parentElement.getBoundingClientRect() : {left: 0, top: 0};
+    const parent = overlayEl.parentElement;
+    if (!parent) return;
     
-    const currentLeft = rect.left - parentRect.left;
-    const currentTop = rect.top - parentRect.top;
+    const pWidth = parent === document.body ? window.innerWidth : parent.clientWidth;
+    const pHeight = parent === document.body ? window.innerHeight : parent.clientHeight;
     
-    const minLeft = -parentRect.left;
-    const minTop = -parentRect.top;
-    const maxLeft = window.innerWidth - parentRect.left - rect.width;
-    const maxTop = window.innerHeight - parentRect.top - rect.height;
+    let currentLeft = overlayEl.offsetLeft;
+    let currentTop = overlayEl.offsetTop;
     
-    const newLeft = Math.max(minLeft, Math.min(currentLeft, maxLeft));
-    const newTop = Math.max(minTop, Math.min(currentTop, maxTop));
+    if (!overlayEl.style.left) {
+      // If right/bottom were used instead of left/top, reset to left/top explicitly
+      const rect = overlayEl.getBoundingClientRect();
+      const parentRect = parent.getBoundingClientRect();
+      currentLeft = rect.left - parentRect.left;
+      currentTop = rect.top - parentRect.top;
+    }
     
-    if (currentLeft !== newLeft || currentTop !== newTop) {
+    const maxLeft = Math.max(0, pWidth - overlayEl.offsetWidth);
+    const maxTop = Math.max(0, pHeight - overlayEl.offsetHeight);
+    
+    const newLeft = Math.max(0, Math.min(currentLeft, maxLeft));
+    const newTop = Math.max(0, Math.min(currentTop, maxTop));
+    
+    if (currentLeft !== newLeft || currentTop !== newTop || !overlayEl.style.left) {
       overlayEl.style.left = `${newLeft}px`;
       overlayEl.style.top = `${newTop}px`;
       overlayEl.style.right = 'auto';
+      overlayEl.style.bottom = 'auto';
     }
   }
 
@@ -261,6 +278,7 @@
     }
     
     if (playing && !buffering) {
+      if (!rafLoopId && updateInterval) rafLoopId = requestAnimationFrame(statsLoop);
       lastDisplayFps = (displayFrames - lastDisplayFrames) / dt;
     } else if (!playing) {
       lastDisplayFps = 0;
@@ -414,13 +432,15 @@
       const dy = e.clientY - startY;
       el.style.left = `${initialX + dx}px`;
       el.style.top = `${initialY + dy}px`;
-      el.style.right = 'auto'; 
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
     };
 
     const onMouseUp = () => {
       isDragging = false;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      clampOverlayPosition();
     };
 
     const onMouseDown = (e) => {
@@ -428,10 +448,13 @@
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      const rect = el.getBoundingClientRect();
-      const parentRect = el.parentElement ? el.parentElement.getBoundingClientRect() : {left: 0, top: 0};
-      initialX = rect.left - parentRect.left;
-      initialY = rect.top - parentRect.top;
+      
+      if (!el.style.left) {
+        clampOverlayPosition();
+      }
+      
+      initialX = el.offsetLeft;
+      initialY = el.offsetTop;
       
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
@@ -465,6 +488,7 @@
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       const state = e.detail;
       if (!state.isWatchPage) {
+        stopMonitoring();
         video = null;
         applyState();
         return;
