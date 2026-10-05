@@ -132,6 +132,10 @@
 
   function removeOverlay() {
     if (overlayEl) {
+      if (typeof dragCleanups !== 'undefined') {
+        dragCleanups.forEach(c => c());
+        dragCleanups = [];
+      }
       overlayEl.remove();
       overlayEl = null;
       refs = {};
@@ -374,6 +378,8 @@
     }
   }
 
+  let dragCleanups = [];
+
   function makeDraggable(el) {
     let isDragging = false;
     let startX, startY, initialX, initialY;
@@ -410,12 +416,17 @@
     el.addEventListener('mousedown', onMouseDown);
     el.addEventListener('click', e => e.stopPropagation());
     el.addEventListener('dblclick', e => e.stopPropagation());
+    
+    dragCleanups.push(() => {
+      if (isDragging) onMouseUp();
+    });
   }
 
   function applyState() {
-    if (settings.statsEnabled) {
+    const isWatchPage = window.CineGlowPlayer && window.CineGlowPlayer.isWatchPage;
+    if (settings.statsEnabled && isWatchPage) {
       createOverlay();
-      if (video) startMonitoring();
+      if (video && !updateInterval) startMonitoring();
     } else {
       removeOverlay();
       stopMonitoring();
@@ -430,21 +441,17 @@
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       const state = e.detail;
       if (!state.isWatchPage) {
-        if (overlayEl) {
-           removeOverlay();
-           stopMonitoring();
-        }
+        applyState();
         return;
       }
       
       if (video !== state.video) {
         stopMonitoring();
         video = state.video;
-        if (settings.statsEnabled && video) {
-          startMonitoring();
-        }
-      } else if (settings.statsEnabled) {
-        updateStats();
+        applyState();
+      } else {
+        applyState();
+        if (settings.statsEnabled) updateStats();
       }
     });
   }
