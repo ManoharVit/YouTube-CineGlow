@@ -1,7 +1,7 @@
 // Popup: reads/writes settings in chrome.storage.sync.
 // The content script listens for storage changes, so updates apply live.
 
-const SLIDER_KEYS = ['opacity', 'blur', 'spread', 'saturation', 'brightness', 'smoothness'];
+const SLIDER_KEYS = ['opacity', 'blur', 'spread', 'saturation', 'contrast', 'brightness', 'smoothness'];
 
 const enabledEl = document.getElementById('enabled');
 const adblockEnabledEl = document.getElementById('adblockEnabled');
@@ -11,6 +11,7 @@ const preferredQualityEl = document.getElementById('preferredQuality');
 const blockAV1El = document.getElementById('blockAV1');
 const blockVP9El = document.getElementById('blockVP9');
 const block60fpsEl = document.getElementById('block60fps');
+const hideScrollbarEl = document.getElementById('hideScrollbar');
 const fpsEl = document.getElementById('fps');
 const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
@@ -28,6 +29,7 @@ function render(settings) {
   blockAV1El.checked = settings.blockAV1;
   blockVP9El.checked = settings.blockVP9;
   block60fpsEl.checked = settings.block60fps;
+  hideScrollbarEl.checked = settings.hideScrollbar;
   adblockCountEl.textContent = settings.adblockCount;
   
   controlsEl.classList.toggle('disabled', !settings.enabled);
@@ -99,6 +101,10 @@ async function init() {
 
   blockVP9El.addEventListener('change', async () => {
     await save({ blockVP9: blockVP9El.checked });
+  });
+
+  hideScrollbarEl.addEventListener('change', async () => {
+    await save({ hideScrollbar: hideScrollbarEl.checked });
   });
 
   block60fpsEl.addEventListener('change', async () => {

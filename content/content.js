@@ -30,6 +30,7 @@
   let settleFrames = 0;
   let forceFullDraw = true;
   let lastLayoutKey = '';
+    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
 
   // ---------- Canvas setup ----------
 
@@ -53,8 +54,10 @@
     canvas.style.filter =
       `blur(${settings.blur}px) ` +
       `saturate(${settings.saturation / 100}) ` +
+      `contrast(${settings.contrast / 100}) ` +
       `brightness(${settings.brightness / 100})`;
-    lastLayoutKey = ''; // Spread may have changed; force a re-layout.
+    lastLayoutKey = '';
+    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar); // Spread may have changed; force a re-layout.
   }
 
   // ---------- Video discovery ----------
@@ -103,6 +106,7 @@
     isActive = false;
     document.documentElement.classList.remove(ROOT_CLASS);
     lastLayoutKey = '';
+    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
   }
 
   // ---------- Per-frame work ----------
@@ -216,7 +220,8 @@
   document.addEventListener('yt-navigate-finish', wake);
   document.addEventListener('fullscreenchange', wake);
   document.addEventListener('visibilitychange', wake);
-  window.addEventListener('resize', () => { lastLayoutKey = ''; }, { passive: true });
+  window.addEventListener('resize', () => { lastLayoutKey = '';
+    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar); }, { passive: true });
 
   loadSettings();
 })();

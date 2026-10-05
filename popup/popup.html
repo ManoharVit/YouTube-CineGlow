@@ -81,6 +81,14 @@
         </label>
       </div>
 
+      <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+        <span style="color: var(--muted);">Hide scrollbar</span>
+        <label class="switch">
+          <input type="checkbox" id="hideScrollbar">
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+
       <div style="margin-top: 8px; font-size: 10px; color: #888; line-height: 1.3;">
         <em>Note: YouTube does not encode 4K/8K in H.264. Blocking both AV1 and VP9 will limit your maximum resolution to 1080p.</em>
       </div>
@@ -101,6 +109,10 @@
     <div class="control">
       <label for="saturation">Saturation <span class="val-input"><input type="number" id="saturation-val" min="0" max="150">%</span></label>
       <input type="range" id="saturation" min="0" max="150" step="1">
+    </div>
+    <div class="control">
+      <label for="contrast">Contrast <span class="val-input"><input type="number" id="contrast-val" min="0" max="200">%</span></label>
+      <input type="range" id="contrast" min="0" max="200" step="1">
     </div>
     <div class="control">
       <label for="brightness">Brightness <span class="val-input"><input type="number" id="brightness-val" min="20" max="200">%</span></label>

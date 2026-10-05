@@ -94,3 +94,13 @@ ytd-player-legacy-desktop-watch-ads-renderer,
 .ytp-watermark {
   display: none !important;
 }
+
+/* Hide Scrollbar Feature */
+html.aura-hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+html.aura-hide-scrollbar {
+  scrollbar-width: none !important;
+}
