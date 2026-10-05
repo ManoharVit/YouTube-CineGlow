@@ -1,0 +1,55 @@
+#aura-stats-overlay {
+  position: absolute;
+  top: 65px;
+  right: 20px;
+  z-index: 999999;
+  background: rgba(15, 15, 15, 0.85);
+  color: #aaa;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
+  cursor: grab;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  user-select: none;
+  min-width: 260px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.2s ease;
+}
+
+#aura-stats-overlay:active {
+  cursor: grabbing;
+}
+
+.aura-stats-header {
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  text-align: left;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.aura-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  line-height: 1.4;
+}
+
+.aura-stats-grid span:nth-child(odd) {
+  color: #888;
+}
+
+.aura-stats-grid span:nth-child(even) {
+  text-align: right;
+  color: #e0e0e0;
+  font-weight: 500;
+}

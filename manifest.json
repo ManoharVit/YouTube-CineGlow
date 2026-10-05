@@ -33,8 +33,8 @@
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/defaults.js", "content/player-manager.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js"],
-      "css": ["content/content.css"],
+      "js": ["shared/defaults.js", "content/player-manager.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js"],
+      "css": ["content/content.css", "content/stats-overlay.css"],
       "run_at": "document_idle"
     }
   ],

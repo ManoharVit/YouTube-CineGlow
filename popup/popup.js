@@ -6,6 +6,7 @@ const SLIDER_KEYS = ['opacity', 'blur', 'spread', 'saturation', 'contrast', 'bri
 const enabledEl = document.getElementById('enabled');
 const adblockEnabledEl = document.getElementById('adblockEnabled');
 const qualityEnabledEl = document.getElementById('qualityEnabled');
+const statsEnabledEl = document.getElementById('statsEnabled');
 const adblockCountEl = document.getElementById('adblockCount');
 const preferredQualityEl = document.getElementById('preferredQuality');
 const blockAV1El = document.getElementById('blockAV1');
@@ -30,6 +31,7 @@ function render(settings) {
   enabledEl.checked = settings.enabled;
   adblockEnabledEl.checked = settings.adblockEnabled;
   qualityEnabledEl.checked = settings.qualityEnabled;
+  statsEnabledEl.checked = settings.statsEnabled;
   preferredQualityEl.value = settings.preferredQuality;
   blockAV1El.checked = settings.blockAV1;
   blockVP9El.checked = settings.blockVP9;
@@ -99,6 +101,10 @@ async function init() {
 
   qualityEnabledEl.addEventListener('change', async () => {
     await save({ qualityEnabled: qualityEnabledEl.checked });
+  });
+
+  statsEnabledEl.addEventListener('change', async () => {
+    await save({ statsEnabled: statsEnabledEl.checked });
   });
 
   preferredQualityEl.addEventListener('change', async () => {

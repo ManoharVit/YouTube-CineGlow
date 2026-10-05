@@ -5,6 +5,7 @@ const AURA_DEFAULTS = Object.freeze({
   adblockEnabled: true,  // Ad blocker switch
   adblockCount: 0,       // Lifetime blocked ads counter
   qualityEnabled: false, // Auto-HD switch
+  statsEnabled: false,   // Quality stats overlay switch
   preferredQuality: 'hd1080', // Target resolution
   blockAV1: false,       // Codec Blocker: AV1
   blockVP9: false,       // Codec Blocker: VP9

@@ -16,6 +16,11 @@
   const SAMPLE_W = 64;
   const SAMPLE_H = 36;
   const SETTLE_FRAMES = 30;     // Extra draws after the video stops, so smoothing converges
+  
+  window.CineGlowMetrics = {
+    renderCount: 0,
+    lastDrawTime: 0,
+  };
 
   let settings = { ...AURA_DEFAULTS };
   let video = null;
@@ -170,7 +175,12 @@
     forceFullDraw = false;
 
     try {
+      const t0 = performance.now();
       ctx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
+      const t1 = performance.now();
+      
+      window.CineGlowMetrics.lastDrawTime = t1 - t0;
+      window.CineGlowMetrics.renderCount++;
     } catch (err) {
       // e.g. a cross-origin/tainted source; skip this frame rather than break the loop.
       console.debug('[Aura] drawImage failed:', err);
