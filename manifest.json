@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Aura – Ambient Light & Ad Blocker",
+  "name": "Aura: Cinematic YouTube Enhancer",
   "short_name": "Aura",
   "version": "0.2.0",
-  "description": "Adds a customizable ambient glow around YouTube videos and blocks ads site-wide.",
+  "description": "Adds a customizable cinematic glow around YouTube videos, blocks ads, and enables high-bitrate 4K tweaks.",
   "permissions": [
     "storage",
     "declarativeNetRequest"

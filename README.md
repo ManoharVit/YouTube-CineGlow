@@ -1,4 +1,4 @@
-# Aura – Ambient Light for YouTube
+# Aura: Cinematic YouTube Enhancer
 
 A lightweight Chrome extension (Manifest V3) that adds a soft, color-matched glow around YouTube videos.
 
