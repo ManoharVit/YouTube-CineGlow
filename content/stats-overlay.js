@@ -233,6 +233,10 @@
   }
 
   if (window.CineGlowPlayer) {
+    if (window.CineGlowPlayer.isWatchPage && window.CineGlowPlayer.video) {
+      video = window.CineGlowPlayer.video;
+    }
+    
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       const state = e.detail;
       if (!state.isWatchPage) {
