@@ -16,8 +16,8 @@ const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
 
 function setOutput(key, value) {
-  const out = document.querySelector(`output[for="${key}"]`);
-  if (out) out.textContent = `${value}${out.dataset.unit ?? ''}`;
+  const numInput = document.getElementById(`${key}-val`);
+  if (numInput) numInput.value = value;
 }
 
 function render(settings) {
@@ -107,11 +107,28 @@ async function init() {
 
   for (const key of SLIDER_KEYS) {
     const el = document.getElementById(key);
+    const numEl = document.getElementById(`${key}-val`);
+    
+    // When range slider changes
     el.addEventListener('input', () => {
       const value = Number(el.value);
       setOutput(key, value);
       queueSave(key, value);
     });
+
+    // When number input changes
+    if (numEl) {
+      numEl.addEventListener('change', () => {
+        let value = Number(numEl.value);
+        const min = Number(numEl.min);
+        const max = Number(numEl.max);
+        if (value < min) value = min;
+        if (value > max) value = max;
+        numEl.value = value;
+        el.value = value;
+        queueSave(key, value);
+      });
+    }
   }
 
   fpsEl.addEventListener('change', async () => {

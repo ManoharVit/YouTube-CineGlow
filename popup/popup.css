@@ -139,3 +139,34 @@ button {
   cursor: pointer;
 }
 button:hover { background: #303038; }
+
+/* Number inputs for sliders */
+.val-input {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  gap: 2px;
+}
+.val-input input[type="number"] {
+  width: 42px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: right;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+.val-input input[type="number"]:hover,
+.val-input input[type="number"]:focus {
+  background: #26262c;
+  border-color: #34343c;
+  outline: none;
+}
+/* Hide number input spin buttons */
+.val-input input[type="number"]::-webkit-outer-spin-button,
+.val-input input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
