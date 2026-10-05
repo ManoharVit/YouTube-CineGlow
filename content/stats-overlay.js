@@ -37,7 +37,12 @@
       receive: now,
       display: metadata.expectedDisplayTime
     });
-    if (videoFrameTimes.length > 120) videoFrameTimes.shift();
+    
+    if (videoFrameTimes.length > 120) {
+      const dropped = videoFrameTimes.shift();
+      frameTimes.push({ video: dropped });
+      if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
+    }
 
     if (video) {
       rvfcId = video.requestVideoFrameCallback(onRvfc);
@@ -51,15 +56,29 @@
     let currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
     if (currentRenderCount !== lastSeenRenderCount) {
       lastSeenRenderCount = currentRenderCount;
+      const vf = videoFrameTimes[videoFrameTimes.length - 1];
+      
       let ft = {
-        video: videoFrameTimes[videoFrameTimes.length - 1],
+        video: vf,
         drawStart: window.CineGlowMetrics.lastDrawStart,
         drawEnd: window.CineGlowMetrics.lastDrawEnd,
         display: now,
         complete: performance.now()
       };
+      
+      if (vf) {
+        const idx = videoFrameTimes.indexOf(vf);
+        if (idx !== -1) {
+          const droppedVideoFrameTimes = videoFrameTimes.splice(0, idx + 1);
+          droppedVideoFrameTimes.pop();
+          for (const video of droppedVideoFrameTimes) {
+            frameTimes.push({ video });
+          }
+        }
+      }
+      
       frameTimes.push(ft);
-      if (frameTimes.length > 120) frameTimes.shift();
+      if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
     }
     rafLoopId = requestAnimationFrame(statsLoop);
   }
@@ -233,24 +252,24 @@
     const videoMs = lastVideoFps ? (1000 / lastVideoFps).toFixed(1) : '0.0';
     const glowMs = lastGlowFps ? (1000 / lastGlowFps).toFixed(1) : '0.0';
 
-    if (refs.display) refs.display.textContent = \`DISPLAY: \${lastDisplayFps.toFixed(2)} (\${displayMs}ms)\`;
-    if (refs.video) refs.video.textContent = \`VIDEO: \${lastVideoFps.toFixed(2)} (\${videoMs}ms)\`;
+    if (refs.display) refs.display.textContent = `DISPLAY: ${lastDisplayFps.toFixed(2)} (${displayMs}ms)`;
+    if (refs.video) refs.video.textContent = `VIDEO: ${lastVideoFps.toFixed(2)} (${videoMs}ms)`;
     if (refs.vdropped) {
-      refs.vdropped.textContent = \`VIDEO DROPPED: \${droppedFrames}\`;
+      refs.vdropped.textContent = `VIDEO DROPPED: ${droppedFrames}`;
       refs.vdropped.style.color = droppedFrames > 0 ? '#ff3' : '#7f7';
     }
-    if (refs.ambient) refs.ambient.textContent = \`AMBIENT: \${lastGlowFps.toFixed(2)} (\${glowMs}ms)\`;
+    if (refs.ambient) refs.ambient.textContent = `AMBIENT: ${lastGlowFps.toFixed(2)} (${glowMs}ms)`;
     if (refs.adropped) {
       const aDropped = window.CineGlowMetrics ? window.CineGlowMetrics.ambientDroppedFrames : 0;
-      refs.adropped.textContent = \`AMBIENT DROPPED: \${aDropped}\`;
+      refs.adropped.textContent = `AMBIENT DROPPED: ${aDropped}`;
       refs.adropped.style.color = aDropped > 0 ? '#ff3' : '#7f7';
     }
     
-    if (refs.vbuffer) refs.vbuffer.textContent = \`VIDEO BUFFER: \${vW}x\${vH}\`;
+    if (refs.vbuffer) refs.vbuffer.textContent = `VIDEO BUFFER: ${vW}x${vH}`;
     
     // We assume 64x36 for the ambient buffer size for now, as that's what content.js uses
     const aw = 64, ah = 36;
-    if (refs.abuffer) refs.abuffer.textContent = \`AMBIENT BUFFER: \${aw}x\${ah}  [ draw: \${glowDrawTime}ms ]\`;
+    if (refs.abuffer) refs.abuffer.textContent = `AMBIENT BUFFER: ${aw}x${ah}  [ draw: ${glowDrawTime}ms ]`;
     
     drawFrametimesCanvas();
   }
@@ -316,8 +335,8 @@
       max = Math.round(Math.max(...averageMaxTimesPercentile90) / displayFrameDuration) * displayFrameDuration;
     }
 
-    if (refs.max) refs.max.textContent = \`\${max.toFixed(1)}ms\`;
-    if (refs.min) refs.min.textContent = \`\${min.toFixed(1)}ms\`;
+    if (refs.max) refs.max.textContent = `${max.toFixed(1)}ms`;
+    if (refs.min) refs.min.textContent = `${min.toFixed(1)}ms`;
 
     const range = Math.max(1, max - min + displayFrameDuration);
     const yScale = height / range;
@@ -363,8 +382,8 @@
       if (!isDragging) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      el.style.left = \`\${initialX + dx}px\`;
-      el.style.top = \`\${initialY + dy}px\`;
+      el.style.left = `${initialX + dx}px`;
+      el.style.top = `${initialY + dy}px`;
       el.style.right = 'auto'; 
     };
 
