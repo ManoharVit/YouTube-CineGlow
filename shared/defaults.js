@@ -11,6 +11,10 @@ const AURA_DEFAULTS = Object.freeze({
   block60fps: false,     // Codec Blocker: 60fps
   hideInTheater: false,  // Hide UI in theater mode
   hideScrollbar: false,  // Hide the browser scrollbar
+  glowTop: true,         // Glow direction Top
+  glowRight: true,       // Glow direction Right
+  glowBottom: true,      // Glow direction Bottom
+  glowLeft: true,        // Glow direction Left
   opacity: 85,           // Glow opacity, %
   fadeInDuration: 1.5,   // Fade in duration, seconds
   blur: 60,              // Blur radius, px

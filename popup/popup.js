@@ -13,6 +13,10 @@ const blockVP9El = document.getElementById('blockVP9');
 const block60fpsEl = document.getElementById('block60fps');
 const hideScrollbarEl = document.getElementById('hideScrollbar');
 const hideInTheaterEl = document.getElementById('hideInTheater');
+const glowTopEl = document.getElementById('glowTop');
+const glowRightEl = document.getElementById('glowRight');
+const glowBottomEl = document.getElementById('glowBottom');
+const glowLeftEl = document.getElementById('glowLeft');
 const fpsEl = document.getElementById('fps');
 const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
@@ -32,6 +36,10 @@ function render(settings) {
   block60fpsEl.checked = settings.block60fps;
   hideScrollbarEl.checked = settings.hideScrollbar;
   hideInTheaterEl.checked = settings.hideInTheater;
+  glowTopEl.classList.toggle('active', settings.glowTop);
+  glowRightEl.classList.toggle('active', settings.glowRight);
+  glowBottomEl.classList.toggle('active', settings.glowBottom);
+  glowLeftEl.classList.toggle('active', settings.glowLeft);
   adblockCountEl.textContent = settings.adblockCount;
   
   controlsEl.classList.toggle('disabled', !settings.enabled);
@@ -116,6 +124,15 @@ async function init() {
   block60fpsEl.addEventListener('change', async () => {
     await save({ block60fps: block60fpsEl.checked });
   });
+
+  for (const dir of ['Top', 'Right', 'Bottom', 'Left']) {
+    const el = document.getElementById('glow' + dir);
+    el.addEventListener('click', async () => {
+      const active = !el.classList.contains('active');
+      el.classList.toggle('active', active);
+      await save({ ['glow' + dir]: active });
+    });
+  }
 
   for (const key of SLIDER_KEYS) {
     const el = document.getElementById(key);

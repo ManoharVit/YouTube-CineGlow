@@ -59,15 +59,17 @@
     }, '*');
   }
 
-  // YouTube's Single Page App (SPA) navigation events
-  window.addEventListener('yt-navigate-finish', () => {
-    // Wait a brief moment for the player to fully initialize after navigation
-    setTimeout(applyQuality, 500);
-  });
-
-  // Also try on general load
-  window.addEventListener('load', () => {
-    setTimeout(applyQuality, 500);
+  let lastVideo = null;
+  let lastVideoId = null;
+  window.CineGlowPlayer.addEventListener('state-change', (e) => {
+    const state = e.detail;
+    if (state.video !== lastVideo || state.videoId !== lastVideoId) {
+      lastVideo = state.video;
+      lastVideoId = state.videoId;
+      if (state.isWatchPage && state.video) {
+        setTimeout(applyQuality, 500);
+      }
+    }
   });
 
   // Initial load

@@ -15,23 +15,19 @@
   const CANVAS_ID = 'aura-ambient-canvas';
   const SAMPLE_W = 64;
   const SAMPLE_H = 36;
-  const IDLE_POLL_MS = 500;     // How often to re-check when the glow is inactive
   const SETTLE_FRAMES = 30;     // Extra draws after the video stops, so smoothing converges
 
   let settings = { ...AURA_DEFAULTS };
   let video = null;
-  const listenedVideos = new WeakSet();
 
   let rafId = 0;
-  let idleTimer = 0;
   let isActive = false;
   let lastDrawAt = 0;
   let lastVideoTime = -1;
   let settleFrames = 0;
   let forceFullDraw = true;
   let lastLayoutKey = '';
-    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
-    document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater);
+  let videoObserver = null;
 
   // ---------- Canvas setup ----------
 
@@ -59,9 +55,9 @@
       `saturate(${settings.saturation / 100}) ` +
       `contrast(${settings.contrast / 100}) ` +
       `brightness(${settings.brightness / 100})`;
-    lastLayoutKey = '';
+    lastLayoutKey = ''; // Spread may have changed; force a re-layout.
     document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
-    document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater); // Spread may have changed; force a re-layout.
+    document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater);
   }
 
   // ---------- Video discovery ----------
@@ -72,26 +68,43 @@
     wake();
   }
 
-  function findVideo() {
-    if (video && video.isConnected) return video;
-    video =
-      document.querySelector('#movie_player video.html5-main-video') ||
-      document.querySelector('video.html5-main-video');
-    if (video && !listenedVideos.has(video)) {
-      listenedVideos.add(video);
-      for (const type of ['seeked', 'loadeddata', 'emptied', 'play']) {
-        video.addEventListener(type, onVideoReset, { passive: true });
+  let videoId = null;
+
+  window.CineGlowPlayer.addEventListener('state-change', (e) => {
+    const state = e.detail;
+    if (state.video !== video || state.videoId !== videoId) {
+      if (video) {
+        for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'waiting']) {
+          video.removeEventListener(type, onVideoReset);
+        }
+        if (videoObserver) {
+          videoObserver.disconnect();
+          videoObserver = null;
+        }
       }
+      video = state.video;
+      videoId = state.videoId;
+      if (video) {
+        for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'waiting']) {
+          video.addEventListener(type, onVideoReset, { passive: true });
+        }
+        videoObserver = new ResizeObserver(() => {
+          lastLayoutKey = '';
+          wake();
+        });
+        videoObserver.observe(video);
+      }
+      onVideoReset();
     }
-    return video;
-  }
+    wake();
+  });
 
   function shouldBeActive() {
     if (!settings.enabled) return false;
-    if (location.pathname !== '/watch') return false;
-    if (document.fullscreenElement) return false;
-    const app = document.querySelector('ytd-app');
-    if (app && app.hasAttribute('miniplayer-is-active')) return false;
+    const state = window.CineGlowPlayer;
+    if (!state.isWatchPage) return false;
+    if (state.isFullscreen) return false;
+    if (state.isMiniplayer) return false;
     return true;
   }
 
@@ -110,8 +123,6 @@
     isActive = false;
     document.documentElement.classList.remove(ROOT_CLASS);
     lastLayoutKey = '';
-    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
-    document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater);
   }
 
   // ---------- Per-frame work ----------
@@ -123,24 +134,30 @@
     const x = rect.left - (w - rect.width) / 2;
     const y = rect.top - (h - rect.height) / 2;
 
-    const key = `${x.toFixed(1)}|${y.toFixed(1)}|${w.toFixed(1)}|${h.toFixed(1)}`;
+    const topClip = settings.glowTop ? -h : (h - rect.height) / 2;
+    const rightClip = settings.glowRight ? -w : (w - rect.width) / 2;
+    const bottomClip = settings.glowBottom ? -h : (h - rect.height) / 2;
+    const leftClip = settings.glowLeft ? -w : (w - rect.width) / 2;
+
+    const key = `${x.toFixed(1)}|${y.toFixed(1)}|${w.toFixed(1)}|${h.toFixed(1)}|${topClip.toFixed(1)}|${rightClip.toFixed(1)}|${bottomClip.toFixed(1)}|${leftClip.toFixed(1)}`;
     if (key === lastLayoutKey) return;
     lastLayoutKey = key;
 
     canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     canvas.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    canvas.style.clipPath = `inset(${topClip}px ${rightClip}px ${bottomClip}px ${leftClip}px)`;
   }
 
   function draw(v, now) {
-    if (v.readyState < 2 /* HAVE_CURRENT_DATA */) return;
-    if (now - lastDrawAt < 1000 / settings.fps) return;
+    if (v.readyState < 2 /* HAVE_CURRENT_DATA */) return true; // keep polling
+    if (now - lastDrawAt < 1000 / settings.fps) return true; // keep polling
 
     const t = v.currentTime;
     if (t !== lastVideoTime) {
       settleFrames = SETTLE_FRAMES;
     } else if (!forceFullDraw && settleFrames <= 0) {
-      return; // Paused and fully converged: nothing to do.
+      return false; // Paused and fully converged: nothing to do, stop polling.
     }
 
     lastDrawAt = now;
@@ -158,40 +175,36 @@
       // e.g. a cross-origin/tainted source; skip this frame rather than break the loop.
       console.debug('[Aura] drawImage failed:', err);
     }
+    
+    return true; // continue polling
   }
 
   function tick() {
     rafId = 0;
 
-    const v = shouldBeActive() ? findVideo() : null;
+    const v = shouldBeActive() ? window.CineGlowPlayer.video : null;
     const rect = v ? v.getBoundingClientRect() : null;
 
     if (!rect || rect.width < 2 || rect.height < 2) {
       deactivate();
-      idleTimer = setTimeout(() => {
-        idleTimer = 0;
-        schedule();
-      }, IDLE_POLL_MS);
       return;
     }
 
     activate();
     layout(rect);
-    draw(v, performance.now());
-    schedule();
+    const keepRunning = draw(v, performance.now());
+    if (keepRunning) {
+      schedule();
+    }
   }
 
   function schedule() {
-    if (rafId || idleTimer) return;
+    if (rafId) return;
     rafId = requestAnimationFrame(tick);
   }
 
   /** Re-check immediately (e.g. after a YouTube SPA navigation). */
   function wake() {
-    if (idleTimer) {
-      clearTimeout(idleTimer);
-      idleTimer = 0;
-    }
     schedule();
   }
 
@@ -222,12 +235,8 @@
 
   // ---------- YouTube SPA / page events ----------
 
-  document.addEventListener('yt-navigate-finish', wake);
-  document.addEventListener('fullscreenchange', wake);
   document.addEventListener('visibilitychange', wake);
-  window.addEventListener('resize', () => { lastLayoutKey = '';
-    document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
-    document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater); }, { passive: true });
+  window.addEventListener('resize', () => { lastLayoutKey = ''; }, { passive: true });
 
   loadSettings();
 })();

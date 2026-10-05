@@ -6,7 +6,8 @@
   "description": "Adds a customizable cinematic glow around YouTube videos, blocks ads, and enables high-bitrate 4K tweaks.",
   "permissions": [
     "storage",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "scripting"
   ],
   "host_permissions": [
     "*://*.youtube.com/*"
@@ -32,12 +33,7 @@
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["content/codec-blocker.js"],
-      "run_at": "document_start"
-    },
-    {
-      "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/defaults.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js"],
+      "js": ["shared/defaults.js", "content/player-manager.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js"],
       "css": ["content/content.css"],
       "run_at": "document_idle"
     }

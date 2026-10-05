@@ -18,6 +18,7 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'sync' && changes.adblockEnabled) {
       settings.adblockEnabled = changes.adblockEnabled.newValue;
+      checkAdState();
     }
   });
 
@@ -86,27 +87,35 @@
     }
   }
 
-  // Observe DOM for ad elements
-  const observer = new MutationObserver((mutations) => {
-    if (!settings.adblockEnabled) return;
+  let adSkipTimer = 0;
 
-    let shouldCheck = false;
-    for (const m of mutations) {
-      if (m.addedNodes.length > 0) {
-        shouldCheck = true;
-        break;
+  function checkAdState() {
+    const state = window.CineGlowPlayer;
+    if (settings.adblockEnabled && state && state.isAdShowing) {
+      if (!adSkipTimer) {
+        skipVideoAds();
+        adSkipTimer = setInterval(skipVideoAds, 500);
+      }
+    } else {
+      if (adSkipTimer) {
+        clearInterval(adSkipTimer);
+        adSkipTimer = 0;
       }
     }
-    if (shouldCheck) {
-      skipVideoAds();
-      hideUiAds();
-    }
+  }
+
+  window.CineGlowPlayer.addEventListener('state-change', checkAdState);
+
+  document.addEventListener('yt-page-data-updated', () => {
+    if (settings.adblockEnabled) hideUiAds();
+  });
+  
+  document.addEventListener('yt-navigate-finish', () => {
+    if (settings.adblockEnabled) hideUiAds();
   });
 
   loadSettings().then(() => {
-    observer.observe(document.body, { childList: true, subtree: true });
-    // Initial check
-    skipVideoAds();
+    checkAdState();
     hideUiAds();
   });
 
