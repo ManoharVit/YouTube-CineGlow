@@ -63,6 +63,7 @@
     lastLayoutKey = ''; // Spread may have changed; force a re-layout.
     document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
     document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater);
+    document.documentElement.classList.toggle('aura-watch-page', window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch');
   }
 
   // ---------- Video discovery ----------
@@ -77,6 +78,8 @@
 
   window.CineGlowPlayer.addEventListener('state-change', (e) => {
     const state = e.detail;
+    document.documentElement.classList.toggle('aura-watch-page', state.isWatchPage);
+    
     if (state.video !== video || state.videoId !== videoId) {
       if (video) {
         for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'waiting']) {

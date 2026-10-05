@@ -107,17 +107,58 @@ html.aura-hide-scrollbar {
 }
 
 /* Hide everything in theater mode Feature */
-html.aura-hide-theater:has(ytd-watch-flexy[theater]) #masthead-container,
-html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]) #masthead-container {
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) #masthead-container,
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater-requested_]) #masthead-container {
   display: none !important;
 }
-html.aura-hide-theater:has(ytd-watch-flexy[theater]) ytd-page-manager,
-html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]) ytd-page-manager {
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) ytd-page-manager,
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater-requested_]) ytd-page-manager {
   margin-top: 0 !important;
 }
-html.aura-hide-theater ytd-watch-flexy[theater] #secondary,
-html.aura-hide-theater ytd-watch-flexy[theater-requested_] #secondary,
-html.aura-hide-theater ytd-watch-flexy[theater] #below,
-html.aura-hide-theater ytd-watch-flexy[theater-requested_] #below {
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #secondary,
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater-requested_] #secondary,
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #below,
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater-requested_] #below {
   display: none !important;
 }
+
+/* Quality Stats Overlay */
+#aura-stats-overlay {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif;
+  font-size: 11px;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  cursor: move;
+  user-select: none;
+  min-width: 180px;
+}
+#aura-stats-overlay .aura-stats-header {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 4px;
+}
+#aura-stats-overlay .aura-stats-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 12px;
+}
+#aura-stats-overlay .aura-stats-grid span:nth-child(odd) {
+  color: #aaa;
+}
+#aura-stats-overlay .aura-stats-grid span:nth-child(even) {
+  font-family: monospace;
+  text-align: right;
+}
+
