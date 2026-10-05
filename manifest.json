@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Aura – Ambient Light & Ad Blocker",
+  "short_name": "Aura",
+  "version": "0.2.0",
+  "description": "Adds a customizable ambient glow around YouTube videos and blocks ads site-wide.",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "adblock_rules",
+        "enabled": true,
+        "path": "rules/adblock.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content/main-world.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content/codec-blocker.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["shared/defaults.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Aura",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

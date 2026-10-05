@@ -1,0 +1,96 @@
+/*
+ * The glow canvas is a fixed, full-page layer at z-index -1, so it paints above the
+ * root background but below all page content. Its position/size is synced to the
+ * video every frame from content.js.
+ */
+#aura-ambient-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  display: none;
+  pointer-events: none;
+  transform-origin: 0 0;
+  will-change: transform, opacity, filter;
+  /* Fade the glow out towards its edges so it never shows a hard rectangle. */
+  mask-image: radial-gradient(ellipse farthest-side, #000 50%, transparent 100%);
+}
+
+html.aura-active #aura-ambient-canvas {
+  display: block;
+}
+
+/*
+ * For the glow (which sits behind the page) to be visible, the opaque layers between
+ * the root and the player must be transparent. The root keeps YouTube's theme color.
+ */
+html.aura-active {
+  background-color: var(--yt-spec-base-background, #0f0f0f) !important;
+}
+
+html.aura-active body,
+html.aura-active ytd-app,
+html.aura-active ytd-app #content,
+html.aura-active ytd-page-manager,
+html.aura-active ytd-watch-flexy,
+html.aura-active ytd-watch-flexy #columns,
+html.aura-active ytd-watch-flexy #full-bleed-container,
+html.aura-active ytd-watch-flexy #player-container-outer,
+html.aura-active ytd-player,
+html.aura-active ytd-player #container,
+html.aura-active #movie_player,
+html.aura-active #secondary,
+html.aura-active #secondary-inner,
+html.aura-active ytd-watch-next-secondary-results-renderer,
+html.aura-active ytd-engagement-panel-section-list-renderer {
+  background: transparent !important;
+}
+
+/* Make playlist panel fully transparent so pure glow shows through, without backdrop-filter to prevent stacking bugs */
+html.aura-active ytd-playlist-panel-renderer,
+html.aura-active ytd-live-chat-frame {
+  background: transparent !important;
+}
+
+/* Force YouTube's native ambient colored boxes to be transparent so our glow shines through */
+html.aura-active ytd-playlist-panel-renderer[use-color-palette] #container,
+html.aura-active ytd-playlist-panel-renderer[use-color-palette] .header,
+html.aura-active ytd-playlist-panel-renderer[use-color-palette] #items,
+html.aura-active ytd-playlist-panel-renderer #container,
+html.aura-active ytd-playlist-panel-renderer .header,
+html.aura-active ytd-playlist-panel-renderer #items {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Hide YouTube's built-in ambient mode while Aura is running so the effects don't stack. */
+html.aura-active #cinematics,
+html.aura-active #cinematics-container {
+  display: none !important;
+}
+
+/* 
+ * AdBlock UI hiding 
+ * We hide these globally (not just when Aura is active) since the adblocker 
+ * can be on even if the ambient light is off.
+ */
+.ad-showing .ytp-ad-player-overlay,
+.ad-showing .ytp-ad-player-overlay-instream-info,
+ytd-promoted-sparkles-web-renderer,
+ytd-banner-promo-renderer,
+ytd-video-masthead-ad-v3-renderer,
+ytd-action-companion-ad-renderer,
+ytd-player-legacy-desktop-watch-ads-renderer,
+#masthead-ad,
+#player-ads,
+.ytd-in-feed-ad-layout-renderer {
+  display: none !important;
+}
+
+/* 
+ * Remove channel watermark/logo from the bottom right of the video player
+ */
+.iv-branding,
+.ytp-watermark {
+  display: none !important;
+}
