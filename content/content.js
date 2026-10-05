@@ -50,7 +50,9 @@
   }
 
   function applyVisualSettings() {
-    canvas.style.opacity = String(settings.opacity / 100);
+    document.documentElement.style.setProperty('--aura-opacity', String(settings.opacity / 100));
+    document.documentElement.style.setProperty('--aura-fade', `${settings.fadeInDuration}s`);
+    
     canvas.style.filter =
       `blur(${settings.blur}px) ` +
       `saturate(${settings.saturation / 100}) ` +

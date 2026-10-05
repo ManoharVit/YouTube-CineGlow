@@ -1,7 +1,7 @@
 // Popup: reads/writes settings in chrome.storage.sync.
 // The content script listens for storage changes, so updates apply live.
 
-const SLIDER_KEYS = ['opacity', 'blur', 'spread', 'saturation', 'contrast', 'brightness', 'smoothness'];
+const SLIDER_KEYS = ['opacity', 'blur', 'spread', 'saturation', 'contrast', 'brightness', 'smoothness', 'fadeInDuration'];
 
 const enabledEl = document.getElementById('enabled');
 const adblockEnabledEl = document.getElementById('adblockEnabled');

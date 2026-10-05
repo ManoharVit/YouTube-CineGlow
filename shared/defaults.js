@@ -11,6 +11,7 @@ const AURA_DEFAULTS = Object.freeze({
   block60fps: false,     // Codec Blocker: 60fps
   hideScrollbar: false,  // Hide the browser scrollbar
   opacity: 85,           // Glow opacity, %
+  fadeInDuration: 1.5,   // Fade in duration, seconds
   blur: 60,              // Blur radius, px
   spread: 130,           // Glow size relative to the video, %
   saturation: 130,       // Color saturation, %

@@ -8,16 +8,17 @@
   top: 0;
   left: 0;
   z-index: -1;
-  display: none;
+  opacity: 0;
   pointer-events: none;
   transform-origin: 0 0;
   will-change: transform, opacity, filter;
+  transition: opacity var(--aura-fade, 1.5s) ease;
   /* Fade the glow out towards its edges so it never shows a hard rectangle. */
   mask-image: radial-gradient(ellipse farthest-side, #000 50%, transparent 100%);
 }
 
 html.aura-active #aura-ambient-canvas {
-  display: block;
+  opacity: var(--aura-opacity, 0.85);
 }
 
 /*
