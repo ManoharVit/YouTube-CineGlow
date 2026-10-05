@@ -15,7 +15,7 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   user-select: none;
-  min-width: 260px;
+  min-width: 384px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   transition: opacity 0.2s ease;
 }
@@ -37,19 +37,32 @@
   font-size: 11px;
 }
 
-.aura-stats-grid {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px 12px;
-  line-height: 1.4;
+.aura-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
 }
 
-.aura-stats-grid span:nth-child(odd) {
+.aura-stats-graph-container {
+  position: relative;
+  width: 360px;
+  height: 270px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.aura-stats-legend {
+  position: absolute;
+  right: -5px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
   color: #888;
-}
-
-.aura-stats-grid span:nth-child(even) {
-  text-align: right;
-  color: #e0e0e0;
-  font-weight: 500;
+  pointer-events: none;
+  text-shadow: 1px 1px 0 #000;
+  transform: translateX(100%);
 }

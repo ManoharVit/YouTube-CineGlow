@@ -20,6 +20,9 @@
   window.CineGlowMetrics = {
     renderCount: 0,
     lastDrawTime: 0,
+    lastDrawStart: 0,
+    lastDrawEnd: 0,
+    ambientDroppedFrames: 0,
   };
 
   let settings = { ...AURA_DEFAULTS };
@@ -182,6 +185,8 @@
       ctx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
       const t1 = performance.now();
       
+      window.CineGlowMetrics.lastDrawStart = t0;
+      window.CineGlowMetrics.lastDrawEnd = t1;
       window.CineGlowMetrics.lastDrawTime = t1 - t0;
       window.CineGlowMetrics.renderCount++;
     } catch (err) {

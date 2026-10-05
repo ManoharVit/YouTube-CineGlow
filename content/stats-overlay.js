@@ -18,12 +18,50 @@
   let rvfcFrames = 0;
   let useRvfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 
+  let videoFrameTimes = [];
+  let frameTimes = [];
+  let rafLoopId = 0;
+  let lastSeenRenderCount = -1;
+  let displayFrames = 0;
+  let lastDisplayFrames = 0;
+  let lastDisplayFps = 0;
+
   function onRvfc(now, metadata) {
     if (!updateInterval) return;
     rvfcFrames++;
+    
+    videoFrameTimes.push({
+      decode: metadata.presentationTime - 2, // simulated processing
+      present: metadata.presentationTime,
+      compose: performance.now(),
+      receive: now,
+      display: metadata.expectedDisplayTime
+    });
+    if (videoFrameTimes.length > 120) videoFrameTimes.shift();
+
     if (video) {
       rvfcId = video.requestVideoFrameCallback(onRvfc);
     }
+  }
+
+  function statsLoop(now) {
+    if (!updateInterval) return;
+    displayFrames++;
+    
+    let currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
+    if (currentRenderCount !== lastSeenRenderCount) {
+      lastSeenRenderCount = currentRenderCount;
+      let ft = {
+        video: videoFrameTimes[videoFrameTimes.length - 1],
+        drawStart: window.CineGlowMetrics.lastDrawStart,
+        drawEnd: window.CineGlowMetrics.lastDrawEnd,
+        display: now,
+        complete: performance.now()
+      };
+      frameTimes.push(ft);
+      if (frameTimes.length > 120) frameTimes.shift();
+    }
+    rafLoopId = requestAnimationFrame(statsLoop);
   }
 
   function createOverlay() {
@@ -39,23 +77,36 @@
     
     overlayEl.innerHTML = `
       <div class="aura-stats-header">CineGlow Telemetry</div>
-      <div class="aura-stats-grid">
-        <span>Video FPS:</span> <span id="aura-stat-vfps">0</span>
-        <span>Video Frames:</span> <span id="aura-stat-vframes">0 (Drop: 0 / 0.0%)</span>
-        <span>Resolution:</span> <span id="aura-stat-res">Unknown</span>
-        <span>State:</span> <span id="aura-stat-state">Unknown</span>
-        <span>CineGlow FPS:</span> <span id="aura-stat-gfps">0</span>
-        <span>CineGlow Draw:</span> <span id="aura-stat-gdraw">N/A</span>
+      <div class="aura-stats-list">
+        <div id="aura-stat-display">DISPLAY: 0</div>
+        <div id="aura-stat-video">VIDEO: 0</div>
+        <div id="aura-stat-vdropped">VIDEO DROPPED: 0</div>
+        <div id="aura-stat-ambient">AMBIENT: 0</div>
+        <div id="aura-stat-adropped">AMBIENT DROPPED: 0</div>
+        <div id="aura-stat-vbuffer">VIDEO BUFFER: ?x?</div>
+        <div id="aura-stat-abuffer">AMBIENT BUFFER: ?x?</div>
+      </div>
+      <div class="aura-stats-graph-container">
+        <canvas id="aura-stats-canvas" width="360" height="270"></canvas>
+        <div class="aura-stats-legend">
+          <div id="aura-stat-max">0.0ms</div>
+          <div style="flex: 1"></div>
+          <div id="aura-stat-min">0.0ms</div>
+        </div>
       </div>
     `;
     container.appendChild(overlayEl);
     
-    refs.vfps = overlayEl.querySelector('#aura-stat-vfps');
-    refs.vframes = overlayEl.querySelector('#aura-stat-vframes');
-    refs.res = overlayEl.querySelector('#aura-stat-res');
-    refs.state = overlayEl.querySelector('#aura-stat-state');
-    refs.gfps = overlayEl.querySelector('#aura-stat-gfps');
-    refs.gdraw = overlayEl.querySelector('#aura-stat-gdraw');
+    refs.display = overlayEl.querySelector('#aura-stat-display');
+    refs.video = overlayEl.querySelector('#aura-stat-video');
+    refs.vdropped = overlayEl.querySelector('#aura-stat-vdropped');
+    refs.ambient = overlayEl.querySelector('#aura-stat-ambient');
+    refs.adropped = overlayEl.querySelector('#aura-stat-adropped');
+    refs.vbuffer = overlayEl.querySelector('#aura-stat-vbuffer');
+    refs.abuffer = overlayEl.querySelector('#aura-stat-abuffer');
+    refs.canvas = overlayEl.querySelector('#aura-stats-canvas');
+    refs.max = overlayEl.querySelector('#aura-stat-max');
+    refs.min = overlayEl.querySelector('#aura-stat-min');
 
     makeDraggable(overlayEl);
   }
@@ -72,9 +123,14 @@
     lastTime = performance.now();
     lastPresentedFrames = 0;
     rvfcFrames = 0;
+    displayFrames = 0;
+    lastDisplayFrames = 0;
     lastGlowRenders = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
     lastVideoFps = 0;
     lastGlowFps = 0;
+    lastDisplayFps = 0;
+    videoFrameTimes = [];
+    frameTimes = [];
     if (video && typeof video.getVideoPlaybackQuality === 'function') {
       const q = video.getVideoPlaybackQuality();
       lastPresentedFrames = q.totalVideoFrames - q.droppedVideoFrames;
@@ -83,11 +139,14 @@
 
   function startMonitoring() {
     if (updateInterval) clearInterval(updateInterval);
+    if (rafLoopId) cancelAnimationFrame(rafLoopId);
+    
     resetStats();
     if (useRvfc && video) {
       if (rvfcId) video.cancelVideoFrameCallback(rvfcId);
       rvfcId = video.requestVideoFrameCallback(onRvfc);
     }
+    rafLoopId = requestAnimationFrame(statsLoop);
     updateInterval = setInterval(updateStats, 1000);
     updateStats(); 
   }
@@ -101,6 +160,10 @@
       video.cancelVideoFrameCallback(rvfcId);
       rvfcId = 0;
     }
+    if (rafLoopId) {
+      cancelAnimationFrame(rafLoopId);
+      rafLoopId = 0;
+    }
   }
 
   function updateStats() {
@@ -111,11 +174,10 @@
     
     if (dt <= 0) return;
 
-    let vW = 0, vH = 0, currRes = 'Unknown';
+    let vW = 0, vH = 0;
     let buffering = false;
     let playing = false;
     let droppedFrames = 0;
-    let totalFrames = 0;
 
     if (video) {
       vW = video.videoWidth;
@@ -126,19 +188,18 @@
       if (typeof video.getVideoPlaybackQuality === 'function') {
         const q = video.getVideoPlaybackQuality();
         droppedFrames = q.droppedVideoFrames;
-        totalFrames = q.totalVideoFrames;
         
         if (useRvfc) {
           if (playing && !buffering) {
-            lastVideoFps = Math.round(rvfcFrames / dt);
+            lastVideoFps = rvfcFrames / dt;
           } else if (!playing) {
             lastVideoFps = 0;
           }
           rvfcFrames = 0;
         } else {
-          const currentPresented = totalFrames - droppedFrames;
+          const currentPresented = q.totalVideoFrames - droppedFrames;
           if (playing && !buffering) {
-            lastVideoFps = Math.round((currentPresented - lastPresentedFrames) / dt);
+            lastVideoFps = (currentPresented - lastPresentedFrames) / dt;
           } else if (!playing) {
             lastVideoFps = 0;
           }
@@ -147,41 +208,151 @@
       }
     }
     
+    if (playing && !buffering) {
+      lastDisplayFps = (displayFrames - lastDisplayFrames) / dt;
+    } else if (!playing) {
+      lastDisplayFps = 0;
+    }
+    lastDisplayFrames = displayFrames;
+    
+    let glowDrawTime = '0.0';
     if (window.CineGlowMetrics) {
       const currentRenders = window.CineGlowMetrics.renderCount;
       if (playing && !buffering) {
-        lastGlowFps = Math.round((currentRenders - lastGlowRenders) / dt);
+        lastGlowFps = (currentRenders - lastGlowRenders) / dt;
       } else if (!playing) {
         lastGlowFps = 0;
       }
       lastGlowRenders = currentRenders;
+      glowDrawTime = window.CineGlowMetrics.lastDrawTime > 0 ? window.CineGlowMetrics.lastDrawTime.toFixed(1) : '0.0';
     }
 
     lastTime = now;
 
-    const player = window.CineGlowPlayer ? window.CineGlowPlayer.player : null;
-    if (player && typeof player.getPlaybackQuality === 'function') {
-      const q = player.getPlaybackQuality();
-      currRes = q === 'highres' || q === 'hd2160' ? '4K' : 
-                q === 'hd1440' ? '1440p' : 
-                q === 'hd1080' ? '1080p' : 
-                q === 'hd720' ? '720p' : q;
-    } else {
-      currRes = vH ? `${vH}p` : 'Unknown';
+    const displayMs = lastDisplayFps ? (1000 / lastDisplayFps).toFixed(1) : '0.0';
+    const videoMs = lastVideoFps ? (1000 / lastVideoFps).toFixed(1) : '0.0';
+    const glowMs = lastGlowFps ? (1000 / lastGlowFps).toFixed(1) : '0.0';
+
+    if (refs.display) refs.display.textContent = \`DISPLAY: \${lastDisplayFps.toFixed(2)} (\${displayMs}ms)\`;
+    if (refs.video) refs.video.textContent = \`VIDEO: \${lastVideoFps.toFixed(2)} (\${videoMs}ms)\`;
+    if (refs.vdropped) {
+      refs.vdropped.textContent = \`VIDEO DROPPED: \${droppedFrames}\`;
+      refs.vdropped.style.color = droppedFrames > 0 ? '#ff3' : '#7f7';
+    }
+    if (refs.ambient) refs.ambient.textContent = \`AMBIENT: \${lastGlowFps.toFixed(2)} (\${glowMs}ms)\`;
+    if (refs.adropped) {
+      const aDropped = window.CineGlowMetrics ? window.CineGlowMetrics.ambientDroppedFrames : 0;
+      refs.adropped.textContent = \`AMBIENT DROPPED: \${aDropped}\`;
+      refs.adropped.style.color = aDropped > 0 ? '#ff3' : '#7f7';
     }
     
-    const glowDrawTime = window.CineGlowMetrics && window.CineGlowMetrics.lastDrawTime > 0 
-      ? window.CineGlowMetrics.lastDrawTime.toFixed(1) + 'ms' 
-      : 'N/A';
-      
-    const dropRate = totalFrames > 0 ? ((droppedFrames / totalFrames) * 100).toFixed(1) : '0.0';
+    if (refs.vbuffer) refs.vbuffer.textContent = \`VIDEO BUFFER: \${vW}x\${vH}\`;
+    
+    // We assume 64x36 for the ambient buffer size for now, as that's what content.js uses
+    const aw = 64, ah = 36;
+    if (refs.abuffer) refs.abuffer.textContent = \`AMBIENT BUFFER: \${aw}x\${ah}  [ draw: \${glowDrawTime}ms ]\`;
+    
+    drawFrametimesCanvas();
+  }
 
-    if (refs.vfps) refs.vfps.textContent = lastVideoFps;
-    if (refs.vframes) refs.vframes.textContent = `${totalFrames} (Drop: ${droppedFrames} / ${dropRate}%)`;
-    if (refs.res) refs.res.textContent = `${currRes} (${vW}x${vH})`;
-    if (refs.state) refs.state.textContent = `${playing ? 'Playing' : 'Paused'}${buffering ? ' (Buffering)' : ''}`;
-    if (refs.gfps) refs.gfps.textContent = lastGlowFps;
-    if (refs.gdraw) refs.gdraw.textContent = glowDrawTime;
+  function drawFrametimesCanvas() {
+    if (!refs.canvas || frameTimes.length === 0) return;
+    const ctx = refs.canvas.getContext('2d', { alpha: true });
+    const width = 360;
+    const height = 270;
+    const xSize = 3;
+    
+    ctx.clearRect(0, 0, width, height);
+    
+    const displayFrameDuration = lastDisplayFps ? 1000 / Math.max(24, lastDisplayFps) : 1000 / 60;
+    
+    const offsettedFrameTimes = frameTimes.map((ft, i) => {
+      const offset = (ft.video && ft.video.display) ? ft.video.display : ((ft.video && ft.video.compose) ? ft.video.compose + displayFrameDuration : ft.display);
+      return {
+        video: ft.video ? {
+          decode: ft.video.decode - offset,
+          present: ft.video.present - offset,
+          compose: ft.video.compose - offset,
+          receive: ft.video.receive - offset,
+          display: ft.video.display - offset,
+        } : undefined,
+        drawStart: ft.drawStart - offset,
+        drawEnd: ft.drawEnd - offset,
+        display: ft.display - offset,
+        complete: ft.complete - offset,
+        nextCompose: (i < frameTimes.length - 1 && frameTimes[i+1].video) ? frameTimes[i+1].video.compose - offset : undefined,
+        nextDisplay: (i < frameTimes.length - 1 && frameTimes[i+1].video) ? frameTimes[i+1].video.display - offset : undefined,
+      };
+    });
+
+    const frameDurations = offsettedFrameTimes.map(ft => ({
+      decodeToPresent: ft.video ? [ft.video.decode, ft.video.present - ft.video.decode] : [],
+      composeToReceive: ft.video ? [ft.video.compose, ft.video.receive - ft.video.compose] : [],
+      presentToCompose: ft.video ? [ft.video.present, Math.max(0, ft.video.compose - ft.video.present)] : [],
+      receiveToDrawStart: ft.video ? [ft.video.receive, ft.drawStart - ft.video.receive] : [],
+      drawStartTodrawEnd: [ft.drawStart, ft.drawEnd - ft.drawStart],
+      drawEndToDisplay: [ft.drawEnd, ft.display - ft.drawEnd],
+      videoDisplay: ft.video ? ft.video.display : undefined,
+      isDrawnBeforeVideoDisplay: ft.video && (!isFinite(ft.video.display) || ft.drawEnd <= ft.video.display),
+      nextCompose: ft.nextCompose,
+      isDrawnBeforeNextCompose: !isFinite(ft.nextCompose) || ft.drawEnd <= ft.nextCompose,
+      nextDisplay: ft.nextDisplay,
+      isDrawnBeforeNextDisplay: !isFinite(ft.nextDisplay) || ft.drawEnd <= ft.nextDisplay,
+      isDrawn: isFinite(ft.drawEnd)
+    }));
+
+    let averageMinTimes = offsettedFrameTimes.map(ft => ft.video ? Math.min(ft.video.decode || Infinity, ft.video.compose || Infinity) : ft.drawStart).filter(isFinite).sort((a,b)=>a-b);
+    let min = 0, max = 0;
+    if (averageMinTimes.length > 0) {
+      const minPercentile90Length = Math.max(1, Math.floor(averageMinTimes.length * 0.9));
+      const averageMinTimesPercentile90 = averageMinTimes.slice(-minPercentile90Length);
+      min = Math.round(Math.min(...averageMinTimesPercentile90) / displayFrameDuration) * displayFrameDuration;
+    }
+    
+    let averageMaxTimes = offsettedFrameTimes.map(ft => Math.max(ft.video ? (ft.video.display || -999) : -999, ft.drawEnd || -999, ft.nextCompose || -999, ft.nextDisplay || -999)).filter(isFinite).sort((a,b)=>a-b);
+    if (averageMaxTimes.length > 0) {
+      const maxPercentile90Length = Math.max(1, Math.floor(averageMaxTimes.length * 0.9));
+      const averageMaxTimesPercentile90 = averageMaxTimes.slice(0, maxPercentile90Length);
+      max = Math.round(Math.max(...averageMaxTimesPercentile90) / displayFrameDuration) * displayFrameDuration;
+    }
+
+    if (refs.max) refs.max.textContent = \`\${max.toFixed(1)}ms\`;
+    if (refs.min) refs.min.textContent = \`\${min.toFixed(1)}ms\`;
+
+    const range = Math.max(1, max - min + displayFrameDuration);
+    const yScale = height / range;
+    const yLine = 1 / yScale;
+    
+    const offset = min - displayFrameDuration / 2;
+
+    const frameRects = frameDurations.map((fd, i) => {
+      let rects = [];
+      if (!fd.isDrawn) {
+        rects.push(['#800', xSize, min - displayFrameDuration / 2, range]);
+      }
+      if (fd.decodeToPresent.length) rects.push(['#06f', xSize, fd.decodeToPresent[0], fd.decodeToPresent[1]]);
+      if (fd.composeToReceive.length) rects.push(['#666', 1, fd.composeToReceive[0], fd.composeToReceive[1]]);
+      if (fd.presentToCompose.length) rects.push(['#f80', 1, fd.presentToCompose[0], fd.presentToCompose[1]]);
+      rects.push(['#a0b', 1, fd.drawEndToDisplay[0], fd.drawEndToDisplay[1]]);
+      if (fd.receiveToDrawStart.length) rects.push([fd.isDrawnBeforeVideoDisplay ? '#0b0' : '#db0', xSize, fd.receiveToDrawStart[0], fd.receiveToDrawStart[1]]);
+      rects.push([fd.isDrawnBeforeVideoDisplay ? '#0f0' : '#ff0', xSize, fd.drawStartTodrawEnd[0], fd.drawStartTodrawEnd[1]]);
+      
+      if (isFinite(fd.nextCompose)) rects.push(['#666', 1, fd.nextCompose, yLine]);
+      if (isFinite(fd.nextDisplay)) rects.push(['#fff', 1, fd.nextDisplay, yLine]);
+      if (isFinite(fd.videoDisplay)) rects.push(['#0f0', 1, fd.videoDisplay, yLine]);
+      
+      return rects;
+    });
+
+    for (let i = 0; i < frameRects.length; i++) {
+      const rectLines = frameRects[i];
+      const x = i * xSize;
+      for (const [color, xFrameSize, y, ySize] of rectLines) {
+        if (isNaN(y) || isNaN(ySize) || ySize === 0) continue;
+        ctx.fillStyle = color;
+        ctx.fillRect(x + Math.floor((xSize - xFrameSize)/2), Math.round((y - offset) * yScale), xFrameSize, Math.max(1, Math.round(ySize * yScale)));
+      }
+    }
   }
 
   function makeDraggable(el) {
@@ -192,8 +363,8 @@
       if (!isDragging) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      el.style.left = `${initialX + dx}px`;
-      el.style.top = `${initialY + dy}px`;
+      el.style.left = \`\${initialX + dx}px\`;
+      el.style.top = \`\${initialY + dy}px\`;
       el.style.right = 'auto'; 
     };
 
