@@ -105,3 +105,19 @@ html.aura-hide-scrollbar::-webkit-scrollbar {
 html.aura-hide-scrollbar {
   scrollbar-width: none !important;
 }
+
+/* Hide everything in theater mode Feature */
+html.aura-hide-theater:has(ytd-watch-flexy[theater]) #masthead-container,
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]) #masthead-container {
+  display: none !important;
+}
+html.aura-hide-theater:has(ytd-watch-flexy[theater]) ytd-page-manager,
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]) ytd-page-manager {
+  margin-top: 0 !important;
+}
+html.aura-hide-theater ytd-watch-flexy[theater] #secondary,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_] #secondary,
+html.aura-hide-theater ytd-watch-flexy[theater] #below,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_] #below {
+  display: none !important;
+}

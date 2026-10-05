@@ -12,6 +12,7 @@ const blockAV1El = document.getElementById('blockAV1');
 const blockVP9El = document.getElementById('blockVP9');
 const block60fpsEl = document.getElementById('block60fps');
 const hideScrollbarEl = document.getElementById('hideScrollbar');
+const hideInTheaterEl = document.getElementById('hideInTheater');
 const fpsEl = document.getElementById('fps');
 const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
@@ -30,6 +31,7 @@ function render(settings) {
   blockVP9El.checked = settings.blockVP9;
   block60fpsEl.checked = settings.block60fps;
   hideScrollbarEl.checked = settings.hideScrollbar;
+  hideInTheaterEl.checked = settings.hideInTheater;
   adblockCountEl.textContent = settings.adblockCount;
   
   controlsEl.classList.toggle('disabled', !settings.enabled);
@@ -101,6 +103,10 @@ async function init() {
 
   blockVP9El.addEventListener('change', async () => {
     await save({ blockVP9: blockVP9El.checked });
+  });
+
+  hideInTheaterEl.addEventListener('change', async () => {
+    await save({ hideInTheater: hideInTheaterEl.checked });
   });
 
   hideScrollbarEl.addEventListener('change', async () => {

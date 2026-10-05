@@ -9,6 +9,7 @@ const AURA_DEFAULTS = Object.freeze({
   blockAV1: false,       // Codec Blocker: AV1
   blockVP9: false,       // Codec Blocker: VP9
   block60fps: false,     // Codec Blocker: 60fps
+  hideInTheater: false,  // Hide UI in theater mode
   hideScrollbar: false,  // Hide the browser scrollbar
   opacity: 85,           // Glow opacity, %
   fadeInDuration: 1.5,   // Fade in duration, seconds
