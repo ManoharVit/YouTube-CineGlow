@@ -31,7 +31,7 @@
     rvfcFrames++;
     
     videoFrameTimes.push({
-      decode: metadata.presentationTime - 2, // simulated processing
+      decode: metadata.presentationTime,
       present: metadata.presentationTime,
       compose: performance.now(),
       receive: now,
@@ -101,7 +101,6 @@
         <div id="aura-stat-video">VIDEO: 0</div>
         <div id="aura-stat-vdropped">VIDEO DROPPED: 0</div>
         <div id="aura-stat-ambient">AMBIENT: 0</div>
-        <div id="aura-stat-adropped">AMBIENT DROPPED: 0</div>
         <div id="aura-stat-vbuffer">VIDEO BUFFER: ?x?</div>
         <div id="aura-stat-abuffer">AMBIENT BUFFER: ?x?</div>
       </div>
@@ -120,7 +119,6 @@
     refs.video = overlayEl.querySelector('#aura-stat-video');
     refs.vdropped = overlayEl.querySelector('#aura-stat-vdropped');
     refs.ambient = overlayEl.querySelector('#aura-stat-ambient');
-    refs.adropped = overlayEl.querySelector('#aura-stat-adropped');
     refs.vbuffer = overlayEl.querySelector('#aura-stat-vbuffer');
     refs.abuffer = overlayEl.querySelector('#aura-stat-abuffer');
     refs.canvas = overlayEl.querySelector('#aura-stats-canvas');
@@ -128,6 +126,34 @@
     refs.min = overlayEl.querySelector('#aura-stat-min');
 
     makeDraggable(overlayEl);
+    
+    window.addEventListener('resize', clampOverlayPosition, { passive: true });
+    dragCleanups.push(() => {
+      window.removeEventListener('resize', clampOverlayPosition);
+    });
+  }
+
+  function clampOverlayPosition() {
+    if (!overlayEl) return;
+    const rect = overlayEl.getBoundingClientRect();
+    const parentRect = overlayEl.parentElement ? overlayEl.parentElement.getBoundingClientRect() : {left: 0, top: 0};
+    
+    const currentLeft = rect.left - parentRect.left;
+    const currentTop = rect.top - parentRect.top;
+    
+    const minLeft = -parentRect.left;
+    const minTop = -parentRect.top;
+    const maxLeft = window.innerWidth - parentRect.left - rect.width;
+    const maxTop = window.innerHeight - parentRect.top - rect.height;
+    
+    const newLeft = Math.max(minLeft, Math.min(currentLeft, maxLeft));
+    const newTop = Math.max(minTop, Math.min(currentTop, maxTop));
+    
+    if (currentLeft !== newLeft || currentTop !== newTop) {
+      overlayEl.style.left = `${newLeft}px`;
+      overlayEl.style.top = `${newTop}px`;
+      overlayEl.style.right = 'auto';
+    }
   }
 
   function removeOverlay() {
@@ -211,23 +237,26 @@
       if (typeof video.getVideoPlaybackQuality === 'function') {
         const q = video.getVideoPlaybackQuality();
         droppedFrames = q.droppedVideoFrames;
-        
-        if (useRvfc) {
-          if (playing && !buffering) {
-            lastVideoFps = rvfcFrames / dt;
-          } else if (!playing) {
-            lastVideoFps = 0;
-          }
-          rvfcFrames = 0;
-        } else {
-          const currentPresented = q.totalVideoFrames - droppedFrames;
-          if (playing && !buffering) {
-            lastVideoFps = (currentPresented - lastPresentedFrames) / dt;
-          } else if (!playing) {
-            lastVideoFps = 0;
-          }
-          lastPresentedFrames = currentPresented;
+      }
+      
+      if (useRvfc) {
+        if (playing && !buffering) {
+          lastVideoFps = rvfcFrames / dt;
+        } else if (!playing) {
+          lastVideoFps = 0;
         }
+        rvfcFrames = 0;
+      } else if (typeof video.getVideoPlaybackQuality === 'function') {
+        const q = video.getVideoPlaybackQuality();
+        const currentPresented = q.totalVideoFrames - q.droppedVideoFrames;
+        if (currentPresented < lastPresentedFrames) {
+          lastVideoFps = 0;
+        } else if (playing && !buffering) {
+          lastVideoFps = (currentPresented - lastPresentedFrames) / dt;
+        } else if (!playing) {
+          lastVideoFps = 0;
+        }
+        lastPresentedFrames = currentPresented;
       }
     }
     
@@ -263,11 +292,6 @@
       refs.vdropped.style.color = droppedFrames > 0 ? '#ff3' : '#7f7';
     }
     if (refs.ambient) refs.ambient.textContent = `AMBIENT: ${lastGlowFps.toFixed(2)} (${glowMs}ms)`;
-    if (refs.adropped) {
-      const aDropped = window.CineGlowMetrics ? window.CineGlowMetrics.ambientDroppedFrames : 0;
-      refs.adropped.textContent = `AMBIENT DROPPED: ${aDropped}`;
-      refs.adropped.style.color = aDropped > 0 ? '#ff3' : '#7f7';
-    }
     
     if (refs.vbuffer) refs.vbuffer.textContent = `VIDEO BUFFER: ${vW}x${vH}`;
     
@@ -441,6 +465,7 @@
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       const state = e.detail;
       if (!state.isWatchPage) {
+        video = null;
         applyState();
         return;
       }

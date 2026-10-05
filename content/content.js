@@ -21,8 +21,7 @@
     renderCount: 0,
     lastDrawTime: 0,
     lastDrawStart: 0,
-    lastDrawEnd: 0,
-    ambientDroppedFrames: 0,
+    lastDrawEnd: 0
   };
 
   let settings = { ...AURA_DEFAULTS };
