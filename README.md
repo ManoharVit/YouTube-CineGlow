@@ -1,4 +1,4 @@
-# Aura: Cinematic YouTube Enhancer
+# YouTube CineGlow
 
 A lightweight Chrome extension (Manifest V3) that adds a soft, color-matched glow around YouTube videos.
 
