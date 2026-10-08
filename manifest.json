@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "YouTube CineGlow",
   "short_name": "CineGlow",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Adds a customizable cinematic glow around YouTube videos, blocks ads, and enables high-bitrate 4K tweaks.",
   "permissions": [
     "storage",
@@ -33,7 +33,7 @@
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/defaults.js", "content/player-manager.js", "content/blackbar.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js"],
+      "js": ["shared/defaults.js", "content/player-manager.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js"],
       "css": ["content/content.css", "content/stats-overlay.css"],
       "run_at": "document_idle"
     }

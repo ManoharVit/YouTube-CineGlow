@@ -185,19 +185,7 @@
 
     try {
       const t0 = performance.now();
-      if (window.CineGlowCrop) {
-        const c = window.CineGlowCrop;
-        ctx.drawImage(
-          v,
-          v.videoWidth * c.left,
-          v.videoHeight * c.top,
-          v.videoWidth * (1 - c.left - c.right),
-          v.videoHeight * (1 - c.top - c.bottom),
-          0, 0, SAMPLE_W, SAMPLE_H
-        );
-      } else {
-        ctx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
-      }
+      ctx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
       const t1 = performance.now();
       
       window.CineGlowMetrics.lastDrawStart = t0;
@@ -223,17 +211,7 @@
       return;
     }
 
-    if (window.CineGlowCrop) {
-      const c = window.CineGlowCrop;
-      rect = {
-        top: rect.top + rect.height * c.top,
-        bottom: rect.bottom - rect.height * c.bottom,
-        left: rect.left + rect.width * c.left,
-        right: rect.right - rect.width * c.right,
-        width: rect.width * (1 - c.left - c.right),
-        height: rect.height * (1 - c.top - c.bottom)
-      };
-    }
+
 
     activate();
     layout(rect);
