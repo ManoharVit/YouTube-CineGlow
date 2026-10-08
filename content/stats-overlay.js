@@ -107,36 +107,61 @@
     overlayEl = document.createElement('div');
     overlayEl.id = 'aura-stats-overlay';
     
-    overlayEl.innerHTML = `
-      <div class="aura-stats-header">CineGlow Telemetry</div>
-      <div class="aura-stats-list">
-        <div id="aura-stat-display">DISPLAY: 0</div>
-        <div id="aura-stat-video">VIDEO: 0</div>
-        <div id="aura-stat-vdropped">VIDEO DROPPED: 0</div>
-        <div id="aura-stat-ambient">AMBIENT: 0</div>
-        <div id="aura-stat-vbuffer">VIDEO BUFFER: ?x?</div>
-        <div id="aura-stat-abuffer">AMBIENT BUFFER: ?x?</div>
-      </div>
-      <div class="aura-stats-graph-container">
-        <canvas id="aura-stats-canvas" width="360" height="270"></canvas>
-        <div class="aura-stats-legend">
-          <div id="aura-stat-max">0.0ms</div>
-          <div style="flex: 1"></div>
-          <div id="aura-stat-min">0.0ms</div>
-        </div>
-      </div>
-    `;
-    container.appendChild(overlayEl);
+    const header = document.createElement('div');
+    header.className = 'aura-stats-header';
+    header.textContent = 'CineGlow Telemetry';
     
-    refs.display = overlayEl.querySelector('#aura-stat-display');
-    refs.video = overlayEl.querySelector('#aura-stat-video');
-    refs.vdropped = overlayEl.querySelector('#aura-stat-vdropped');
-    refs.ambient = overlayEl.querySelector('#aura-stat-ambient');
-    refs.vbuffer = overlayEl.querySelector('#aura-stat-vbuffer');
-    refs.abuffer = overlayEl.querySelector('#aura-stat-abuffer');
-    refs.canvas = overlayEl.querySelector('#aura-stats-canvas');
-    refs.max = overlayEl.querySelector('#aura-stat-max');
-    refs.min = overlayEl.querySelector('#aura-stat-min');
+    const list = document.createElement('div');
+    list.className = 'aura-stats-list';
+    
+    const makeItem = (id, text) => {
+      const div = document.createElement('div');
+      div.id = id;
+      div.textContent = text;
+      list.appendChild(div);
+      return div;
+    };
+    
+    refs.display = makeItem('aura-stat-display', 'DISPLAY: 0');
+    refs.video = makeItem('aura-stat-video', 'VIDEO: 0');
+    refs.vdropped = makeItem('aura-stat-vdropped', 'VIDEO DROPPED: 0');
+    refs.ambient = makeItem('aura-stat-ambient', 'AMBIENT: 0');
+    refs.vbuffer = makeItem('aura-stat-vbuffer', 'VIDEO BUFFER: ?x?');
+    refs.abuffer = makeItem('aura-stat-abuffer', 'AMBIENT BUFFER: ?x?');
+    
+    const graphContainer = document.createElement('div');
+    graphContainer.className = 'aura-stats-graph-container';
+    
+    refs.canvas = document.createElement('canvas');
+    refs.canvas.id = 'aura-stats-canvas';
+    refs.canvas.width = 360;
+    refs.canvas.height = 270;
+    graphContainer.appendChild(refs.canvas);
+    
+    const legend = document.createElement('div');
+    legend.className = 'aura-stats-legend';
+    
+    refs.max = document.createElement('div');
+    refs.max.id = 'aura-stat-max';
+    refs.max.textContent = '0.0ms';
+    legend.appendChild(refs.max);
+    
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+    legend.appendChild(spacer);
+    
+    refs.min = document.createElement('div');
+    refs.min.id = 'aura-stat-min';
+    refs.min.textContent = '0.0ms';
+    legend.appendChild(refs.min);
+    
+    graphContainer.appendChild(legend);
+    
+    overlayEl.appendChild(header);
+    overlayEl.appendChild(list);
+    overlayEl.appendChild(graphContainer);
+    
+    container.appendChild(overlayEl);
 
     makeDraggable(overlayEl);
     
@@ -241,6 +266,12 @@
   function updateStats() {
     if (!settings.statsEnabled || !overlayEl) return;
     
+    // Ensure overlay is still in the DOM (YouTube SPA navigation can detach it)
+    const container = (window.CineGlowPlayer && window.CineGlowPlayer.player) ? window.CineGlowPlayer.player : document.body;
+    if (overlayEl.parentElement !== container || !document.contains(overlayEl)) {
+      container.appendChild(overlayEl);
+    }
+
     const now = performance.now();
     const dt = (now - lastTime) / 1000;
     
@@ -492,6 +523,8 @@
   if (window.CineGlowPlayer) {
     if (window.CineGlowPlayer.isWatchPage && window.CineGlowPlayer.video) {
       video = window.CineGlowPlayer.video;
+      // We must apply the initial state immediately if the player is already active
+      applyState();
     }
     
     window.CineGlowPlayer.addEventListener('state-change', (e) => {

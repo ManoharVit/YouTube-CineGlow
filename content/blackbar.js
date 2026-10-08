@@ -22,10 +22,13 @@
   function handleCropResult(result) {
     if (!video || !settings.removeBlackBars) return;
     
-    // Ignore completely black or near-black frames
-    if (result.cropTop > 0.4 || result.cropBottom > 0.4 || result.cropLeft > 0.4 || result.cropRight > 0.4) {
+    // Ignore unreasonable crops (no real video has >25% black bars on one side)
+    // Also ignore highly asymmetric crops (real black bars are roughly equal on both sides)
+    if (result.cropTop > 0.25 || result.cropBottom > 0.25 || result.cropLeft > 0.25 || result.cropRight > 0.25) {
       return; 
     }
+    if (Math.abs(result.cropTop - result.cropBottom) > 0.05) return;
+    if (Math.abs(result.cropLeft - result.cropRight) > 0.05) return;
     
     const tolerance = 0.02;
     const isSameCandidate = 
@@ -60,10 +63,13 @@
     if (isDifferent) {
       stableCrop = { ...crop };
       
-      const scale = Math.max(
+      let scale = Math.max(
         1 / (1 - crop.top - crop.bottom),
         1 / (1 - crop.left - crop.right)
       );
+      
+      // Capping scale at 1.5 to prevent "giant blurred mess" from excessive zoom during dark scenes
+      scale = Math.min(scale, 1.5);
       
       if (scale > 1.01) {
         if (video.parentElement) {
@@ -105,7 +111,8 @@
       const height = canvas.height;
       const data = imageData.data;
       
-      const threshold = 25;
+      // Lower threshold to avoid treating dark scenes as black bars
+      const threshold = 15;
       
       function isBlack(x, y) {
         const i = (y * width + x) * 4;
@@ -170,6 +177,10 @@
           rightBar = width - 1 - x;
           break;
         }
+      }
+      
+      if (topBar === height || leftBar === width) {
+        return;
       }
       
       const cropTop = topBar / height;
