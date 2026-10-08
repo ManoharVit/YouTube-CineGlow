@@ -47,7 +47,7 @@
         return true;
       }
       
-      let topBar = 0;
+      let topBar = height;
       for (let y = 0; y < height; y++) {
         if (!isRowBlack(y)) {
           topBar = y;
@@ -55,7 +55,7 @@
         }
       }
       
-      let bottomBar = 0;
+      let bottomBar = height;
       for (let y = height - 1; y >= 0; y--) {
         if (!isRowBlack(y)) {
           bottomBar = height - 1 - y;
@@ -63,7 +63,7 @@
         }
       }
       
-      let leftBar = 0;
+      let leftBar = width;
       for (let x = 0; x < width; x++) {
         if (!isColBlack(x)) {
           leftBar = x;
@@ -71,7 +71,7 @@
         }
       }
       
-      let rightBar = 0;
+      let rightBar = width;
       for (let x = width - 1; x >= 0; x--) {
         if (!isColBlack(x)) {
           rightBar = width - 1 - x;
@@ -88,10 +88,15 @@
     };
   `;
   
+  let workerUrl = null;
+  
   function initWorker() {
     if (!worker) {
-      const blob = new Blob([workerCode], { type: 'application/javascript' });
-      worker = new Worker(URL.createObjectURL(blob));
+      if (!workerUrl) {
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        workerUrl = URL.createObjectURL(blob);
+      }
+      worker = new Worker(workerUrl);
       worker.onmessage = (e) => {
         handleCropResult(e.data);
       };
@@ -150,6 +155,10 @@
       );
       
       if (scale > 1.01) {
+        if (video.parentElement) {
+          video.parentElement.style.overflow = 'hidden';
+        }
+        video.style.transformOrigin = 'center center';
         video.style.transform = `scale(${scale})`;
         video.style.transition = 'transform 0.5s ease';
       } else {
@@ -160,7 +169,11 @@
 
   function resetCrop() {
     if (video) {
-      video.style.transform = 'scale(1)';
+      if (video.parentElement) {
+        video.parentElement.style.overflow = '';
+      }
+      video.style.transform = '';
+      video.style.transformOrigin = '';
       video.style.transition = 'transform 0.5s ease';
     }
     stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
