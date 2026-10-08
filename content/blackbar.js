@@ -21,7 +21,7 @@
       const height = e.data.height;
       const data = imgData.data;
       
-      const threshold = 15;
+      const threshold = 25;
       
       function isBlack(x, y) {
         const i = (y * width + x) * 4;
@@ -31,9 +31,13 @@
       function isRowBlack(y) {
         const startX = Math.floor(width * 0.25);
         const endX = Math.floor(width * 0.75);
-        // Step by a few pixels for performance if needed, but 128x128 is small enough
+        const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
+        let nonBlack = 0;
         for (let x = startX; x < endX; x++) {
-          if (!isBlack(x, y)) return false;
+          if (!isBlack(x, y)) {
+            nonBlack++;
+            if (nonBlack > tolerance) return false;
+          }
         }
         return true;
       }
@@ -41,8 +45,13 @@
       function isColBlack(x) {
         const startY = Math.floor(height * 0.25);
         const endY = Math.floor(height * 0.75);
+        const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
+        let nonBlack = 0;
         for (let y = startY; y < endY; y++) {
-          if (!isBlack(x, y)) return false;
+          if (!isBlack(x, y)) {
+            nonBlack++;
+            if (nonBlack > tolerance) return false;
+          }
         }
         return true;
       }
@@ -213,9 +222,7 @@
     }
   }
 
-  window.CineGlowPlayer.addEventListener('state-change', (e) => {
-    const state = e.detail;
-    
+  function handlePlayerState(state) {
     if (state.video !== video) {
       if (video) resetCrop();
       video = state.video;
@@ -227,7 +234,12 @@
       stopScanning();
       resetCrop();
     }
-  });
+  }
+
+  if (window.CineGlowPlayer) {
+    window.CineGlowPlayer.addEventListener('state-change', (e) => handlePlayerState(e.detail));
+    handlePlayerState(window.CineGlowPlayer);
+  }
 
   async function loadSettings() {
     try {
