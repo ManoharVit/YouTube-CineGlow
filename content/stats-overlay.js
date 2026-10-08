@@ -97,7 +97,7 @@
   }
 
   function createOverlay() {
-    const container = (window.CineGlowPlayer && window.CineGlowPlayer.player) ? window.CineGlowPlayer.player : document.body;
+    const container = document.body;
     if (overlayEl) {
       if (overlayEl.parentElement !== container) {
         container.appendChild(overlayEl);
@@ -267,7 +267,7 @@
     if (!settings.statsEnabled || !overlayEl) return;
     
     // Ensure overlay is still in the DOM (YouTube SPA navigation can detach it)
-    const container = (window.CineGlowPlayer && window.CineGlowPlayer.player) ? window.CineGlowPlayer.player : document.body;
+    const container = document.body;
     if (overlayEl.parentElement !== container || !document.contains(overlayEl)) {
       container.appendChild(overlayEl);
     }
