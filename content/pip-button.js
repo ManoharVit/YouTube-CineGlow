@@ -1,14 +1,34 @@
 (() => {
   'use strict';
 
-  function injectPipButton(playerManager) {
-    const { player, video, isWatchPage } = playerManager;
+  function waitForRightControls(player, maxRetries = 20) {
+    return new Promise((resolve) => {
+      let retries = 0;
+      
+      function check() {
+        const rightControls = player.querySelector('.ytp-right-controls');
+        if (rightControls) {
+          resolve(rightControls);
+        } else if (retries < maxRetries) {
+          retries++;
+          setTimeout(check, 250);
+        } else {
+          resolve(null);
+        }
+      }
+      
+      check();
+    });
+  }
 
-    if (!isWatchPage || !player || !video) {
+  async function injectPipButton(playerManager) {
+    const { player, isWatchPage } = playerManager;
+
+    if (!isWatchPage || !player) {
       return;
     }
 
-    const rightControls = player.querySelector('.ytp-right-controls');
+    const rightControls = await waitForRightControls(player);
     if (!rightControls) {
       return;
     }
@@ -30,12 +50,20 @@
       </svg>
     `;
 
-    pipButton.addEventListener('click', async () => {
+    pipButton.addEventListener('click', async (e) => {
+      // Prevent default behavior if any
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Fetch the latest video from the global manager to avoid stale references
+      const currentVideo = window.CineGlowPlayer ? window.CineGlowPlayer.video : null;
+      if (!currentVideo) return;
+
       try {
-        if (document.pictureInPictureElement === video) {
+        if (document.pictureInPictureElement === currentVideo) {
           await document.exitPictureInPicture();
         } else {
-          await video.requestPictureInPicture();
+          await currentVideo.requestPictureInPicture();
         }
       } catch (error) {
         console.error('[CineGlow] PiP Error:', error);
