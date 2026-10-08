@@ -14,8 +14,8 @@
       this.isAdShowing = false;
       this.isPiP = false;
       
-      this.handlePiP = () => {
-        const isPiP = document.pictureInPictureElement === this.video;
+      this.handlePiP = (e) => {
+        const isPiP = e.type === 'enterpictureinpicture';
         if (this.isPiP !== isPiP) {
           this.isPiP = isPiP;
           this.dispatchEvent(new CustomEvent('state-change', { detail: this }));

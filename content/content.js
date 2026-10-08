@@ -78,9 +78,12 @@
 
   let videoId = null;
 
+  let isPiP = false;
+
   window.CineGlowPlayer.addEventListener('state-change', (e) => {
     const state = e.detail;
     document.documentElement.classList.toggle('aura-watch-page', state.isWatchPage);
+    isPiP = state.isPiP;
     
     if (state.video !== video || state.videoId !== videoId) {
       if (video) {
@@ -115,7 +118,7 @@
     if (!state.isWatchPage) return false;
     if (state.isFullscreen) return false;
     if (state.isMiniplayer) return false;
-    if (state.isPiP && !settings.enableInPiP) return false;
+    if (isPiP && !settings.enableInPiP) return false;
     return true;
   }
 
