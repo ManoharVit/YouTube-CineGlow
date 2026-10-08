@@ -84,8 +84,12 @@
 
     // Try to insert before the fullscreen button, or just append
     const fullscreenBtn = rightControls.querySelector('.ytp-fullscreen-button');
-    if (fullscreenBtn && fullscreenBtn.parentNode) {
-      fullscreenBtn.parentNode.insertBefore(pipButton, fullscreenBtn);
+    if (fullscreenBtn) {
+      try {
+        fullscreenBtn.insertAdjacentElement('beforebegin', pipButton);
+      } catch (e) {
+        rightControls.appendChild(pipButton);
+      }
     } else {
       rightControls.appendChild(pipButton);
     }
