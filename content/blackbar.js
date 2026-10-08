@@ -68,16 +68,8 @@
         1 / (1 - crop.left - crop.right)
       );
       
-      // Capping scale at 1.5 to prevent "giant blurred mess" from excessive zoom during dark scenes
-      scale = Math.min(scale, 1.5);
-      
       if (scale > 1.01) {
-        if (video.parentElement) {
-          video.parentElement.style.overflow = 'hidden';
-        }
-        video.style.transformOrigin = 'center center';
-        video.style.transform = `scale(${scale})`;
-        video.style.transition = 'transform 0.5s ease';
+        window.CineGlowCrop = stableCrop;
       } else {
         resetCrop();
       }
@@ -85,14 +77,7 @@
   }
 
   function resetCrop() {
-    if (video) {
-      if (video.parentElement) {
-        video.parentElement.style.overflow = '';
-      }
-      video.style.transform = '';
-      video.style.transformOrigin = '';
-      video.style.transition = 'transform 0.5s ease';
-    }
+    window.CineGlowCrop = null;
     stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     stabilityCount = 0;
