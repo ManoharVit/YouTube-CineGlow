@@ -115,6 +115,7 @@
     if (!state.isWatchPage) return false;
     if (state.isFullscreen) return false;
     if (state.isMiniplayer) return false;
+    if (state.isPiP && !settings.enableInPiP) return false;
     return true;
   }
 

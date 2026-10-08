@@ -12,6 +12,15 @@
       this.isFullscreen = !!document.fullscreenElement;
       this.isMiniplayer = false;
       this.isAdShowing = false;
+      this.isPiP = false;
+      
+      this.handlePiP = () => {
+        const isPiP = document.pictureInPictureElement === this.video;
+        if (this.isPiP !== isPiP) {
+          this.isPiP = isPiP;
+          this.dispatchEvent(new CustomEvent('state-change', { detail: this }));
+        }
+      };
       
       this.playerObserver = new MutationObserver(() => this.checkState());
       this.appObserver = new MutationObserver(() => this.checkState());
@@ -47,6 +56,7 @@
       const isFullscreen = !!document.fullscreenElement;
       const isMiniplayer = app ? app.hasAttribute('miniplayer-is-active') : false;
       const isAdShowing = player ? player.classList.contains('ad-showing') : false;
+      const isPiP = video ? document.pictureInPictureElement === video : false;
 
       let changed = false;
 
@@ -55,6 +65,7 @@
       if (this.isFullscreen !== isFullscreen) { this.isFullscreen = isFullscreen; changed = true; }
       if (this.isMiniplayer !== isMiniplayer) { this.isMiniplayer = isMiniplayer; changed = true; }
       if (this.isAdShowing !== isAdShowing) { this.isAdShowing = isAdShowing; changed = true; }
+      if (this.isPiP !== isPiP) { this.isPiP = isPiP; changed = true; }
       
       if (this.app !== app) {
         this.app = app;
@@ -65,12 +76,20 @@
       }
 
       if (this.player !== player || this.video !== video) {
+        if (this.video) {
+          this.video.removeEventListener('enterpictureinpicture', this.handlePiP);
+          this.video.removeEventListener('leavepictureinpicture', this.handlePiP);
+        }
         this.video = video;
         this.player = player;
         changed = true;
         this.playerObserver.disconnect();
         if (player) {
           this.playerObserver.observe(player, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (this.video) {
+          this.video.addEventListener('enterpictureinpicture', this.handlePiP);
+          this.video.addEventListener('leavepictureinpicture', this.handlePiP);
         }
       }
 

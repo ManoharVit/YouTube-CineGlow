@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  let settings = { statsEnabled: false };
+  let settings = { statsEnabled: false, enableInPiP: false };
   let overlayEl = null;
   let video = null;
   let updateInterval = 0;
@@ -54,6 +54,12 @@
     
     // Stop the rAF loop if the video is paused/ended and CineGlow rendering has settled.
     if (video && (video.paused || video.ended) && window.CineGlowMetrics && lastSeenRenderCount === window.CineGlowMetrics.renderCount) {
+      rafLoopId = 0;
+      return;
+    }
+
+    // Stop if we shouldn't draw in PiP
+    if (window.CineGlowPlayer && window.CineGlowPlayer.isPiP && !settings.enableInPiP) {
       rafLoopId = 0;
       return;
     }
@@ -277,10 +283,13 @@
       }
     }
     
-    if (playing && !buffering) {
+    const shouldAnimate = playing && !buffering && !(window.CineGlowPlayer && window.CineGlowPlayer.isPiP && !settings.enableInPiP);
+    if (shouldAnimate) {
       if (!rafLoopId && updateInterval) rafLoopId = requestAnimationFrame(statsLoop);
       lastDisplayFps = (displayFrames - lastDisplayFrames) / dt;
     } else if (!playing) {
+      lastDisplayFps = 0;
+    } else {
       lastDisplayFps = 0;
     }
     lastDisplayFrames = displayFrames;
@@ -507,8 +516,9 @@
 
   async function loadSettings() {
     try {
-      const stored = await chrome.storage.sync.get(['statsEnabled']);
+      const stored = await chrome.storage.sync.get(['statsEnabled', 'enableInPiP']);
       settings.statsEnabled = !!stored.statsEnabled;
+      settings.enableInPiP = !!stored.enableInPiP;
       applyState();
     } catch (err) {
       console.warn('[Aura] Could not load stats settings:', err);
@@ -516,9 +526,14 @@
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && 'statsEnabled' in changes) {
-      settings.statsEnabled = changes.statsEnabled.newValue;
-      applyState();
+    if (area === 'sync') {
+      if ('statsEnabled' in changes) {
+        settings.statsEnabled = changes.statsEnabled.newValue;
+        applyState();
+      }
+      if ('enableInPiP' in changes) {
+        settings.enableInPiP = changes.enableInPiP.newValue;
+      }
     }
   });
 
