@@ -70,6 +70,8 @@
       
       if (scale > 1.01) {
         window.CineGlowCrop = stableCrop;
+        video.style.clipPath = `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`;
+        video.style.transition = 'clip-path 0.5s ease';
       } else {
         resetCrop();
       }
@@ -81,6 +83,9 @@
     stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     stabilityCount = 0;
+    if (video) {
+      video.style.clipPath = '';
+    }
   }
 
   function scanFrame() {
