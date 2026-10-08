@@ -25,5 +25,6 @@ const AURA_DEFAULTS = Object.freeze({
   contrast: 100,         // Color contrast, %
   brightness: 100,       // Glow brightness, %
   smoothness: 60,        // Temporal smoothing between frames, %
+  removeBlackBars: false, // Zoom video to remove letterboxing
   fps: 30,               // Max glow updates per second
 });

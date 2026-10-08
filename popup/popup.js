@@ -15,6 +15,7 @@ const block60fpsEl = document.getElementById('block60fps');
 const hideScrollbarEl = document.getElementById('hideScrollbar');
 const hideInTheaterEl = document.getElementById('hideInTheater');
 const enableInPiPEl = document.getElementById('enableInPiP');
+const removeBlackBarsEl = document.getElementById('removeBlackBars');
 const glowTopEl = document.getElementById('glowTop');
 const glowRightEl = document.getElementById('glowRight');
 const glowBottomEl = document.getElementById('glowBottom');
@@ -40,6 +41,7 @@ function render(settings) {
   hideScrollbarEl.checked = settings.hideScrollbar;
   hideInTheaterEl.checked = settings.hideInTheater;
   enableInPiPEl.checked = settings.enableInPiP;
+  removeBlackBarsEl.checked = settings.removeBlackBars;
   glowTopEl.classList.toggle('active', settings.glowTop);
   glowRightEl.classList.toggle('active', settings.glowRight);
   glowBottomEl.classList.toggle('active', settings.glowBottom);
@@ -131,6 +133,10 @@ async function init() {
 
   enableInPiPEl.addEventListener('change', async () => {
     await save({ enableInPiP: enableInPiPEl.checked });
+  });
+
+  removeBlackBarsEl.addEventListener('change', async () => {
+    await save({ removeBlackBars: removeBlackBarsEl.checked });
   });
 
   block60fpsEl.addEventListener('change', async () => {
