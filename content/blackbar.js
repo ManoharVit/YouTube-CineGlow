@@ -14,17 +14,6 @@
   canvas.height = 128;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-  
-  function initWorker() {
-    if (!worker) {
-      const url = chrome.runtime.getURL('content/blackbar-worker.js');
-      worker = new Worker(url);
-      worker.onmessage = (e) => {
-        handleCropResult(e.data);
-      };
-    }
-  }
-
   const STABILITY_REQUIRED = 4;
   let stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -111,7 +100,84 @@
     try {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      worker.postMessage({ imageData, width: canvas.width, height: canvas.height });
+      
+      const width = canvas.width;
+      const height = canvas.height;
+      const data = imageData.data;
+      
+      const threshold = 25;
+      
+      function isBlack(x, y) {
+        const i = (y * width + x) * 4;
+        return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
+      }
+      
+      function isRowBlack(y) {
+        const startX = Math.floor(width * 0.25);
+        const endX = Math.floor(width * 0.75);
+        const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
+        let nonBlack = 0;
+        for (let x = startX; x < endX; x++) {
+          if (!isBlack(x, y)) {
+            nonBlack++;
+            if (nonBlack > tolerance) return false;
+          }
+        }
+        return true;
+      }
+      
+      function isColBlack(x) {
+        const startY = Math.floor(height * 0.25);
+        const endY = Math.floor(height * 0.75);
+        const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
+        let nonBlack = 0;
+        for (let y = startY; y < endY; y++) {
+          if (!isBlack(x, y)) {
+            nonBlack++;
+            if (nonBlack > tolerance) return false;
+          }
+        }
+        return true;
+      }
+      
+      let topBar = height;
+      for (let y = 0; y < height; y++) {
+        if (!isRowBlack(y)) {
+          topBar = y;
+          break;
+        }
+      }
+      
+      let bottomBar = height;
+      for (let y = height - 1; y >= 0; y--) {
+        if (!isRowBlack(y)) {
+          bottomBar = height - 1 - y;
+          break;
+        }
+      }
+      
+      let leftBar = width;
+      for (let x = 0; x < width; x++) {
+        if (!isColBlack(x)) {
+          leftBar = x;
+          break;
+        }
+      }
+      
+      let rightBar = width;
+      for (let x = width - 1; x >= 0; x--) {
+        if (!isColBlack(x)) {
+          rightBar = width - 1 - x;
+          break;
+        }
+      }
+      
+      const cropTop = topBar / height;
+      const cropBottom = bottomBar / height;
+      const cropLeft = leftBar / width;
+      const cropRight = rightBar / width;
+      
+      handleCropResult({ cropTop, cropBottom, cropLeft, cropRight });
     } catch (err) {
       console.debug('[Aura] BlackBar drawImage failed:', err);
     }
@@ -119,7 +185,6 @@
 
   function startScanning() {
     if (!intervalId) {
-      initWorker();
       intervalId = setInterval(scanFrame, 500);
     }
   }
@@ -128,10 +193,6 @@
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
-    }
-    if (worker) {
-      worker.terminate();
-      worker = null;
     }
   }
 

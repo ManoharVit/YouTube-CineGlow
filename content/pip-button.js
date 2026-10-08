@@ -34,12 +34,12 @@
     }
 
     // Check if it already exists
-    if (rightControls.querySelector('.ytp-pip-button')) {
+    if (rightControls.querySelector('.cineglow-pip-button')) {
       return;
     }
 
     const pipButton = document.createElement('button');
-    pipButton.className = 'ytp-button ytp-pip-button';
+    pipButton.className = 'ytp-button cineglow-pip-button';
     pipButton.title = 'Picture-in-Picture';
     pipButton.setAttribute('aria-label', 'Picture-in-Picture');
     
