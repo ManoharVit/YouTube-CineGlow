@@ -211,8 +211,6 @@
       return;
     }
 
-
-
     activate();
     layout(rect);
     const keepRunning = draw(v, performance.now());
