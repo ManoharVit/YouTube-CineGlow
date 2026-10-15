@@ -55,7 +55,11 @@
       
       const isFullscreen = !!document.fullscreenElement;
       const isMiniplayer = app ? app.hasAttribute('miniplayer-is-active') : false;
-      const isAdShowing = player ? player.classList.contains('ad-showing') : false;
+      const isAdShowing = !!(
+        (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) ||
+        document.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-skip-button-slot') ||
+        (document.querySelector('.video-ads.ytp-ad-module')?.childElementCount > 0)
+      );
       const isPiP = video ? document.pictureInPictureElement === video : false;
 
       let changed = false;
@@ -85,7 +89,7 @@
         changed = true;
         this.playerObserver.disconnect();
         if (player) {
-          this.playerObserver.observe(player, { attributes: true, attributeFilter: ['class'] });
+          this.playerObserver.observe(player, { attributes: true, attributeFilter: ['class'], childList: true });
         }
         if (this.video) {
           this.video.addEventListener('enterpictureinpicture', this.handlePiP);
