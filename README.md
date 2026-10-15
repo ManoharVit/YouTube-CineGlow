@@ -1,37 +1,56 @@
 # YouTube CineGlow
 
-A lightweight Chrome extension (Manifest V3) that adds a soft, color-matched glow around YouTube videos.
+I built YouTube CineGlow to turn watching videos in dark rooms into an immersive, theater-like experience. While building full-stack web applications and working through my computer science coursework, I grew frustrated with static web video players and the distracting glare of high-contrast screens. CineGlow samples frames directly from the HTML5 video element, calculates the dominant edge colors, and casts a live, smooth ambient aura onto the page around the player.
 
-## Install (developer mode)
+## What It Does
 
-1. Open `chrome://extensions`
-2. Turn on **Developer mode** (top-right)
-3. Click **Load unpacked** and select this `aura-ambient-light` folder
-4. Open any YouTube video. For the best effect, use YouTube's **dark theme**.
+- Projects ambient lighting around the video player by sampling frames into a small canvas and blurring the edges with CSS filters.
+- Skips video ads and blocks tracker networks using declarative network rules and player skip events.
+- Adds a floating vertical toolbar to the player for one-click Picture-in-Picture and full-resolution PNG screenshots.
+- Normalizes uneven audio and amplifies quiet dialogue up to 300% through the Web Audio API.
+- Pulses the ambient glow in sync with bass frequencies using real-time audio frequency analysis.
+- Pauses playback when you switch tabs, minimize the window, or switch applications, and resumes when you return.
+- Applies night mode blue-light filters and custom contrast or brightness adjustments directly to the video element.
+- Detects letterbox black bars and scales the video to fill ultrawide 21:9 or standard displays.
+- Displays real-time playback metrics, dropped frames, and rendering latency in a draggable stats overlay.
 
-Click the toolbar icon to change intensity, blur, spread, saturation, brightness, smoothness, and frame rate. Changes apply right away.
+## Installation
 
-After you edit the code, click the ↻ reload button on the extension card, then refresh the YouTube tab.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/ManoharVit/YouTube-CineGlow.git
+   ```
+2. Open Google Chrome and navigate to `chrome://extensions`.
+3. Turn on **Developer mode** in the top-right corner.
+4. Click **Load unpacked** and select the extension directory.
+5. Open any video on [YouTube](https://www.youtube.com). For the best visual effect, set YouTube to dark mode.
 
-## How it works
+## How the Engine Works
 
-| Step | What happens |
-|------|--------------|
-| Sample | Each frame, the video is drawn into a tiny 64×36 canvas (cheap to do) |
-| Smooth | New frames are blended over old ones, so colors change gradually |
-| Scale & blur | The canvas is stretched past the video's edges and blurred/saturated with CSS filters on the GPU |
-| Place | The canvas sits behind the page (`z-index: -1`) and follows the video's position every frame |
+- **Frame Sampling**: During playback, the engine copies the active video frame to an offscreen 64×36 canvas to extract edge colors.
+- **Temporal Smoothing**: The renderer blends new color values into previous frames using exponential moving averages, preventing flickering during rapid scene changes.
+- **Canvas & Blur**: A fixed canvas sits behind the video player (`z-index: -1`), using CSS blur and scale filters to stretch the lighting past the video boundaries.
+- **Playback Lifecycle**: Animation and audio loops stop immediately when playback pauses, when switching tabs, or when leaving the watch page, keeping the browser idle.
 
-To save power, it stops drawing when the video is paused, runs only on `/watch` pages, and turns off in fullscreen and the miniplayer.
+## Project Structure
 
-## Project layout
+- `manifest.json`: Manifest V3 configuration defining extension permissions, service worker, and content scripts.
+- `content/player-manager.js`: Tracks video lifecycle events and handles YouTube single-page navigation without page reloads.
+- `content/content.js` & `content/content.css`: Renders the glow canvas and adjusts page element transparency.
+- `content/pip-button.js` & `content/screenshot-button.js`: Injects the floating toolbar and captures uncompressed video frames to PNG.
+- `content/smart-pause.js`: Monitors tab visibility and window focus to pause and resume playback automatically.
+- `content/audio-processor.js`: Connects Web Audio gain and analyser nodes for volume boosting and beat detection.
+- `popup/`: Houses the glassmorphism settings menu, category navigation, and control toggles.
+- `rules/adblock.json`: Declarative network request rules for blocking video ads and trackers.
+- `shared/defaults.js`: Defines default configuration values across scripts and storage.
 
-```
-manifest.json          MV3 manifest (only the "storage" permission)
-shared/defaults.js     Default settings, used by the content script and popup
-content/content.js     Glow engine
-content/content.css    Glow layer + transparency overrides used while active
-popup/                 Settings UI
-icons/                 Generated PNG icons
-tools/generate_icons.py  Rebuilds the icons (standard library only)
-```
+## Author
+
+- **Developer**: Giri Manohar Vemula
+- **GitHub**: [@ManoharVit](https://github.com/ManoharVit)
+- **LinkedIn**: [in/manohar511](https://www.linkedin.com/in/manohar511/)
+- **Repository**: [YouTube-CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)
+
+## License
+
+[MIT License](LICENSE) © 2026 Giri Manohar Vemula

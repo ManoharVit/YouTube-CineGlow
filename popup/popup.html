@@ -2,203 +2,495 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark">
   <title>YouTube CineGlow</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header>
+  <!-- Top App Bar -->
+  <header class="app-header">
     <div class="brand">
-      <img src="../icons/icon-48.png" width="28" height="28" alt="">
-      <h1>CineGlow</h1>
+      <div class="brand-logo-wrap">
+        <img src="../icons/icon-48.png" width="24" height="24" alt="CineGlow" class="brand-logo">
+      </div>
+      <div class="brand-title-row">
+        <h1 class="brand-title">CineGlow</h1>
+        <span class="brand-badge">PRO</span>
+      </div>
+    </div>
+
+    <!-- Creator Name, GitHub & LinkedIn Links on Right Side -->
+    <div class="creator-badge" title="Giri Manohar Vemula">
+      <span class="creator-label">By</span>
+      <a href="https://github.com/ManoharVit" target="_blank" rel="noopener noreferrer" class="creator-name-link">Giri Manohar Vemula</a>
+      <a href="https://github.com/ManoharVit" target="_blank" rel="noopener noreferrer" class="creator-icon-link" title="GitHub profile">
+        <svg class="github-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+      </a>
+      <a href="https://www.linkedin.com/in/manohar511/" target="_blank" rel="noopener noreferrer" class="creator-icon-link" title="LinkedIn profile">
+        <svg class="linkedin-icon" viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.45a1.65 1.65 0 0 0-1.66 1.66 1.66 1.66 0 0 0 1.66 1.66 1.66 1.66 0 0 0 1.66-1.66c0-.92-.74-1.66-1.66-1.66Z"/>
+        </svg>
+      </a>
     </div>
   </header>
 
-  <div id="stats" class="stats">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    Ads blocked/skipped: <strong id="adblockCount">0</strong>
-  </div>
-
   <main id="controls">
-    <!-- Main Toggles -->
-    <section class="card">
-      <div class="switch-row large">
-        <div class="switch-info">
-          <span class="switch-title">Ambient Glow</span>
-          <span class="switch-desc">Immersive video lighting</span>
+    <!-- Hero Master Switch Card -->
+    <section class="hero-card" id="heroCard">
+      <div class="hero-ambient-glow"></div>
+      <div class="hero-content">
+        <div class="hero-info">
+          <div class="hero-label-row">
+            <span class="hero-title">Ambient Lighting</span>
+            <span class="hero-status-tag" id="masterStatusTag">ACTIVE</span>
+          </div>
+          <span class="hero-desc">Real-time edge aura & cinema glow</span>
         </div>
-        <label class="switch">
+        <label class="switch modern-switch hero-switch">
           <input type="checkbox" id="enabled">
           <span class="track"><span class="thumb"></span></span>
         </label>
       </div>
-      <div class="divider"></div>
-      <div class="switch-row large">
-        <div class="switch-info">
-          <span class="switch-title">AdBlock</span>
-          <span class="switch-desc">Block and skip ads</span>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="adblockEnabled">
-          <span class="track"><span class="thumb"></span></span>
-        </label>
-      </div>
-      <div class="divider"></div>
-      <div class="switch-row large">
-        <div class="switch-info">
-          <span class="switch-title">Auto-HD</span>
-          <span class="switch-desc">Force preferred quality</span>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="qualityEnabled">
-          <span class="track"><span class="thumb"></span></span>
-        </label>
-      </div>
-      <div class="divider"></div>
-      <div class="switch-row large">
-        <div class="switch-info">
-          <span class="switch-title">Stats Overlay</span>
-          <span class="switch-desc">Playback & rendering telemetry</span>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="statsEnabled">
-          <span class="track"><span class="thumb"></span></span>
-        </label>
-      </div>
-      <div class="divider"></div>
-      <div class="switch-row large">
-        <div class="switch-info">
-          <span class="switch-title">Glow in PiP</span>
-          <span class="switch-desc">Keep rendering glow while in Picture-in-Picture</span>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="enableInPiP">
-          <span class="track"><span class="thumb"></span></span>
-        </label>
-      </div>
-      <div class="divider"></div>
-      <div class="control quality-select-wrap">
-        <select id="preferredQuality" class="modern-select">
-          <option value="highres">Max Available (8K/4K)</option>
-          <option value="hd2160">4K (2160p)</option>
-          <option value="hd1440">HD (1440p)</option>
-          <option value="hd1080">HD (1080p)</option>
-          <option value="hd720">HD (720p)</option>
-        </select>
-      </div>
     </section>
 
-    <!-- Glow Settings -->
-    <section class="card glow-settings">
-      <h2 class="section-title">Glow Settings</h2>
-      
-      <!-- Directions -->
-      <div class="control directions-control">
-        <label>Directions</label>
-        <div class="directions-pad">
-          <button type="button" class="dir-btn top" id="glowTop" title="Top"></button>
-          <button type="button" class="dir-btn right" id="glowRight" title="Right"></button>
-          <button type="button" class="dir-btn bottom" id="glowBottom" title="Bottom"></button>
-          <button type="button" class="dir-btn left" id="glowLeft" title="Left"></button>
-          <div class="dir-center"></div>
+    <!-- Quick Category Pill Navigation -->
+    <nav class="category-nav" aria-label="Sections">
+      <button type="button" class="nav-pill active" data-target="glowSection">
+        <span class="nav-icon">✨</span> Glow
+      </button>
+      <button type="button" class="nav-pill" data-target="videoSection">
+        <span class="nav-icon">🎬</span> Video
+      </button>
+      <button type="button" class="nav-pill" data-target="audioSection">
+        <span class="nav-icon">🔊</span> Audio
+      </button>
+      <button type="button" class="nav-pill" data-target="toolsSection">
+        <span class="nav-icon">⚡</span> Tools
+      </button>
+      <button type="button" class="nav-pill" data-target="advancedSection">
+        <span class="nav-icon">⚙️</span> Tweaks
+      </button>
+    </nav>
+
+    <!-- 1. Glow & Lighting Section (Dropdown) -->
+    <details class="modern-card section-dropdown glow-settings" id="glowSection" open>
+      <summary class="section-summary">
+        <div class="section-leading">
+          <div class="squircle-icon squircle-purple">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </div>
+          <div class="section-text">
+            <span class="section-title">Glow & Aura</span>
+            <span class="section-subtitle">Diffusion, colors & spread</span>
+          </div>
+        </div>
+        <div class="chevron-btn">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
+        </div>
+      </summary>
+      <div class="section-body">
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Glow in PiP</span>
+            <span class="row-desc">Keep aura during Picture-in-Picture</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="enableInPiP">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Audio-Reactive Glow</span>
+            <span class="row-desc">Pulse ambient light to bass frequencies</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="audioReactive">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <!-- Directions Pad -->
+        <div class="control-block">
+          <div class="block-label">
+            <span>Active Directions</span>
+            <span class="block-hint">Click sides to toggle</span>
+          </div>
+          <div class="directions-pad-wrap">
+            <div class="directions-pad">
+              <button type="button" class="dir-btn top" id="glowTop" title="Top Edge"></button>
+              <button type="button" class="dir-btn right" id="glowRight" title="Right Edge"></button>
+              <button type="button" class="dir-btn bottom" id="glowBottom" title="Bottom Edge"></button>
+              <button type="button" class="dir-btn left" id="glowLeft" title="Left Edge"></button>
+              <div class="dir-center">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><rect x="3" y="4" width="10" height="8" rx="1.5"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sliders -->
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="opacity">Glow Intensity</label>
+              <div class="val-badge"><input type="number" id="opacity-val" min="0" max="100"><span>%</span></div>
+            </div>
+            <input type="range" id="opacity" min="0" max="100" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="blur">Blur Radius</label>
+              <div class="val-badge"><input type="number" id="blur-val" min="0" max="150"><span>px</span></div>
+            </div>
+            <input type="range" id="blur" min="0" max="150" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="spread">Spread Size</label>
+              <div class="val-badge"><input type="number" id="spread-val" min="100" max="500"><span>%</span></div>
+            </div>
+            <input type="range" id="spread" min="100" max="500" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="saturation">Color Saturation</label>
+              <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150"><span>%</span></div>
+            </div>
+            <input type="range" id="saturation" min="0" max="150" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="contrast">Color Contrast</label>
+              <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200"><span>%</span></div>
+            </div>
+            <input type="range" id="contrast" min="0" max="200" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="brightness">Aura Brightness</label>
+              <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200"><span>%</span></div>
+            </div>
+            <input type="range" id="brightness" min="20" max="200" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="smoothness">Smoothness</label>
+              <div class="val-badge"><input type="number" id="smoothness-val" min="0" max="100"><span>%</span></div>
+            </div>
+            <input type="range" id="smoothness" min="0" max="100" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="fadeInDuration">Fade-In Time</label>
+              <div class="val-badge"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1"><span>s</span></div>
+            </div>
+            <input type="range" id="fadeInDuration" min="0" max="10" step="0.1">
+          </div>
+        </div>
+
+        <div class="select-row">
+          <label for="fps">Renderer Refresh Rate</label>
+          <div class="select-container">
+            <select id="fps" class="modern-select">
+              <option value="15">15 fps (battery saver)</option>
+              <option value="30">30 fps (balanced)</option>
+              <option value="60">60 fps (ultra smooth)</option>
+            </select>
+          </div>
         </div>
       </div>
+    </details>
 
-      <div class="control">
-        <label for="opacity">Intensity <span class="val-input"><input type="number" id="opacity-val" min="0" max="100">%</span></label>
-        <input type="range" id="opacity" min="0" max="100" step="1">
-      </div>
-      <div class="control">
-        <label for="blur">Blur <span class="val-input"><input type="number" id="blur-val" min="0" max="150">px</span></label>
-        <input type="range" id="blur" min="0" max="150" step="1">
-      </div>
-      <div class="control">
-        <label for="spread">Spread <span class="val-input"><input type="number" id="spread-val" min="100" max="500">%</span></label>
-        <input type="range" id="spread" min="100" max="500" step="1">
-      </div>
-      <div class="control">
-        <label for="saturation">Saturation <span class="val-input"><input type="number" id="saturation-val" min="0" max="150">%</span></label>
-        <input type="range" id="saturation" min="0" max="150" step="1">
-      </div>
-      <div class="control">
-        <label for="contrast">Contrast <span class="val-input"><input type="number" id="contrast-val" min="0" max="200">%</span></label>
-        <input type="range" id="contrast" min="0" max="200" step="1">
-      </div>
-      <div class="control">
-        <label for="brightness">Brightness <span class="val-input"><input type="number" id="brightness-val" min="20" max="200">%</span></label>
-        <input type="range" id="brightness" min="20" max="200" step="1">
-      </div>
-      <div class="control">
-        <label for="smoothness">Smoothness <span class="val-input"><input type="number" id="smoothness-val" min="0" max="100">%</span></label>
-        <input type="range" id="smoothness" min="0" max="100" step="1">
-      </div>
-      <div class="control">
-        <label for="fadeInDuration">Fade in <span class="val-input"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1">s</span></label>
-        <input type="range" id="fadeInDuration" min="0" max="10" step="0.1">
-      </div>
-      <div class="control fps-control">
-        <label for="fps">Frame rate</label>
-        <select id="fps" class="modern-select">
-          <option value="15">15 fps (battery saver)</option>
-          <option value="30">30 fps</option>
-          <option value="60">60 fps (smoothest)</option>
-        </select>
-      </div>
-    </section>
+    <!-- 2. Video & Display Section (Dropdown) -->
+    <details class="modern-card section-dropdown" id="videoSection" open>
+      <summary class="section-summary">
+        <div class="section-leading">
+          <div class="squircle-icon squircle-blue">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="section-text">
+            <span class="section-title">Video & Display</span>
+            <span class="section-subtitle">Resolution, filters & crop</span>
+          </div>
+        </div>
+        <div class="chevron-btn">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
+        </div>
+      </summary>
+      <div class="section-body">
+        <!-- Auto-HD Quality -->
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Force High Definition</span>
+            <span class="row-desc">Always start videos in max quality</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="qualityEnabled">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+        <div class="select-row inset">
+          <div class="select-container full-width">
+            <select id="preferredQuality" class="modern-select">
+              <option value="highres">Maximum Available (8K / 4K)</option>
+              <option value="hd2160">Ultra HD (4K / 2160p)</option>
+              <option value="hd1440">Quad HD (1440p)</option>
+              <option value="hd1080">Full HD (1080p)</option>
+              <option value="hd720">HD (720p)</option>
+            </select>
+          </div>
+        </div>
 
-    <!-- Advanced Tweaks -->
-    <details class="card advanced">
-      <summary class="section-title">Advanced Tweaks</summary>
-      <div class="details-content">
-        <p class="hint">Reload page after changing these settings.</p>
-        
-        <div class="switch-row">
-          <span class="switch-title">Block AV1 Codec</span>
-          <label class="switch">
+        <!-- Eye Care & Video Filters -->
+        <div class="sub-header">
+          <span>Eye-Care & Color Filters</span>
+        </div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="videoBrightness">Video Brightness</label>
+              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200"><span>%</span></div>
+            </div>
+            <input type="range" id="videoBrightness" min="20" max="200" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="videoContrast">Video Contrast</label>
+              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200"><span>%</span></div>
+            </div>
+            <input type="range" id="videoContrast" min="20" max="200" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="videoSepia">Blue-Light Warmth</label>
+              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100"><span>%</span></div>
+            </div>
+            <input type="range" id="videoSepia" min="0" max="100" step="1">
+          </div>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Auto-Crop Black Bars</span>
+            <span class="row-desc">Remove letterboxing & cinema bars</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="removeBlackBars">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Ultrawide Zoom-to-Fit</span>
+            <span class="row-desc">Expand video to fill 21:9 monitors</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="ultrawideZoom">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Lights Out Cinema Mode</span>
+            <span class="row-desc">Fade away YouTube page UI while playing</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="lightsOut">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+      </div>
+    </details>
+
+    <!-- 3. Audio & Sound Section (Dropdown) -->
+    <details class="modern-card section-dropdown" id="audioSection">
+      <summary class="section-summary">
+        <div class="section-leading">
+          <div class="squircle-icon squircle-amber">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </div>
+          <div class="section-text">
+            <span class="section-title">Audio & Sound</span>
+            <span class="section-subtitle">Boost, normalize & balance</span>
+          </div>
+        </div>
+        <div class="chevron-btn">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
+        </div>
+      </summary>
+      <div class="section-body">
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Volume Normalizer</span>
+            <span class="row-desc">Compress spikes and amplify quiet speech</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="audioNormalizer">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <label for="audioBoost">Extra Volume Boost</label>
+            <div class="val-badge text-only"><span id="audioBoostVal">100%</span></div>
+          </div>
+          <input type="range" id="audioBoost" min="100" max="300" step="10">
+        </div>
+      </div>
+    </details>
+
+    <!-- 4. Tools & AdBlock Section (Dropdown) -->
+    <details class="modern-card section-dropdown" id="toolsSection">
+      <summary class="section-summary">
+        <div class="section-leading">
+          <div class="squircle-icon squircle-emerald">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="section-text">
+            <span class="section-title">Tools & AdBlock</span>
+            <span class="section-subtitle">Skip ads & telemetry overlay</span>
+          </div>
+        </div>
+        <div class="chevron-btn">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
+        </div>
+      </summary>
+      <div class="section-body">
+        <div class="control-row">
+          <div class="row-info">
+            <div class="title-with-badge">
+              <span class="row-title">Smart AdBlock</span>
+              <div id="stats" class="adblock-counter-pill" title="Ads blocked/skipped">
+                <span class="status-dot"></span>
+                <span class="status-text"><strong id="adblockCount">0</strong> skipped</span>
+              </div>
+            </div>
+            <span class="row-desc">Automatically skip sponsorships & video ads</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="adblockEnabled">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Quality Stats HUD</span>
+            <span class="row-desc">Show live rendering & frame timing overlay</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="statsEnabled">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Smart Auto-Pause</span>
+            <span class="row-desc">Pause playback when not actively watching</span>
+          </div>
+        </div>
+        <div class="select-row inset">
+          <div class="select-container full-width">
+            <select id="autoPauseMode" class="modern-select">
+              <option value="off">Off (Keep playing)</option>
+              <option value="tab">When switching tabs</option>
+              <option value="app">When switching tabs or apps</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- 5. Advanced Tweaks Section (Dropdown) -->
+    <details class="modern-card section-dropdown advanced" id="advancedSection">
+      <summary class="section-summary">
+        <div class="section-leading">
+          <div class="squircle-icon squircle-slate">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <div class="section-text">
+            <span class="section-title">Advanced Tweaks</span>
+            <span class="section-subtitle">Codec blocks & layout options</span>
+          </div>
+        </div>
+        <div class="chevron-btn">
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
+        </div>
+      </summary>
+      <div class="section-body">
+        <p class="notice-pill">Note: Reload YouTube tab after changing codec rules.</p>
+
+        <div class="control-row">
+          <span class="row-title">Block AV1 Codec</span>
+          <label class="switch modern-switch">
             <input type="checkbox" id="blockAV1">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
-        
-        <div class="switch-row">
-          <span class="switch-title">Block VP9 Codec</span>
-          <label class="switch">
+
+        <div class="control-row">
+          <span class="row-title">Block VP9 Codec</span>
+          <label class="switch modern-switch">
             <input type="checkbox" id="blockVP9">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
-        
-        <div class="switch-row">
-          <span class="switch-title">Block 60fps video</span>
-          <label class="switch">
+
+        <div class="control-row">
+          <span class="row-title">Block 60fps Video</span>
+          <label class="switch modern-switch">
             <input type="checkbox" id="block60fps">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
-        
-        <div class="switch-row">
-          <span class="switch-title">Hide in theater mode</span>
-          <label class="switch">
+
+        <div class="control-row">
+          <span class="row-title">Hide Glow in Theater Mode</span>
+          <label class="switch modern-switch">
             <input type="checkbox" id="hideInTheater">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
-        
-        <div class="switch-row">
-          <span class="switch-title">Hide side scrollbar</span>
-          <label class="switch">
+
+        <div class="control-row">
+          <span class="row-title">Hide Page Scrollbar</span>
+          <label class="switch modern-switch">
             <input type="checkbox" id="hideScrollbar">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
-        <p class="warning-text">Note: YouTube does not encode 4K/8K in H.264. Blocking both AV1 and VP9 limits max resolution to 1080p.</p>
+        <div class="warning-callout">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Blocking both AV1 and VP9 caps YouTube resolution to 1080p maximum.</span>
+        </div>
       </div>
     </details>
   </main>
 
-  <footer>
-    <button type="button" id="reset" class="btn-secondary">Reset to Defaults</button>
+  <footer class="app-footer">
+    <button type="button" id="reset" class="reset-btn">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      <span>Reset All to Defaults</span>
+    </button>
   </footer>
 
   <script src="../shared/defaults.js"></script>

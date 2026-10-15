@@ -25,5 +25,15 @@ const AURA_DEFAULTS = Object.freeze({
   contrast: 100,         // Color contrast, %
   brightness: 100,       // Glow brightness, %
   smoothness: 60,        // Temporal smoothing between frames, %
+  removeBlackBars: false, // Zoom video to remove letterboxing
   fps: 30,               // Max glow updates per second
+  audioNormalizer: false,// Balance loud & quiet sounds
+  audioBoost: 100,       // Volume boost percentage
+  audioReactive: false,  // Audio-Reactive Glow (Beat Sync)
+  lightsOut: false,      // "Lights Out" Cinema Mode
+  ultrawideZoom: false,  // Ultrawide "Zoom-to-Fit"
+  videoBrightness: 100,  // Video Eye-Care: Brightness
+  videoContrast: 100,    // Video Eye-Care: Contrast
+  videoSepia: 0,         // Video Eye-Care: Blue-Light Filter (Sepia)
+  autoPauseMode: 'off'   // Auto-pause mode: 'off' | 'tab' | 'app'
 });

@@ -31,34 +31,93 @@
 
   function removeExistingButton() {
     if (currentButton) {
+      const parent = currentButton.parentElement;
       currentButton.remove();
       currentButton = null;
       pathEl = null;
+      if (parent && parent.classList.contains('cineglow-floating-toolbar') && !parent.hasChildNodes()) {
+        parent.remove();
+      }
     }
   }
 
+  function initToolbarAutohide(player, toolbar) {
+    if (toolbar._autohideInitialized) return;
+    toolbar._autohideInitialized = true;
+
+    const syncVisibility = () => {
+      const isAutohide = player.classList.contains('ytp-autohide') || 
+                         player.classList.contains('ytp-hide-controls');
+      const chromeBottom = player.querySelector('.ytp-chrome-bottom');
+      const isChromeHidden = chromeBottom && (
+        chromeBottom.hidden ||
+        chromeBottom.style.display === 'none' ||
+        chromeBottom.classList.contains('ytp-chrome-hidden')
+      );
+
+      if (isAutohide || isChromeHidden) {
+        toolbar.classList.add('cineglow-toolbar-hidden');
+      } else {
+        toolbar.classList.remove('cineglow-toolbar-hidden');
+      }
+    };
+
+    const observer = new MutationObserver(() => syncVisibility());
+    observer.observe(player, { attributes: true, attributeFilter: ['class'] });
+
+    const chromeBottom = player.querySelector('.ytp-chrome-bottom');
+    if (chromeBottom) {
+      observer.observe(chromeBottom, { attributes: true, attributeFilter: ['style', 'class'] });
+    }
+
+    player.addEventListener('mouseenter', () => {
+      toolbar.classList.remove('cineglow-toolbar-hidden');
+    });
+
+    player.addEventListener('mousemove', () => {
+      if (!player.classList.contains('ytp-autohide')) {
+        toolbar.classList.remove('cineglow-toolbar-hidden');
+      }
+    });
+
+    syncVisibility();
+  }
+
   /**
-   * Wait for .ytp-right-controls to appear inside the player.
-   * Uses a MutationObserver instead of setTimeout polling.
-   * Aborts automatically via the provided AbortSignal.
+   * Wait for .cineglow-floating-toolbar on the right side of the player.
+   * Creates it if it doesn't exist yet and removes legacy center controls.
    */
-  function waitForRightControls(player, signal) {
+  function waitForFloatingToolbar(player, signal) {
     return new Promise((resolve) => {
-      const existing = player.querySelector('.ytp-right-controls');
+      const getToolbar = () => {
+        // Remove legacy center controls
+        const legacy = player.querySelectorAll('.cineglow-center-controls');
+        legacy.forEach(el => el.remove());
+
+        let toolbar = player.querySelector('.cineglow-floating-toolbar');
+        if (toolbar) return toolbar;
+
+        toolbar = document.createElement('div');
+        toolbar.className = 'cineglow-floating-toolbar cineglow-vertical-toolbar';
+        player.appendChild(toolbar);
+        initToolbarAutohide(player, toolbar);
+        return toolbar;
+      };
+
+      const existing = getToolbar();
       if (existing) {
         resolve(existing);
         return;
       }
 
       const observer = new MutationObserver(() => {
-        const el = player.querySelector('.ytp-right-controls');
+        const el = getToolbar();
         if (el) {
           observer.disconnect();
           resolve(el);
         }
       });
 
-      // Abort if a new state-change fires before controls appear.
       signal.addEventListener('abort', () => {
         observer.disconnect();
         resolve(null);
@@ -71,7 +130,6 @@
   async function injectPipButton(playerManager) {
     const { player, isWatchPage } = playerManager;
 
-    // Abort any in-flight waitForRightControls from a previous call.
     if (abortController) {
       abortController.abort();
     }
@@ -83,25 +141,20 @@
       return;
     }
 
-    // If the button already exists inside this player, nothing to do.
     if (currentButton && player.contains(currentButton)) {
       return;
     }
 
-    // Button was orphaned by a DOM wipe; discard the stale reference.
     removeExistingButton();
 
-    const rightControls = await waitForRightControls(player, signal);
-    if (!rightControls || signal.aborted) return;
+    const toolbar = await waitForFloatingToolbar(player, signal);
+    if (!toolbar || signal.aborted) return;
 
     // Build button
     const pipButton = document.createElement('button');
     pipButton.className = `ytp-button ${PIP_BUTTON_CLASS}`;
     pipButton.title = 'Picture-in-Picture';
     pipButton.setAttribute('aria-label', 'Picture-in-Picture');
-    pipButton.style.width = '48px';
-    pipButton.style.height = '48px';
-    pipButton.style.verticalAlign = 'top';
 
     const xmlns = 'http://www.w3.org/2000/svg';
     const svgElem = document.createElementNS(xmlns, 'svg');
@@ -109,13 +162,19 @@
     svgElem.setAttributeNS(null, 'version', '1.1');
     svgElem.setAttributeNS(null, 'viewBox', '0 0 36 36');
     svgElem.setAttributeNS(null, 'width', '100%');
+    svgElem.style.display = 'block';
+    svgElem.style.margin = 'auto';
+
+    const groupEl = document.createElementNS(xmlns, 'g');
+    groupEl.setAttributeNS(null, 'transform', 'translate(-1, -1)');
 
     pathEl = document.createElementNS(xmlns, 'path');
     pathEl.setAttributeNS(null, 'class', 'ytp-svg-fill');
     pathEl.setAttributeNS(null, 'd', ENTER_PIP_PATH);
     pathEl.setAttributeNS(null, 'fill', '#fff');
 
-    svgElem.appendChild(pathEl);
+    groupEl.appendChild(pathEl);
+    svgElem.appendChild(groupEl);
     pipButton.appendChild(svgElem);
 
     pipButton.addEventListener('click', async (e) => {
@@ -136,28 +195,17 @@
       }
     });
 
-    // Insert before the fullscreen button, or append as fallback.
-    const fullscreenBtn = rightControls.querySelector('.ytp-fullscreen-button');
-    if (fullscreenBtn) {
-      try {
-        fullscreenBtn.insertAdjacentElement('beforebegin', pipButton);
-      } catch (e) {
-        rightControls.appendChild(pipButton);
-      }
-    } else {
-      rightControls.appendChild(pipButton);
-    }
+    // PiP button must strictly be at the bottom of the stack
+    toolbar.appendChild(pipButton);
 
     currentButton = pipButton;
 
-    // Reflect current PiP state immediately.
     updateButtonState(!!document.pictureInPictureElement);
   }
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       const state = e.detail;
-      // Re-inject if the player was recreated (SPA navigation / DOM wipe).
       if (state.isWatchPage && state.player) {
         if (!currentButton || !state.player.contains(currentButton)) {
           injectPipButton(state);
@@ -165,11 +213,9 @@
       } else {
         removeExistingButton();
       }
-      // Update icon to reflect PiP state changes.
       updateButtonState(state.isPiP);
     });
 
-    // Initial injection.
     injectPipButton(window.CineGlowPlayer);
   }
 })();

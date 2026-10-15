@@ -31,4 +31,43 @@
       }
     }
   });
+
+  // --- 3. Format Extractor for Download ---
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || event.data.type !== 'CINEGLOW_GET_DOWNLOAD_FORMAT') return;
+    try {
+      let formats = null;
+      const player = document.getElementById('movie_player');
+      let streamingData = null;
+
+      if (player && typeof player.getPlayerResponse === 'function') {
+        const response = player.getPlayerResponse();
+        if (response && response.streamingData) {
+          streamingData = response.streamingData;
+        }
+      }
+      
+      // Fallback to ytInitialPlayerResponse
+      if (!streamingData && window.ytInitialPlayerResponse && window.ytInitialPlayerResponse.streamingData) {
+        streamingData = window.ytInitialPlayerResponse.streamingData;
+      }
+
+      if (streamingData) {
+        if (Array.isArray(streamingData.formats) && streamingData.formats.length > 0) {
+          formats = streamingData.formats;
+        } else if (Array.isArray(streamingData.adaptiveFormats)) {
+          // If progressive formats are absent, extract mp4 video formats from adaptiveFormats
+          const mp4Formats = streamingData.adaptiveFormats.filter(f => f.mimeType && f.mimeType.includes('video/mp4'));
+          formats = mp4Formats.length > 0 ? mp4Formats : streamingData.adaptiveFormats;
+        }
+      }
+
+      window.postMessage({
+        type: 'CINEGLOW_DOWNLOAD_FORMAT_RESPONSE',
+        formats: formats
+      }, '*');
+    } catch(err) {
+      console.error('[Aura Main World] Format extraction error:', err);
+    }
+  });
 })();

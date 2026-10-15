@@ -4,7 +4,7 @@
  * How it works:
  *  1. Each frame, the current video frame is drawn into a tiny canvas (64x36).
  *  2. That canvas is stretched (bilinear-smoothed) to be larger than the video,
- *     then blurred/saturated with CSS filters on the GPU.
+ *     then blurred and saturated using CSS filters.
  *  3. The canvas sits behind the page (z-index -1) and is positioned to stay
  *     centered on the video, producing a glow around it.
  */
@@ -66,6 +66,17 @@
     document.documentElement.classList.toggle('aura-hide-scrollbar', settings.hideScrollbar);
     document.documentElement.classList.toggle('aura-hide-theater', settings.hideInTheater);
     document.documentElement.classList.toggle('aura-watch-page', window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch');
+    document.documentElement.classList.toggle('aura-adblock', settings.adblockEnabled);
+    document.documentElement.classList.toggle('aura-lights-out', settings.lightsOut);
+    document.documentElement.classList.toggle('aura-ultrawide-zoom', settings.ultrawideZoom);
+    
+    if (video) {
+      if (settings.videoBrightness === 100 && settings.videoContrast === 100 && settings.videoSepia === 0) {
+        video.style.filter = '';
+      } else {
+        video.style.filter = `brightness(${settings.videoBrightness / 100}) contrast(${settings.videoContrast / 100}) sepia(${settings.videoSepia / 100})`;
+      }
+    }
   }
 
   // ---------- Video discovery ----------
@@ -98,9 +109,19 @@
       video = state.video;
       videoId = state.videoId;
       if (video) {
+        applyVisualSettings();
         for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'waiting']) {
           video.addEventListener(type, onVideoReset, { passive: true });
         }
+        const updatePlayingState = () => {
+          document.documentElement.classList.toggle('aura-playing', !video.paused && !video.ended);
+        };
+        video.addEventListener('play', updatePlayingState, { passive: true });
+        video.addEventListener('playing', updatePlayingState, { passive: true });
+        video.addEventListener('pause', updatePlayingState, { passive: true });
+        video.addEventListener('waiting', updatePlayingState, { passive: true });
+        updatePlayingState();
+        
         videoObserver = new ResizeObserver(() => {
           lastLayoutKey = '';
           wake();
@@ -139,6 +160,9 @@
     lastLayoutKey = '';
   }
 
+  let currentLayoutX = 0;
+  let currentLayoutY = 0;
+
   // ---------- Per-frame work ----------
 
   function layout(rect) {
@@ -147,6 +171,8 @@
     const h = rect.height * scale;
     const x = rect.left - (w - rect.width) / 2;
     const y = rect.top - (h - rect.height) / 2;
+    currentLayoutX = x;
+    currentLayoutY = y;
 
     const topClip = settings.glowTop ? -h : (h - rect.height) / 2;
     const rightClip = settings.glowRight ? -w : (w - rect.width) / 2;
@@ -185,7 +211,19 @@
 
     try {
       const t0 = performance.now();
-      ctx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
+      if (window.CineGlowCrop) {
+        const c = window.CineGlowCrop;
+        ctx.drawImage(
+          v,
+          v.videoWidth * c.left,
+          v.videoHeight * c.top,
+          v.videoWidth * (1 - c.left - c.right),
+          v.videoHeight * (1 - c.top - c.bottom),
+          0, 0, SAMPLE_W, SAMPLE_H
+        );
+      } else {
+        ctx.drawImage(v, 0, 0, SAMPLE_W, SAMPLE_H);
+      }
       const t1 = performance.now();
       
       window.CineGlowMetrics.lastDrawStart = t0;
@@ -195,6 +233,35 @@
     } catch (err) {
       // e.g. a cross-origin/tainted source; skip this frame rather than break the loop.
       console.debug('[Aura] drawImage failed:', err);
+    }
+    
+    // Beat Sync (Audio-Reactive Glow)
+    if (settings.audioReactive && window.CineGlowAudioAnalyser && window.CineGlowAudioDataArray && !v.paused) {
+      const analyser = window.CineGlowAudioAnalyser;
+      const dataArray = window.CineGlowAudioDataArray;
+      analyser.getByteFrequencyData(dataArray);
+      
+      let bass = 0;
+      const bassBins = 8; // Broader sub-bass range
+      for (let i = 0; i < bassBins; i++) {
+        bass += dataArray[i];
+      }
+      bass = (bass / bassBins) / 255; // 0 to 1
+      
+      // Drastically amplify the effect so it's impossible to miss
+      // Use an exponential curve so quiet parts don't throb, but heavy bass explodes
+      const enhancedBass = Math.pow(bass, 1.5);
+      
+      const beatScale = 1 + (enhancedBass * 0.4); // up to 1.4x size
+      const beatOpacity = (settings.opacity / 100) * (1 + enhancedBass * 1.5); // up to 2.5x brighter
+      
+      canvas.style.transform = `translate3d(${currentLayoutX}px, ${currentLayoutY}px, 0) scale(${beatScale})`;
+      canvas.style.opacity = Math.min(1, beatOpacity);
+      canvas.dataset.beat = '1';
+    } else if (canvas.dataset.beat === '1') {
+      canvas.style.transform = `translate3d(${currentLayoutX}px, ${currentLayoutY}px, 0)`;
+      canvas.style.opacity = ''; // revert to CSS variable
+      canvas.dataset.beat = '0';
     }
     
     return true; // continue polling
@@ -209,6 +276,18 @@
     if (!rect || rect.width < 2 || rect.height < 2) {
       deactivate();
       return;
+    }
+
+    if (window.CineGlowCrop) {
+      const c = window.CineGlowCrop;
+      rect = {
+        top: rect.top + rect.height * c.top,
+        bottom: rect.bottom - rect.height * c.bottom,
+        left: rect.left + rect.width * c.left,
+        right: rect.right - rect.width * c.right,
+        width: rect.width * (1 - c.left - c.right),
+        height: rect.height * (1 - c.top - c.bottom)
+      };
     }
 
     activate();

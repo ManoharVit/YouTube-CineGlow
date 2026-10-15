@@ -68,7 +68,10 @@
       'ytd-player-legacy-desktop-watch-ads-renderer',
       '#masthead-ad',
       '#player-ads',
-      '.ytd-in-feed-ad-layout-renderer'
+      '.ytd-in-feed-ad-layout-renderer',
+      '.ytp-cards-button',
+      '.ytp-cards-teaser',
+      '.ytp-suggested-action-badge'
     ];
 
     let blocked = 0;
