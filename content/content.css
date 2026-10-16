@@ -106,20 +106,51 @@ html.aura-hide-scrollbar {
   scrollbar-width: none !important;
 }
 
-/* Hide everything in theater mode Feature */
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) #masthead-container,
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater-requested_]) #masthead-container {
+/* Clean Cinema Theater Mode (Hide UI & Center Video in Theater Mode) */
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) #masthead-container {
   display: none !important;
 }
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) ytd-page-manager,
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater-requested_]) ytd-page-manager {
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) ytd-page-manager {
   margin-top: 0 !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #full-bleed-container,
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #player-theater-container {
+  max-height: 100vh !important;
+  margin: auto 0 !important;
 }
 html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #secondary,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater-requested_] #secondary,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #below,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater-requested_] #below {
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #below {
   display: none !important;
+}
+
+/* Vertically center in standard theater mode when toolbar is present */
+html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater] #full-bleed-container,
+html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater] #player-theater-container {
+  margin-top: max(0px, calc(((100vh - var(--ytd-toolbar-offset, var(--ytd-toolbar-height, 56px))) - var(--ytd-watch-flexy-player-height, 480px)) / 2)) !important;
+  margin-bottom: max(0px, calc(((100vh - var(--ytd-toolbar-offset, var(--ytd-toolbar-height, 56px))) - var(--ytd-watch-flexy-player-height, 480px)) / 2)) !important;
+}
+
+/* Guard: strictly protect normal non-theater watch mode so it is never disturbed */
+html.aura-watch-page ytd-watch-flexy:not([theater]):not([fullscreen]) #full-bleed-container,
+html.aura-watch-page ytd-watch-flexy:not([theater]):not([fullscreen]) #player-theater-container {
+  margin: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+}
+html.aura-watch-page:not(:has(ytd-watch-flexy[theater])) ytd-page-manager {
+  margin-top: var(--ytd-toolbar-height, 56px) !important;
+  min-height: auto !important;
+  display: block !important;
 }
 
 /* AdBlock UI hiding */
@@ -138,16 +169,22 @@ html.aura-adblock .ytp-shopping-button {
 html.aura-lights-out.aura-playing #masthead-container,
 html.aura-lights-out.aura-playing #secondary,
 html.aura-lights-out.aura-playing #related,
-html.aura-lights-out.aura-playing #below {
-  opacity: 0;
-  transition: opacity 0.5s ease;
+html.aura-lights-out.aura-playing #below,
+html.aura-lights-out.aura-playing #chat-container,
+html.aura-lights-out.aura-playing #panels,
+html.aura-lights-out.aura-playing ytd-engagement-panel-section-list-renderer {
+  opacity: 0 !important;
+  transition: opacity 0.4s ease !important;
 }
 
 html.aura-lights-out.aura-playing #masthead-container:hover,
 html.aura-lights-out.aura-playing #secondary:hover,
 html.aura-lights-out.aura-playing #related:hover,
-html.aura-lights-out.aura-playing #below:hover {
-  opacity: 1;
+html.aura-lights-out.aura-playing #below:hover,
+html.aura-lights-out.aura-playing #chat-container:hover,
+html.aura-lights-out.aura-playing #panels:hover,
+html.aura-lights-out.aura-playing ytd-engagement-panel-section-list-renderer:hover {
+  opacity: 1 !important;
 }
 
 /* Ultrawide Zoom-to-Fit Feature */

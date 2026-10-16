@@ -13,11 +13,20 @@
       this.isMiniplayer = false;
       this.isAdShowing = false;
       this.isPiP = false;
+      this.isPlaying = false;
       
       this.handlePiP = (e) => {
         const isPiP = e.type === 'enterpictureinpicture';
         if (this.isPiP !== isPiP) {
           this.isPiP = isPiP;
+          this.dispatchEvent(new CustomEvent('state-change', { detail: this }));
+        }
+      };
+
+      this.handlePlayState = () => {
+        const isPlaying = this.video ? (!this.video.paused && !this.video.ended && this.video.readyState > 1) : false;
+        if (this.isPlaying !== isPlaying) {
+          this.isPlaying = isPlaying;
           this.dispatchEvent(new CustomEvent('state-change', { detail: this }));
         }
       };
@@ -61,6 +70,7 @@
         (document.querySelector('.video-ads.ytp-ad-module')?.childElementCount > 0)
       );
       const isPiP = video ? document.pictureInPictureElement === video : false;
+      const isPlaying = video ? (!video.paused && !video.ended && video.readyState > 1) : false;
 
       let changed = false;
 
@@ -70,6 +80,7 @@
       if (this.isMiniplayer !== isMiniplayer) { this.isMiniplayer = isMiniplayer; changed = true; }
       if (this.isAdShowing !== isAdShowing) { this.isAdShowing = isAdShowing; changed = true; }
       if (this.isPiP !== isPiP) { this.isPiP = isPiP; changed = true; }
+      if (this.isPlaying !== isPlaying) { this.isPlaying = isPlaying; changed = true; }
       
       if (this.app !== app) {
         this.app = app;
@@ -83,6 +94,11 @@
         if (this.video) {
           this.video.removeEventListener('enterpictureinpicture', this.handlePiP);
           this.video.removeEventListener('leavepictureinpicture', this.handlePiP);
+          this.video.removeEventListener('play', this.handlePlayState);
+          this.video.removeEventListener('playing', this.handlePlayState);
+          this.video.removeEventListener('pause', this.handlePlayState);
+          this.video.removeEventListener('waiting', this.handlePlayState);
+          this.video.removeEventListener('ended', this.handlePlayState);
         }
         this.video = video;
         this.player = player;
@@ -94,6 +110,12 @@
         if (this.video) {
           this.video.addEventListener('enterpictureinpicture', this.handlePiP);
           this.video.addEventListener('leavepictureinpicture', this.handlePiP);
+          this.video.addEventListener('play', this.handlePlayState, { passive: true });
+          this.video.addEventListener('playing', this.handlePlayState, { passive: true });
+          this.video.addEventListener('pause', this.handlePlayState, { passive: true });
+          this.video.addEventListener('waiting', this.handlePlayState, { passive: true });
+          this.video.addEventListener('ended', this.handlePlayState, { passive: true });
+          this.isPlaying = !this.video.paused && !this.video.ended && this.video.readyState > 1;
         }
       }
 

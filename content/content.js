@@ -70,16 +70,25 @@
     document.documentElement.classList.toggle('aura-lights-out', settings.lightsOut);
     document.documentElement.classList.toggle('aura-ultrawide-zoom', settings.ultrawideZoom);
     
-    if (video) {
+    updatePlayingState();
+
+    const currentVideo = video || (window.CineGlowPlayer ? window.CineGlowPlayer.video : null);
+    if (currentVideo) {
       if (settings.videoBrightness === 100 && settings.videoContrast === 100 && settings.videoSepia === 0) {
-        video.style.filter = '';
+        currentVideo.style.filter = '';
       } else {
-        video.style.filter = `brightness(${settings.videoBrightness / 100}) contrast(${settings.videoContrast / 100}) sepia(${settings.videoSepia / 100})`;
+        currentVideo.style.filter = `brightness(${settings.videoBrightness / 100}) contrast(${settings.videoContrast / 100}) sepia(${settings.videoSepia / 100})`;
       }
     }
   }
 
-  // ---------- Video discovery ----------
+  // ---------- Video discovery & playback state ----------
+
+  function updatePlayingState() {
+    const currentVideo = video || (window.CineGlowPlayer ? window.CineGlowPlayer.video : null);
+    const isPlaying = currentVideo ? (!currentVideo.paused && !currentVideo.ended) : false;
+    document.documentElement.classList.toggle('aura-playing', isPlaying);
+  }
 
   function onVideoReset() {
     forceFullDraw = true;
@@ -91,15 +100,19 @@
 
   let isPiP = false;
 
-  window.CineGlowPlayer.addEventListener('state-change', (e) => {
-    const state = e.detail;
+  function handlePlayerState(state) {
+    if (!state) return;
     document.documentElement.classList.toggle('aura-watch-page', state.isWatchPage);
     isPiP = state.isPiP;
     
     if (state.video !== video || state.videoId !== videoId) {
       if (video) {
-        for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'waiting']) {
+        for (const type of ['seeked', 'loadeddata', 'emptied']) {
           video.removeEventListener(type, onVideoReset);
+        }
+        for (const type of ['play', 'playing', 'pause', 'waiting', 'ended']) {
+          video.removeEventListener(type, onVideoReset);
+          video.removeEventListener(type, updatePlayingState);
         }
         if (videoObserver) {
           videoObserver.disconnect();
@@ -110,16 +123,13 @@
       videoId = state.videoId;
       if (video) {
         applyVisualSettings();
-        for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'waiting']) {
+        for (const type of ['seeked', 'loadeddata', 'emptied']) {
           video.addEventListener(type, onVideoReset, { passive: true });
         }
-        const updatePlayingState = () => {
-          document.documentElement.classList.toggle('aura-playing', !video.paused && !video.ended);
-        };
-        video.addEventListener('play', updatePlayingState, { passive: true });
-        video.addEventListener('playing', updatePlayingState, { passive: true });
-        video.addEventListener('pause', updatePlayingState, { passive: true });
-        video.addEventListener('waiting', updatePlayingState, { passive: true });
+        for (const type of ['play', 'playing', 'pause', 'waiting', 'ended']) {
+          video.addEventListener(type, onVideoReset, { passive: true });
+          video.addEventListener(type, updatePlayingState, { passive: true });
+        }
         updatePlayingState();
         
         videoObserver = new ResizeObserver(() => {
@@ -130,8 +140,17 @@
       }
       onVideoReset();
     }
+    updatePlayingState();
     wake();
+  }
+
+  window.CineGlowPlayer.addEventListener('state-change', (e) => {
+    handlePlayerState(e.detail);
   });
+
+  if (window.CineGlowPlayer) {
+    handlePlayerState(window.CineGlowPlayer);
+  }
 
   function shouldBeActive() {
     if (!settings.enabled) return false;
