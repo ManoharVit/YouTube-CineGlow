@@ -61,10 +61,12 @@ English
 | Store Icon [REQUIRED] | 128×128 PNG | Ready | `icons/icon-128.png` |
 | Small Icon | 48×48 PNG | Ready | `icons/icon-48.png` |
 | Toolbar Icon | 16×16 PNG | Ready | `icons/icon-16.png` |
-| Screenshot 1 [REQUIRED] | 1280×800 or 640×400 | Capture Needed | Player with cinema ambient glow active |
-| Screenshot 2 [RECOMMENDED] | 1280×800 or 640×400 | Capture Needed | Settings popup showcasing category navigation |
-| Screenshot 3 [RECOMMENDED] | 1280×800 or 640×400 | Capture Needed | Floating toolbar and Picture-in-Picture |
-| Small Promo Tile [RECOMMENDED] | 440×280 | Optional | Promotional banner |
+| Screenshot 1 [REQUIRED] | 2879×1567 PNG | Ready | `store_assets/screenshot_1_ambient_lighting.png` |
+| Screenshot 2 [RECOMMENDED] | 2879×1655 PNG | Ready | `store_assets/screenshot_2_settings_popup.png` |
+| Screenshot 3 [RECOMMENDED] | 2879×1567 PNG | Ready | `store_assets/screenshot_3_stats_overlay.png` |
+| Screenshot 4 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_4_theatre_mode.png` |
+| Screenshot 5 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_5_frame_snap.png` |
+| Small Promo Tile [RECOMMENDED] | 440×280 PNG | Ready | `store_assets/promo_tile_440x280.png` |
 | Marquee Promo Tile | 1400×560 | Optional | Large store header banner |
 
 ---
@@ -119,6 +121,7 @@ https://github.com/ManoharVit/YouTube-CineGlow/blob/main/PRIVACY.md
 
 | Version | Date | Changes | Status |
 |---|---|---|---|
-| 2.1.0 | 2026-10-15 | Modern glassmorphism UI, Smart Auto-Pause, vertical floating toolbar, Web Audio normalizer, eye care filters, MIT license | Ready to Submit |
+| 2.1.2 | 2026-10-17 | Refined compact popup UI (-20% width), full-resolution store screenshots, creator badge update, black bar auto-crop improvements | Ready to Submit |
+| 2.1.0 | 2026-10-15 | Modern glassmorphism UI, Smart Auto-Pause, vertical floating toolbar, Web Audio normalizer, eye care filters, MIT license | Published |
 | 2.0.0 | 2026-10-09 | Stats overlay and PiP controls | Archived |
 | 1.0.0 | 2026-10-05 | Initial release | Archived |

@@ -1,6 +1,6 @@
 {
   "name": "youtube-cineglow-pro",
-  "version": "2.1.0",
+  "version": "2.1.2",
   "description": "YouTube CineGlow Pro Chrome Extension",
   "dependencies": {
     "puppeteer": "^25.12.0"

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "YouTube CineGlow Pro",
   "short_name": "CineGlow Pro",
-  "version": "2.1.0",
-  "version_name": "2.1.0 Pro",
+  "version": "2.1.2",
+  "version_name": "2.1.2 Pro",
   "description": "Adds a customizable cinematic glow around YouTube videos, blocks ads, and enables high-bitrate 4K tweaks.",
   "permissions": [
     "storage",

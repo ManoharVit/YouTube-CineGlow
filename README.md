@@ -1,6 +1,22 @@
-# YouTube CineGlow
+# YouTube CineGlow Pro
+
+> **Version 2.1.2 Pro** — Cinematic ambient edge lighting, real-time playback telemetry HUD, floating toolbar, and precision controls for YouTube.
 
 I built YouTube CineGlow to turn watching videos in dark rooms into an immersive, theater-like experience. While building full-stack web applications and working through my computer science coursework, I grew frustrated with static web video players and the distracting glare of high-contrast screens. CineGlow samples frames directly from the HTML5 video element, calculates the dominant edge colors, and casts a live, smooth ambient aura onto the page around the player.
+
+## Showcase
+
+| Cinema Ambient Lighting | Modern Glassmorphism Controls |
+|:---:|:---:|
+| ![Ambient Lighting](store_assets/screenshot_1_ambient_lighting.png) | ![Settings Popup](store_assets/screenshot_2_settings_popup.png) |
+
+| Real-Time Telemetry HUD | Theatre Mode Lighting |
+|:---:|:---:|
+| ![Stats Overlay](store_assets/screenshot_3_stats_overlay.png) | ![Theatre Mode](store_assets/screenshot_4_theatre_mode.png) |
+
+| Floating Toolbar & 4K Frame Snap |
+|:---:|
+| ![Floating Toolbar](store_assets/screenshot_5_frame_snap.png) |
 
 ## What It Does
 
@@ -12,7 +28,7 @@ I built YouTube CineGlow to turn watching videos in dark rooms into an immersive
 - Pauses playback when you switch tabs, minimize the window, or switch applications, and resumes when you return.
 - Applies night mode blue-light filters and custom contrast or brightness adjustments directly to the video element.
 - Detects letterbox black bars and scales the video to fill ultrawide 21:9 or standard displays.
-- Displays real-time playback metrics, dropped frames, and rendering latency in a draggable stats overlay.
+- Displays real-time playback metrics, dropped frames, bitrate, and rendering latency in a draggable stats overlay HUD.
 
 ## Installation
 
@@ -38,15 +54,18 @@ I built YouTube CineGlow to turn watching videos in dark rooms into an immersive
 - `content/player-manager.js`: Tracks video lifecycle events and handles YouTube single-page navigation without page reloads.
 - `content/content.js` & `content/content.css`: Renders the glow canvas and adjusts page element transparency.
 - `content/pip-button.js` & `content/screenshot-button.js`: Injects the floating toolbar and captures uncompressed video frames to PNG.
+- `content/stats-overlay.js` & `content/stats-overlay.css`: Real-time telemetry HUD displaying display FPS, dropped frames, bitrate, and codec diagnostics.
+- `content/blackbar.js`: Detects letterbox black bars and automatically scales the video to fill the screen.
 - `content/smart-pause.js`: Monitors tab visibility and window focus to pause and resume playback automatically.
 - `content/audio-processor.js`: Connects Web Audio gain and analyser nodes for volume boosting and beat detection.
 - `popup/`: Houses the glassmorphism settings menu, category navigation, and control toggles.
+- `store_assets/`: High-resolution graphics, promo tile, and full 3K Retina showcase screenshots.
 - `rules/adblock.json`: Declarative network request rules for blocking video ads and trackers.
 - `shared/defaults.js`: Defines default configuration values across scripts and storage.
 
 ## Author
 
-- **Developer**: Giri Manohar Vemula
+- **Developer**: G.Manohar.V (Giri Manohar Vemula)
 - **GitHub**: [@ManoharVit](https://github.com/ManoharVit)
 - **LinkedIn**: [in/manohar511](https://www.linkedin.com/in/manohar511/)
 - **Repository**: [YouTube-CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)
