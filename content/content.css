@@ -134,6 +134,7 @@ html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]
 }
 
 /* Reduced video zoom in theater mode: gives ambient light glow room on all 4 edges */
+html.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
 html.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
   transform: scale(0.66) !important;
   transform-origin: center center !important;
