@@ -10,8 +10,8 @@
   let worker = null;
   
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 256;
+  canvas.height = 256;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
   const STABILITY_REQUIRED = 4;
@@ -173,10 +173,14 @@
         return;
       }
       
-      const cropTop = topBar / height;
-      const cropBottom = bottomBar / height;
-      const cropLeft = leftBar / width;
-      const cropRight = rightBar / width;
+      // Add a tiny 0.6% overscan margin when bars are detected to clean up the anti-aliased edge
+      const overscanY = (topBar > 0 || bottomBar > 0) ? 0.006 : 0;
+      const overscanX = (leftBar > 0 || rightBar > 0) ? 0.006 : 0;
+
+      const cropTop = topBar > 0 ? (topBar / height) + overscanY : 0;
+      const cropBottom = bottomBar > 0 ? (bottomBar / height) + overscanY : 0;
+      const cropLeft = leftBar > 0 ? (leftBar / width) + overscanX : 0;
+      const cropRight = rightBar > 0 ? (rightBar / width) + overscanX : 0;
       
       handleCropResult({ cropTop, cropBottom, cropLeft, cropRight });
     } catch (err) {
