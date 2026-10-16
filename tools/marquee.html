@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CineGlow Pro Marquee Promo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 1400px;
+      height: 560px;
+      overflow: hidden;
+      background-color: #08090f;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #f8fafc;
+      position: relative;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient background gradient meshes */
+    .bg-aura-purple {
+      position: absolute;
+      width: 650px;
+      height: 650px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.08) 50%, transparent 70%);
+      top: -120px;
+      left: -80px;
+      filter: blur(40px);
+      pointer-events: none;
+    }
+    .bg-aura-cyan {
+      position: absolute;
+      width: 750px;
+      height: 750px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(37, 99, 235, 0.08) 50%, transparent 70%);
+      top: -100px;
+      right: 120px;
+      filter: blur(50px);
+      pointer-events: none;
+    }
+    .bg-aura-pink {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(236, 72, 153, 0.18) 0%, transparent 65%);
+      bottom: -150px;
+      right: 20px;
+      filter: blur(45px);
+      pointer-events: none;
+    }
+
+    /* High-tech subtle grid overlay */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none;
+      mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 85%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 40%, transparent 85%);
+    }
+
+    .container {
+      position: relative;
+      width: 1400px;
+      height: 560px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 40px 65px;
+      z-index: 10;
+    }
+
+    /* Left Side: Brand Copy */
+    .left-col {
+      width: 530px;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(168, 85, 247, 0.12);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      width: fit-content;
+      margin-bottom: 16px;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.15);
+    }
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #a855f7;
+      box-shadow: 0 0 8px #a855f7;
+    }
+    .pill-text {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #d8b4fe;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+    }
+    .brand-title {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pro-badge {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(168, 85, 247, 0.4);
+    }
+
+    .tagline {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.28;
+      background: linear-gradient(135deg, #ffffff 30%, #e9d5ff 70%, #7dd3fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+      letter-spacing: -0.3px;
+    }
+
+    .description {
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: #94a3b8;
+      margin-bottom: 22px;
+      max-width: 480px;
+    }
+
+    /* Feature Pills Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+      max-width: 490px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 8px 12px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+    }
+    .feature-icon-wrap {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .fi-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .fi-cyan   { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .fi-emerald{ background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .fi-amber  { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    .feature-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #f1f5f9;
+      line-height: 1.2;
+    }
+    .feature-sub {
+      font-size: 10.5px;
+      color: #64748b;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+
+    .footer-guarantees {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11.5px;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .footer-guarantees span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .footer-guarantees svg {
+      width: 13px;
+      height: 13px;
+      color: #10b981;
+    }
+
+    /* Right Side: Realistic Showcase */
+    .right-col {
+      position: relative;
+      width: 720px;
+      height: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Dynamic ambient glow behind the main player */
+    .player-ambient-glow {
+      position: absolute;
+      top: 25px;
+      left: 20px;
+      width: 680px;
+      height: 400px;
+      background: radial-gradient(ellipse at 40% 40%, rgba(99, 102, 241, 0.6) 0%, transparent 65%),
+                  radial-gradient(ellipse at 75% 30%, rgba(56, 189, 248, 0.5) 0%, transparent 65%),
+                  radial-gradient(ellipse at 30% 75%, rgba(168, 85, 247, 0.5) 0%, transparent 65%);
+      filter: blur(50px);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Main Video Player Mockup Frame */
+    .player-window {
+      position: absolute;
+      top: 35px;
+      left: 40px;
+      width: 630px;
+      height: 375px;
+      background: #0d0f17;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 
+        0 24px 60px rgba(0, 0, 0, 0.8),
+        0 0 40px rgba(168, 85, 247, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Window Chrome Bar */
+    .window-bar {
+      height: 28px;
+      background: rgba(22, 24, 35, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 6px;
+    }
+    .w-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+    .w-red   { background: #ef4444; }
+    .w-yellow{ background: #f59e0b; }
+    .w-green { background: #10b981; }
+    .w-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-left: 8px;
+    }
+
+    .player-screen {
+      position: relative;
+      flex: 1;
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-screenshot {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Overlaid CineGlow Live HUD Card */
+    .hud-card {
+      position: absolute;
+      bottom: 25px;
+      right: 20px;
+      width: 290px;
+      background: rgba(14, 16, 26, 0.88);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 
+        0 16px 40px rgba(0, 0, 0, 0.7),
+        0 0 25px rgba(168, 85, 247, 0.25);
+      padding: 12px 14px;
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hud-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+    .hud-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hud-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+    .hud-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f8fafc;
+    }
+    .hud-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .hud-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+    .metric-box {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 7px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    .m-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .m-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .m-val.cyan { color: #38bdf8; }
+    .m-val.green{ color: #34d399; }
+    .m-badge {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    /* Floating Pill for Audio Normalizer */
+    .floating-audio-pill {
+      position: absolute;
+      top: 14px;
+      right: 25px;
+      background: rgba(18, 20, 32, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      z-index: 20;
+    }
+    .audio-icon-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+    .audio-pill-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    .audio-pill-boost {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-aura-purple"></div>
+  <div class="bg-aura-cyan"></div>
+  <div class="bg-aura-pink"></div>
+  <div class="grid-overlay"></div>
+
+  <div class="container">
+    <!-- Left Column: Copy & Value Proposition -->
+    <div class="left-col">
+      <div class="pill-badge">
+        <div class="pill-dot"></div>
+        <span class="pill-text">Home Theater Experience</span>
+      </div>
+
+      <div class="brand-row">
+        <img src="../icons/icon-128.png" alt="CineGlow" class="brand-logo" />
+        <h1 class="brand-title">CineGlow <span class="pro-badge">PRO</span></h1>
+      </div>
+
+      <h2 class="tagline">Cinema Ambient Lighting for YouTube</h2>
+
+      <p class="description">
+        Transform YouTube into an immersive theater. Real-time edge color aura, studio dialogue audio boost, smart ad skipping, and zero background CPU drain.
+      </p>
+
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon-wrap fi-purple">✨</div>
+          <div>
+            <div class="feature-title">Dynamic Edge Aura</div>
+            <div class="feature-sub">Real-time edge color sync</div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap fi-emerald">🛡️</div>
+          <div>
+            <div class="feature-title">Smart Ad Skipping</div>
+            <div class="feature-sub">Instant skip & network filter</div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap fi-cyan">🔊</div>
+          <div>
+            <div class="feature-title">Web Audio Booster</div>
+            <div class="feature-sub">300% volume & normalizer</div>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-wrap fi-amber">📊</div>
+          <div>
+            <div class="feature-title">Live Telemetry HUD</div>
+            <div class="feature-sub">True FPS, bitrate & dropped frames</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-guarantees">
+        <span>
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          100% Local & Private
+        </span>
+        <span>
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          Zero Lag V3 Engine
+        </span>
+        <span>
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          Auto Tab Pause
+        </span>
+      </div>
+    </div>
+
+    <!-- Right Column: Visual Showcase -->
+    <div class="right-col">
+      <!-- Ambient Glow Field -->
+      <div class="player-ambient-glow"></div>
+
+      <!-- Floating Audio Pill -->
+      <div class="floating-audio-pill">
+        <div class="audio-icon-pulse"></div>
+        <span class="audio-pill-text">Audio Normalizer</span>
+        <span class="audio-pill-boost">+100% Boost</span>
+      </div>
+
+      <!-- Main Video Window Frame -->
+      <div class="player-window">
+        <div class="window-bar">
+          <div class="w-dot w-red"></div>
+          <div class="w-dot w-yellow"></div>
+          <div class="w-dot w-green"></div>
+          <span class="w-title">YouTube Cinema Mode — 4K Ambient Edge Aura</span>
+        </div>
+        <div class="player-screen">
+          <img src="../store_assets/screenshot_1_ambient_lighting.png" alt="Spider-Verse Screen" class="video-screenshot" />
+        </div>
+      </div>
+
+      <!-- Overlaid Live Telemetry HUD -->
+      <div class="hud-card">
+        <div class="hud-header">
+          <div class="hud-title-row">
+            <div class="hud-dot"></div>
+            <span class="hud-title">CINEGLOW TELEMETRY</span>
+          </div>
+          <span class="hud-tag">ACTIVE</span>
+        </div>
+        <div class="hud-metrics">
+          <div class="metric-box">
+            <span class="m-label">VIDEO FPS</span>
+            <div class="m-val cyan">60.00 <span class="m-badge">STABLE</span></div>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">RESOLUTION</span>
+            <div class="m-val">4K UHD</div>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">BITRATE</span>
+            <div class="m-val green">46.2 Mbps</div>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">AMBIENT DRAW</span>
+            <div class="m-val cyan">0.1 ms</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

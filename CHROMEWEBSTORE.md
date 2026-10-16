@@ -63,6 +63,7 @@ English
 | Screenshot 4 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_4_theatre_mode.png` |
 | Screenshot 5 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_5_frame_snap.png` |
 | Small Promo Tile [RECOMMENDED] | 440×280 PNG | Ready | `store_assets/promo_tile_440x280.png` |
+| Marquee Promo Tile [RECOMMENDED] | 1400×560 PNG/JPG | Ready | `store_assets/marquee_promo_1400x560.png` |
 
 ---
 
