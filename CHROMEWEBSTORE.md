@@ -11,29 +11,33 @@ YouTube CineGlow Pro
 Adds live ambient lighting around YouTube videos, skips ads, normalizes audio, and auto-pauses when you switch tabs.
 
 **Detailed Description** [REQUIRED]
-YouTube CineGlow Pro reads the edge colors from every video frame and projects a soft, color-matched glow onto the page behind the player — like Ambilight for your browser. It works best in dark mode.
+If you watch YouTube in a dark room, staring at a bright video surrounded by pitch-black borders strains your eyes. CineGlow fixes that. It samples colors along the edges of every video frame in real time and projects a soft, matched ambient aura onto the page around the player — like Philips Ambilight TVs, but running directly in your browser.
+
+Alongside ambient lighting, CineGlow packs everyday playback improvements: it balances dialogue so quiet voices aren't drowned out by loud action scenes, skips video ads automatically, and pauses your video when you switch tabs so you never lose your spot.
 
 KEY FEATURES
 
-• Ambient Lighting — Samples each frame and casts a live color glow around all four sides of the video. You can toggle individual sides on or off.
-• Ad Skipping — Detects ad overlays and clicks the skip button automatically. Blocks known ad and tracker domains via declarative network rules.
-• Audio Normalizer — Runs a Web Audio gain node on the video output, boosting quiet dialogue up to 300% without clipping loud scenes.
-• Audio-Reactive Glow — Reads bass frequencies from a real-time FFT and pulses the glow brightness in sync with the music.
-• Smart Auto-Pause — Pauses playback when you switch tabs or minimize the window. Resumes when you return.
-• Eye-Care Filters — Adjusts video brightness, contrast, and applies a blue-light (sepia) filter for late-night viewing.
-• Floating Toolbar — Adds a vertical toolbar to the player with one-click Picture-in-Picture and full-resolution PNG screenshot capture.
-• Stats Overlay — Draggable HUD showing true display FPS, dropped frames, video bitrate, codec, and color space.
+• Real-Time Ambient Lighting: Samples frames into a lightweight 64x36 canvas and blurs the edges to project a smooth, color-matched glow. Customize brightness, spread, blur, saturation, or toggle individual sides (top, bottom, left, right).
+• Audio Normalizer & Dialogue Booster: Uses the Web Audio API to boost quiet voices up to 300% while preventing loud explosions or music from clipping your speakers.
+• Audio-Reactive Glow: Reads bass frequencies from a real-time FFT analyzer to pulse the lighting in sync with the beat.
+• Smart Ad Skipping: Automatically detects ad overlays and clicks the skip button. Uses Chrome's fast declarative rules to filter tracker networks without inspecting your private traffic.
+• Smart Tab Auto-Pause: Automatically pauses playback when you switch tabs or minimize the window, and resumes right where you left off when you return.
+• Floating Player Toolbar: Quick-access toolbar beside the player for one-click Picture-in-Picture (PiP) and uncompressed, full-resolution PNG frame screenshots.
+• Live Telemetry HUD: Draggable stats overlay showing true display refresh rate, video FPS, dropped frames, bitrate, codec (VP9/AV1), and color space.
+• Eye-Care Night Filters: Adjusts video contrast, brightness, and adds a warm blue-light filter to keep late-night binge watching comfortable.
+• Letterbox Black Bar Removal: Automatically detects cinematic black bars and scales the video smoothly to fill ultrawide (21:9) or standard displays.
 
-HOW TO USE IT
+PERFORMANCE & PRIVACY
+
+• Zero Battery Drain When Idle: Rendering and audio loops stop immediately when you pause, switch tabs, or leave the watch page.
+• 100% Local & Private: Frame sampling, color math, and audio processing run entirely inside your browser's local memory. No watch history or personal data is ever collected, stored, or sent to any server.
+
+HOW TO USE
 
 1. Install YouTube CineGlow Pro.
-2. Open any YouTube video (dark mode recommended).
-3. Click the CineGlow icon in the toolbar to adjust glow spread, brightness, audio boost, and other settings.
+2. Open any video on YouTube (YouTube dark theme is recommended).
+3. Click the CineGlow icon in your browser toolbar to fine-tune lighting spread, colors, and audio boost.
 4. Settings sync across your Chrome devices automatically.
-
-PRIVACY
-
-Everything runs locally in your browser. No data is collected, stored, or sent to any server. Ad blocking uses declarative rules evaluated by the browser engine — the extension never reads your network traffic. Full details: https://github.com/ManoharVit/YouTube-CineGlow/blob/main/PRIVACY.md
 
 SOURCE CODE
 
