@@ -185,7 +185,8 @@
   // ---------- Per-frame work ----------
 
   function layout(rect) {
-    const scale = settings.spread / 100;
+    // Reduce ambient lighting area by 15%
+    const scale = Math.max(1.0, (settings.spread / 100) * 0.85);
     const w = rect.width * scale;
     const h = rect.height * scale;
     const x = rect.left - (w - rect.width) / 2;
