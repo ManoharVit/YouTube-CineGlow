@@ -107,35 +107,42 @@ html.aura-hide-scrollbar {
 }
 
 /* Clean Cinema Theater Mode (Hide UI & Center Video in Theater Mode) */
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) #masthead-container {
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container {
   display: none !important;
 }
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]) ytd-page-manager {
+html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]:not([fullscreen])) ytd-page-manager {
   margin-top: 0 !important;
   min-height: 100vh !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
 }
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] {
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) {
   min-height: 100vh !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
 }
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #full-bleed-container,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #player-theater-container {
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
   max-height: 100vh !important;
   margin: auto 0 !important;
 }
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #secondary,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater] #below {
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #secondary,
+html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #below {
   display: none !important;
 }
 
+/* Reduced video zoom in theater mode: gives ambient light glow room on all 4 edges */
+html.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
+  transform: scale(0.88) !important;
+  transform-origin: center center !important;
+  transition: transform 0.3s ease !important;
+}
+
 /* Vertically center in standard theater mode when toolbar is present */
-html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater] #full-bleed-container,
-html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater] #player-theater-container {
+html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
+html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
   margin-top: max(0px, calc(((100vh - var(--ytd-toolbar-offset, var(--ytd-toolbar-height, 56px))) - var(--ytd-watch-flexy-player-height, 480px)) / 2)) !important;
   margin-bottom: max(0px, calc(((100vh - var(--ytd-toolbar-offset, var(--ytd-toolbar-height, 56px))) - var(--ytd-watch-flexy-player-height, 480px)) / 2)) !important;
 }
@@ -146,6 +153,7 @@ html.aura-watch-page ytd-watch-flexy:not([theater]):not([fullscreen]) #player-th
   margin: 0 !important;
   height: 0 !important;
   min-height: 0 !important;
+  transform: none !important;
 }
 html.aura-watch-page:not(:has(ytd-watch-flexy[theater])) ytd-page-manager {
   margin-top: var(--ytd-toolbar-height, 56px) !important;
