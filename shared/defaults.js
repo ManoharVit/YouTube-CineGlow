@@ -20,7 +20,7 @@ const AURA_DEFAULTS = Object.freeze({
   opacity: 85,           // Glow opacity, %
   fadeInDuration: 1.5,   // Fade in duration, seconds
   blur: 60,              // Blur radius, px
-  spread: 130,           // Glow size relative to the video, %
+  spread: 110,           // Glow size relative to the video, %
   saturation: 130,       // Color saturation, %
   contrast: 100,         // Color contrast, %
   brightness: 100,       // Glow brightness, %
