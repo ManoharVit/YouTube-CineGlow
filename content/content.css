@@ -13,8 +13,8 @@
   transform-origin: 50% 50%;
   will-change: transform, opacity, filter;
   transition: opacity var(--aura-fade, 1.5s) ease;
-  /* Fade the glow out towards its edges so it never shows a hard rectangle and stays tightly contoured */
-  mask-image: radial-gradient(ellipse at center, #000 20%, rgba(0, 0, 0, 0.85) 45%, rgba(0, 0, 0, 0.35) 68%, transparent 85%);
+  /* Fade the glow out towards its edges so it never shows a hard rectangle. */
+  mask-image: radial-gradient(ellipse farthest-side, #000 50%, transparent 100%);
 }
 
 html.aura-active #aura-ambient-canvas {

@@ -104,12 +104,7 @@ function queueSave(key, value) {
 async function init() {
   let settings = { ...AURA_DEFAULTS };
   try {
-    const stored = await chrome.storage.sync.get(AURA_DEFAULTS);
-    if (stored.spread && !stored.spreadReducedV1) {
-      stored.spread = Math.round(stored.spread * 0.85);
-      await chrome.storage.sync.set({ spread: stored.spread, spreadReducedV1: true });
-    }
-    settings = { ...AURA_DEFAULTS, ...stored };
+    settings = { ...AURA_DEFAULTS, ...(await chrome.storage.sync.get(AURA_DEFAULTS)) };
   } catch (err) {
     console.error('[Aura] Failed to load settings:', err);
   }

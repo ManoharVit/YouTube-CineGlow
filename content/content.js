@@ -185,8 +185,7 @@
   // ---------- Per-frame work ----------
 
   function layout(rect) {
-    // Reduce ambient lighting area by 15%
-    const scale = Math.max(1.0, (settings.spread / 100) * 0.85);
+    const scale = settings.spread / 100;
     const w = rect.width * scale;
     const h = rect.height * scale;
     const x = rect.left - (w - rect.width) / 2;
@@ -333,10 +332,6 @@
   async function loadSettings() {
     try {
       const stored = await chrome.storage.sync.get(AURA_DEFAULTS);
-      if (stored.spread && !stored.spreadReducedV1) {
-        stored.spread = Math.round(stored.spread * 0.85);
-        await chrome.storage.sync.set({ spread: stored.spread, spreadReducedV1: true });
-      }
       settings = { ...AURA_DEFAULTS, ...stored };
     } catch (err) {
       console.warn('[Aura] Could not load settings, using defaults:', err);
