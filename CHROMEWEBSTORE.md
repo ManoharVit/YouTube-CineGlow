@@ -1,6 +1,6 @@
 # Chrome Web Store Listing — YouTube CineGlow Pro
 
-> Last Updated: 2026-10-15
+> Last Updated: 2026-10-17
 
 ## Store Listing
 
@@ -8,46 +8,42 @@
 YouTube CineGlow Pro
 
 **Short Description** [REQUIRED]
-Transform YouTube with real-time cinema ambient lighting, smart ad blocking, volume normalization, and automatic pause.
+Adds live ambient lighting around YouTube videos, skips ads, normalizes audio, and auto-pauses when you switch tabs.
 
 **Detailed Description** [REQUIRED]
-Turn watching YouTube videos into an immersive home-theater experience with dynamic, color-matched ambient lighting and precision playback controls.
-
-YouTube CineGlow Pro projects smooth, real-time ambient lighting around your video player by analyzing video edge colors live. Designed for dark-mode viewing and late-night binge watching, it eliminates harsh screen contrast while giving you full control over video, audio, and performance.
+YouTube CineGlow Pro reads the edge colors from every video frame and projects a soft, color-matched glow onto the page behind the player — like Ambilight for your browser. It works best in dark mode.
 
 KEY FEATURES
 
-• Dynamic Ambient Lighting: Projects soft, real-time color aura around the video player matching the video edges.
-• Directional Light Control: Independently enable or disable lighting on the Top, Bottom, Left, or Right sides of the screen.
-• Smart Ad Skipping: Automatically skips video ads and filters tracker networks without interrupting playback.
-• Audio Normalizer & Booster: Balances quiet dialogue and loud explosions, boosting quiet scenes up to 300%.
-• Audio-Reactive Glow: Pulses ambient lighting dynamically in sync with musical beats and bass frequencies.
-• Smart Auto-Pause: Automatically pauses playback when you switch tabs or minimize the browser, and resumes when you return.
-• Late-Night Eye Care: Adjusts video brightness, contrast, and applies blue-light filtering to reduce eye fatigue.
-• Floating Video Toolbar: Quick-access controls for instant Picture-in-Picture and full-resolution uncompressed PNG screenshot capture.
-• Draggable Stats Overlay: Live display of true display FPS, video dropped frames, and render timings.
+• Ambient Lighting — Samples each frame and casts a live color glow around all four sides of the video. You can toggle individual sides on or off.
+• Ad Skipping — Detects ad overlays and clicks the skip button automatically. Blocks known ad and tracker domains via declarative network rules.
+• Audio Normalizer — Runs a Web Audio gain node on the video output, boosting quiet dialogue up to 300% without clipping loud scenes.
+• Audio-Reactive Glow — Reads bass frequencies from a real-time FFT and pulses the glow brightness in sync with the music.
+• Smart Auto-Pause — Pauses playback when you switch tabs or minimize the window. Resumes when you return.
+• Eye-Care Filters — Adjusts video brightness, contrast, and applies a blue-light (sepia) filter for late-night viewing.
+• Floating Toolbar — Adds a vertical toolbar to the player with one-click Picture-in-Picture and full-resolution PNG screenshot capture.
+• Stats Overlay — Draggable HUD showing true display FPS, dropped frames, video bitrate, codec, and color space.
 
 HOW TO USE IT
 
 1. Install YouTube CineGlow Pro.
-2. Open any video on YouTube (ensure YouTube is in Dark Theme for optimal visuals).
-3. Click the CineGlow Pro icon in your browser toolbar to fine-tune lighting spread, brightness, audio boost, and auto-pause settings.
-4. Settings apply immediately and synchronize across all your Chrome devices.
+2. Open any YouTube video (dark mode recommended).
+3. Click the CineGlow icon in the toolbar to adjust glow spread, brightness, audio boost, and other settings.
+4. Settings sync across your Chrome devices automatically.
 
-PRIVACY & PERFORMANCE
+PRIVACY
 
-All lighting calculations, frame processing, and audio normalization happen entirely on your computer in local memory. CineGlow Pro never collects, stores, or transmits your personal data, watch history, or browsing activity. Animation loops instantly halt when videos are paused or tabs are switched to ensure zero unnecessary battery drain.
+Everything runs locally in your browser. No data is collected, stored, or sent to any server. Ad blocking uses declarative rules evaluated by the browser engine — the extension never reads your network traffic. Full details: https://github.com/ManoharVit/YouTube-CineGlow/blob/main/PRIVACY.md
 
-SUPPORT & SOURCE CODE
+SOURCE CODE
 
-YouTube CineGlow Pro is open source:
-GitHub: https://github.com/ManoharVit/YouTube-CineGlow
+YouTube CineGlow Pro is open source: https://github.com/ManoharVit/YouTube-CineGlow
 
 **Category** [REQUIRED]
 Photos
 
 **Single Purpose** [REQUIRED]
-Projects real-time ambient lighting around YouTube videos and enhances playback with volume balancing and automatic pause controls.
+Projects live ambient lighting around YouTube videos and adds playback controls for volume normalization and automatic pause.
 
 **Primary Language** [REQUIRED]
 English
@@ -67,20 +63,19 @@ English
 | Screenshot 4 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_4_theatre_mode.png` |
 | Screenshot 5 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_5_frame_snap.png` |
 | Small Promo Tile [RECOMMENDED] | 440×280 PNG | Ready | `store_assets/promo_tile_440x280.png` |
-| Marquee Promo Tile | 1400×560 | Optional | Large store header banner |
 
 ---
 
 ## Permissions Justification
 
-| Permission | Type | Justification |
+| Permission | Type | Why it's needed |
 |---|---|---|
-| `storage` | permissions | Stores and synchronizes user preferences (glow intensity, brightness, audio boost level, auto-pause mode) across sessions via Chrome Sync. |
-| `declarativeNetRequest` | permissions | Blocks ad network segments and tracking endpoints on YouTube video streams without accessing or inspecting user network payload. |
-| `scripting` | permissions | Configures client-side video playback profiles and codec settings within the YouTube page context. |
-| `downloads` | permissions | Enables users to save high-resolution, uncompressed video frame screenshots to their local Downloads folder upon clicking the toolbar camera button. |
-| `*://*.youtube.com/*` | host_permissions | Allows the extension to sample video frames for ambient lighting, inject player controls, and monitor playback state on YouTube watch pages. |
-| `*://*.googlevideo.com/*` | host_permissions | Required for declarativeNetRequest rules to intercept and filter ad stream segments from YouTube video delivery servers. |
+| `storage` | permissions | Saves user preferences (glow settings, audio boost level, auto-pause mode) and syncs them across Chrome sessions. |
+| `declarativeNetRequest` | permissions | Blocks ad and tracker network requests on YouTube without reading or logging any request payload. |
+| `scripting` | permissions | Registers a MAIN-world content script at runtime to override codec capability reporting for codec-blocking features. |
+| `downloads` | permissions | Saves full-resolution PNG screenshots to the user's Downloads folder when they click the toolbar camera button. |
+| `*://*.youtube.com/*` | host_permissions | Lets the extension inject content scripts that sample video frames, add player controls, and monitor playback state. |
+| `*://*.googlevideo.com/*` | host_permissions | Required by declarativeNetRequest to match and block ad stream segments served from YouTube's video CDN. |
 
 ---
 
@@ -121,7 +116,7 @@ https://github.com/ManoharVit/YouTube-CineGlow/blob/main/PRIVACY.md
 
 | Version | Date | Changes | Status |
 |---|---|---|---|
-| 2.1.2 | 2026-10-17 | Refined compact popup UI (-20% width), full-resolution store screenshots, creator badge update, black bar auto-crop improvements | Ready to Submit |
-| 2.1.0 | 2026-10-15 | Modern glassmorphism UI, Smart Auto-Pause, vertical floating toolbar, Web Audio normalizer, eye care filters, MIT license | Published |
-| 2.0.0 | 2026-10-09 | Stats overlay and PiP controls | Archived |
+| 2.1.2 | 2026-10-17 | Compact popup (-20% width), full-res store screenshots, creator badge shortened, black bar crop fixes | Ready to Submit |
+| 2.1.0 | 2026-10-15 | New popup UI, Smart Auto-Pause, floating toolbar, Web Audio normalizer, eye-care filters, MIT license | Published |
+| 2.0.0 | 2026-10-09 | Stats overlay, PiP controls | Archived |
 | 1.0.0 | 2026-10-05 | Initial release | Archived |

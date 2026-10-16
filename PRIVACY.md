@@ -1,39 +1,30 @@
-# Privacy Policy for YouTube CineGlow Pro
+# Privacy Policy — YouTube CineGlow Pro
 
-Last updated: October 15, 2026
+Last updated: October 17, 2026
 
-YouTube CineGlow Pro ("we", "our", or "the extension") is developed by Giri Manohar Vemula. We respect your privacy and are committed to protecting it.
+YouTube CineGlow Pro is developed by Giri Manohar Vemula. This document explains what data the extension accesses and how it handles that data.
 
-## 1. No Personal Data Collection
+## No Data Collection
 
-YouTube CineGlow Pro does not collect, track, log, or sell any personal information, browsing history, keystrokes, or user identifiers.
+The extension does not collect, store, or transmit any personal information. It does not track browsing history, record keystrokes, or assign user identifiers.
 
-## 2. Local Data Storage
+## What Gets Stored Locally
 
-The extension uses `chrome.storage.sync` strictly to persist your customized preferences across your browser sessions, including:
-- Ambient lighting settings (glow intensity, spread, blur, saturation, brightness)
-- Directional glow toggles
-- Audio normalization and boost levels
-- Preferred video resolution settings
-- Smart Auto-Pause mode selection
-- Quality overlay and toolbar display preferences
-- Total skipped ad counter
+Your settings — glow intensity, blur radius, audio boost level, preferred resolution, auto-pause mode, and similar preferences — are saved using `chrome.storage.sync`. This keeps your configuration consistent across Chrome sessions on the same Google account. Nothing leaves Chrome's built-in sync mechanism.
 
-All stored preferences remain entirely on your device and are synchronized solely through your personal Google Account via standard Chrome synchronization. No data is ever transmitted to external servers or third-party databases.
+## How Network and Media Are Handled
 
-## 3. Network and Content Handling
+- **Ad blocking** uses `declarativeNetRequest` rules. The browser engine evaluates these rules internally. The extension never reads or logs your network traffic.
+- **Frame sampling** for the ambient glow copies pixels from the `<video>` element into a small in-memory canvas. No frames are saved, uploaded, or sent anywhere.
+- **Audio normalization** connects Web Audio API nodes to the video element in local memory. No audio data is recorded or transmitted.
+- **Screenshots** render a single video frame to a `<canvas>`, convert it to PNG, and trigger a download to your local machine. The image data never leaves your browser.
 
-- **Declarative Network Requests**: The extension uses declarative network filtering rules to block known video advertising and analytics requests directly within the browser engine without reading or logging your network payload.
-- **Local Media Processing**: Frame sampling for ambient lighting and audio normalization via the Web Audio API operate entirely in real-time in your local browser memory. No audio, video, or image data is ever recorded, stored, or sent off-device.
-- **Local Screenshots**: Video screenshots captured using the toolbar are converted to PNG in your browser's local memory and downloaded directly to your computer.
+## Third-Party Services
 
-## 4. Third-Party Services
+None. The extension contains no analytics SDKs, advertising libraries, or external telemetry of any kind.
 
-The extension does not integrate any third-party analytics (such as Google Analytics or Mixpanel), advertising networks, or external telemetry libraries.
+## Contact
 
-## 5. Contact
-
-If you have any questions or feedback regarding this privacy policy, you can contact the developer:
 - **Developer**: Giri Manohar Vemula
 - **Email**: girimanohar.v@gmail.com
 - **GitHub**: [https://github.com/ManoharVit/YouTube-CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)

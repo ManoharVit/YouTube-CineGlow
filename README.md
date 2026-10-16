@@ -1,34 +1,34 @@
 # YouTube CineGlow Pro
 
-> **Version 2.1.2 Pro** — Cinematic ambient edge lighting, real-time playback telemetry HUD, floating toolbar, and precision controls for YouTube.
+I got tired of watching YouTube in a dark room and staring at a bright rectangle floating in blackness. CineGlow fixes that. It reads the edge colors from every video frame and projects a soft, color-matched glow onto the page behind the player — the same idea as Ambilight TVs, but running entirely inside a Chrome extension.
 
-I built YouTube CineGlow to turn watching videos in dark rooms into an immersive, theater-like experience. While building full-stack web applications and working through my computer science coursework, I grew frustrated with static web video players and the distracting glare of high-contrast screens. CineGlow samples frames directly from the HTML5 video element, calculates the dominant edge colors, and casts a live, smooth ambient aura onto the page around the player.
+Along the way I added the other things I kept wishing YouTube had: ad skipping, a volume normalizer that stops explosions from blowing out my speakers, auto-pause when I switch tabs, and a one-click PiP button that YouTube hides behind a double right-click.
 
 ## Showcase
 
-| Cinema Ambient Lighting | Modern Glassmorphism Controls |
-|:---:|:---:|
 | ![Ambient Lighting](store_assets/screenshot_1_ambient_lighting.png) | ![Settings Popup](store_assets/screenshot_2_settings_popup.png) |
-
-| Real-Time Telemetry HUD | Theatre Mode Lighting |
 |:---:|:---:|
-| ![Stats Overlay](store_assets/screenshot_3_stats_overlay.png) | ![Theatre Mode](store_assets/screenshot_4_theatre_mode.png) |
+| Ambient glow reacting to video edge colors | Settings popup with glow, video, and audio controls |
 
-| Floating Toolbar & 4K Frame Snap |
-|:---:|
+| ![Stats Overlay](store_assets/screenshot_3_stats_overlay.png) | ![Theatre Mode](store_assets/screenshot_4_theatre_mode.png) |
+|:---:|:---:|
+| Live telemetry: FPS, dropped frames, bitrate, codec | Full-page theatre mode with edge lighting |
+
 | ![Floating Toolbar](store_assets/screenshot_5_frame_snap.png) |
+|:---:|
+| Floating toolbar with PiP toggle and lossless PNG screenshot capture |
 
 ## What It Does
 
-- Projects ambient lighting around the video player by sampling frames into a small canvas and blurring the edges with CSS filters.
-- Skips video ads and blocks tracker networks using declarative network rules and player skip events.
-- Adds a floating vertical toolbar to the player for one-click Picture-in-Picture and full-resolution PNG screenshots.
-- Normalizes uneven audio and amplifies quiet dialogue up to 300% through the Web Audio API.
-- Pulses the ambient glow in sync with bass frequencies using real-time audio frequency analysis.
-- Pauses playback when you switch tabs, minimize the window, or switch applications, and resumes when you return.
-- Applies night mode blue-light filters and custom contrast or brightness adjustments directly to the video element.
-- Detects letterbox black bars and scales the video to fill ultrawide 21:9 or standard displays.
-- Displays real-time playback metrics, dropped frames, bitrate, and rendering latency in a draggable stats overlay HUD.
+- Samples each video frame into a 64×36 offscreen canvas, blurs and stretches the result behind the player to create a live ambient glow.
+- Skips video ads and blocks tracker network requests using Manifest V3 declarative rules.
+- Injects a floating toolbar next to the player with buttons for Picture-in-Picture and full-resolution PNG frame capture.
+- Normalizes audio through a Web Audio gain node, boosting quiet dialogue up to 300% without clipping.
+- Pulses the glow brightness in sync with bass frequencies by reading a real-time FFT from the audio stream.
+- Pauses playback when you leave the tab or minimize the window. Resumes when you come back.
+- Applies per-video brightness, contrast, and blue-light (sepia) filters for late-night viewing.
+- Detects letterbox black bars on cinematic content and zooms the video to fill the screen.
+- Overlays a draggable stats HUD showing true display FPS, dropped frames, bitrate, codec, and color space.
 
 ## Installation
 
@@ -36,40 +36,45 @@ I built YouTube CineGlow to turn watching videos in dark rooms into an immersive
    ```bash
    git clone https://github.com/ManoharVit/YouTube-CineGlow.git
    ```
-2. Open Google Chrome and navigate to `chrome://extensions`.
-3. Turn on **Developer mode** in the top-right corner.
-4. Click **Load unpacked** and select the extension directory.
-5. Open any video on [YouTube](https://www.youtube.com). For the best visual effect, set YouTube to dark mode.
+2. Open Chrome → `chrome://extensions` → enable **Developer mode**.
+3. Click **Load unpacked** and select the cloned folder.
+4. Play any YouTube video. Dark mode gives the best visual result.
 
-## How the Engine Works
+## How the Rendering Works
 
-- **Frame Sampling**: During playback, the engine copies the active video frame to an offscreen 64×36 canvas to extract edge colors.
-- **Temporal Smoothing**: The renderer blends new color values into previous frames using exponential moving averages, preventing flickering during rapid scene changes.
-- **Canvas & Blur**: A fixed canvas sits behind the video player (`z-index: -1`), using CSS blur and scale filters to stretch the lighting past the video boundaries.
-- **Playback Lifecycle**: Animation and audio loops stop immediately when playback pauses, when switching tabs, or when leaving the watch page, keeping the browser idle.
+1. **Sample** — On each animation frame, `drawImage()` copies the current video frame onto a tiny 64×36 canvas.
+2. **Smooth** — New pixel values are blended into the previous frame using an exponential moving average, which prevents flickering during fast cuts.
+3. **Display** — The canvas is scaled larger than the video and placed behind it (`z-index: -1`). CSS `blur()` and `saturate()` filters spread the color outward to produce the glow.
+4. **Idle** — The rendering loop stops the moment the video pauses, the tab loses focus, or the user navigates away from the watch page. No background CPU burn.
 
 ## Project Structure
 
-- `manifest.json`: Manifest V3 configuration defining extension permissions, service worker, and content scripts.
-- `content/player-manager.js`: Tracks video lifecycle events and handles YouTube single-page navigation without page reloads.
-- `content/content.js` & `content/content.css`: Renders the glow canvas and adjusts page element transparency.
-- `content/pip-button.js` & `content/screenshot-button.js`: Injects the floating toolbar and captures uncompressed video frames to PNG.
-- `content/stats-overlay.js` & `content/stats-overlay.css`: Real-time telemetry HUD displaying display FPS, dropped frames, bitrate, and codec diagnostics.
-- `content/blackbar.js`: Detects letterbox black bars and automatically scales the video to fill the screen.
-- `content/smart-pause.js`: Monitors tab visibility and window focus to pause and resume playback automatically.
-- `content/audio-processor.js`: Connects Web Audio gain and analyser nodes for volume boosting and beat detection.
-- `popup/`: Houses the glassmorphism settings menu, category navigation, and control toggles.
-- `store_assets/`: High-resolution graphics, promo tile, and full 3K Retina showcase screenshots.
-- `rules/adblock.json`: Declarative network request rules for blocking video ads and trackers.
-- `shared/defaults.js`: Defines default configuration values across scripts and storage.
+```
+manifest.json              Manifest V3 config: permissions, service worker, content scripts
+background/background.js   Service worker handling codec script registration and messaging
+content/
+  player-manager.js        Centralized player lifecycle — detects video/SPA changes via URL tracking
+  content.js + content.css Glow renderer: canvas sampling, blur, layout, and CSS variables
+  stats-overlay.js + .css  Draggable HUD: display FPS, dropped frames, bitrate, codec info
+  blackbar.js              Letterbox detection via pixel scanning on a downscaled canvas
+  pip-button.js            Injects a PiP toggle button into the YouTube player controls
+  screenshot-button.js     Floating toolbar button that captures lossless PNG frames
+  audio-processor.js       Web Audio gain/analyser nodes for volume boost and beat detection
+  smart-pause.js           Pauses playback on tab switch or window minimize
+  youtube-ads.js           Ad overlay detection and skip-button automation
+  youtube-quality.js       Forces preferred resolution on video load
+  main-world.js            MAIN-world script for codec capability overrides
+popup/
+  popup.html + .css + .js  Extension popup: category tabs, sliders, toggles, direction pad
+shared/defaults.js         Single source of truth for all default setting values
+rules/adblock.json         Declarative network request rules blocking ad/tracker domains
+store_assets/              Screenshots and promo graphics for the Chrome Web Store listing
+```
 
 ## Author
 
-- **Developer**: G.Manohar.V (Giri Manohar Vemula)
-- **GitHub**: [@ManoharVit](https://github.com/ManoharVit)
-- **LinkedIn**: [in/manohar511](https://www.linkedin.com/in/manohar511/)
-- **Repository**: [YouTube-CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)
+**G.Manohar.V** · [@ManoharVit](https://github.com/ManoharVit) · [LinkedIn](https://www.linkedin.com/in/manohar511/)
 
 ## License
 
-[MIT License](LICENSE) © 2026 Giri Manohar Vemula
+[MIT](LICENSE) © 2026 Giri Manohar Vemula

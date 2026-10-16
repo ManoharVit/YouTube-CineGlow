@@ -1,39 +1,38 @@
 // Default settings shared by the content script and the popup.
-// Loaded as a classic script, so this constant is visible to scripts loaded after it.
 const AURA_DEFAULTS = Object.freeze({
-  enabled: true,         // Ambient light switch
-  adblockEnabled: true,  // Ad blocker switch
-  adblockCount: 0,       // Lifetime blocked ads counter
-  qualityEnabled: false, // Auto-HD switch
-  statsEnabled: false,   // Quality stats overlay switch
-  preferredQuality: 'hd1080', // Target resolution
-  blockAV1: false,       // Codec Blocker: AV1
-  blockVP9: false,       // Codec Blocker: VP9
-  block60fps: false,     // Codec Blocker: 60fps
-  hideInTheater: false,  // Hide UI in theater mode
-  hideScrollbar: false,  // Hide the browser scrollbar
-  enableInPiP: false,    // Keep glow in Picture-in-Picture
-  glowTop: true,         // Glow direction Top
-  glowRight: true,       // Glow direction Right
-  glowBottom: true,      // Glow direction Bottom
-  glowLeft: true,        // Glow direction Left
-  opacity: 85,           // Glow opacity, %
-  fadeInDuration: 1.5,   // Fade in duration, seconds
-  blur: 60,              // Blur radius, px
-  spread: 130,           // Glow size relative to the video, %
-  saturation: 130,       // Color saturation, %
-  contrast: 100,         // Color contrast, %
-  brightness: 100,       // Glow brightness, %
-  smoothness: 60,        // Temporal smoothing between frames, %
-  removeBlackBars: false, // Zoom video to remove letterboxing
-  fps: 30,               // Max glow updates per second
-  audioNormalizer: false,// Balance loud & quiet sounds
-  audioBoost: 100,       // Volume boost percentage
-  audioReactive: false,  // Audio-Reactive Glow (Beat Sync)
-  lightsOut: false,      // "Lights Out" Cinema Mode
-  ultrawideZoom: false,  // Ultrawide "Zoom-to-Fit"
-  videoBrightness: 100,  // Video Eye-Care: Brightness
-  videoContrast: 100,    // Video Eye-Care: Contrast
-  videoSepia: 0,         // Video Eye-Care: Blue-Light Filter (Sepia)
-  autoPauseMode: 'off'   // Auto-pause mode: 'off' | 'tab' | 'app'
+  enabled: true,
+  adblockEnabled: true,
+  adblockCount: 0,
+  qualityEnabled: false,
+  statsEnabled: false,
+  preferredQuality: 'hd1080',
+  blockAV1: false,
+  blockVP9: false,
+  block60fps: false,
+  hideInTheater: false,
+  hideScrollbar: false,
+  enableInPiP: false,
+  glowTop: true,
+  glowRight: true,
+  glowBottom: true,
+  glowLeft: true,
+  opacity: 85,           // %
+  fadeInDuration: 1.5,   // seconds
+  blur: 60,              // px
+  spread: 130,           // % of video size
+  saturation: 130,       // %
+  contrast: 100,         // %
+  brightness: 100,       // %
+  smoothness: 60,        // % — temporal blend between frames
+  removeBlackBars: false,
+  fps: 30,               // max glow updates per second
+  audioNormalizer: false,
+  audioBoost: 100,       // %
+  audioReactive: false,
+  lightsOut: false,
+  ultrawideZoom: false,
+  videoBrightness: 100,  // %
+  videoContrast: 100,    // %
+  videoSepia: 0,         // % — acts as blue-light filter
+  autoPauseMode: 'off'   // 'off' | 'tab' | 'app'
 });
