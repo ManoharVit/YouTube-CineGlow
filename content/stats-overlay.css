@@ -16,8 +16,8 @@
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   user-select: none;
-  min-width: 310px;
-  max-width: 360px;
+  min-width: 320px;
+  max-width: 380px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
@@ -131,8 +131,9 @@
 
 .aura-stat-val-row {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -140,16 +141,20 @@
 
 .aura-stat-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   color: #f1f5f9;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .aura-stat-unit {
   font-size: 10px;
   color: #94a3b8;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .aura-stat-badge {
@@ -160,6 +165,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  flex-shrink: 0;
 }
 
 .aura-badge-green {
@@ -184,6 +190,12 @@
   background: rgba(239, 68, 68, 0.2);
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.aura-badge-purple {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
 /* Collapsible Graph Section */

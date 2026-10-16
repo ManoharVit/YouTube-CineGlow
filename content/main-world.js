@@ -80,13 +80,13 @@
       if (player && typeof player.getStatsForNerds === 'function') {
         const s = player.getStatsForNerds();
         if (s) {
-          stats = {
-            codecs: s.codecs || '',
-            resolution: s.resolution || '',
-            color: s.color || '',
-            optimal_format: s.optimal_format || '',
-            fmt: s.fmt || ''
-          };
+          stats = {};
+          for (const k in s) {
+            const v = s[k];
+            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+              stats[k] = v;
+            }
+          }
         }
       }
       window.postMessage({

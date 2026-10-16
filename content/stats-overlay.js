@@ -227,16 +227,43 @@
     cRes.row.appendChild(refs.resBadge);
     grid.appendChild(cRes.card);
 
-    // Card 4: Codec & Color
-    const cCodec = createCard('Codec');
+    // Card 4: Bitrate / Connection Speed
+    const cBitrate = createCard('Bitrate / Net');
+    refs.bitrateVal = cBitrate.val;
+    refs.bitrateBadge = document.createElement('span');
+    refs.bitrateBadge.className = 'aura-stat-badge aura-badge-blue';
+    refs.bitrateBadge.textContent = 'NET';
+    cBitrate.row.appendChild(refs.bitrateBadge);
+    grid.appendChild(cBitrate.card);
+
+    // Card 5: Codec & Audio
+    const cCodec = createCard('Codec & Audio');
     refs.codecVal = cCodec.val;
+    refs.audioBadge = document.createElement('span');
+    refs.audioBadge.className = 'aura-stat-badge aura-badge-blue';
+    refs.audioBadge.textContent = 'Opus';
+    cCodec.row.appendChild(refs.audioBadge);
+    grid.appendChild(cCodec.card);
+
+    // Card 6: Color Space & HDR
+    const cColor = createCard('Color Space');
+    refs.colorVal = cColor.val;
     refs.hdrBadge = document.createElement('span');
     refs.hdrBadge.className = 'aura-stat-badge aura-badge-blue';
     refs.hdrBadge.textContent = 'SDR';
-    cCodec.row.appendChild(refs.hdrBadge);
-    grid.appendChild(cCodec.card);
+    cColor.row.appendChild(refs.hdrBadge);
+    grid.appendChild(cColor.card);
 
-    // Card 5: Dropped Frames
+    // Card 7: Buffer Health
+    const cBuffer = createCard('Buffer Health');
+    refs.bufferVal = cBuffer.val;
+    refs.bufferBadge = document.createElement('span');
+    refs.bufferBadge.className = 'aura-stat-badge aura-badge-green';
+    refs.bufferBadge.textContent = 'HEALTHY';
+    cBuffer.row.appendChild(refs.bufferBadge);
+    grid.appendChild(cBuffer.card);
+
+    // Card 8: Dropped Frames
     const cDrop = createCard('Dropped Frames');
     refs.dropVal = cDrop.val;
     refs.dropBadge = document.createElement('span');
@@ -245,7 +272,7 @@
     cDrop.row.appendChild(refs.dropBadge);
     grid.appendChild(cDrop.card);
 
-    // Card 6: Ambient Engine (Full Width)
+    // Card 9: Ambient Engine (Full Width)
     const cAmbient = createCard('Ambient Glow', '', true);
     refs.ambientVal = cAmbient.val;
     refs.ambientUnit = document.createElement('span');
@@ -538,28 +565,150 @@
       refs.resBadge.className = `aura-stat-badge ${badgeClass}`;
     }
 
-    // 4. Codec & HDR/SDR
-    if (refs.codecVal) {
-      let codecName = 'AVC';
-      if (nerdStats && nerdStats.codecs) {
-        const c = nerdStats.codecs.toLowerCase();
-        if (c.includes('av01') || c.includes('av1')) codecName = 'AV1';
-        else if (c.includes('vp09') || c.includes('vp9')) codecName = 'VP9';
-        else if (c.includes('avc') || c.includes('h264')) codecName = 'AVC';
+    // 4. Bitrate / Net Bandwidth
+    let speedStr = '--';
+    let speedBadge = 'NET';
+    let speedClass = 'aura-badge-blue';
+
+    const bwRaw = nerdStats ? (nerdStats.bandwidth_kbps || nerdStats.bandwidth || nerdStats.connection_speed) : null;
+    if (bwRaw) {
+      const kbps = typeof bwRaw === 'number' ? bwRaw : parseFloat(String(bwRaw).replace(/[^0-9.]/g, ''));
+      if (!isNaN(kbps) && kbps > 0) {
+        if (kbps >= 1000) {
+          speedStr = `${(kbps / 1000).toFixed(1)} Mbps`;
+        } else {
+          speedStr = `${Math.round(kbps)} Kbps`;
+        }
+        if (kbps >= 50000) {
+          speedBadge = 'ULTRA';
+          speedClass = 'aura-badge-purple';
+        } else if (kbps >= 15000) {
+          speedBadge = 'FAST';
+          speedClass = 'aura-badge-green';
+        } else if (kbps >= 4000) {
+          speedBadge = 'GOOD';
+          speedClass = 'aura-badge-blue';
+        } else {
+          speedBadge = 'LOW';
+          speedClass = 'aura-badge-amber';
+        }
       }
-      refs.codecVal.textContent = codecName;
     }
-    if (refs.hdrBadge) {
-      let isHDR = false;
-      if (nerdStats && nerdStats.color) {
-        const col = nerdStats.color.toLowerCase();
-        isHDR = col.includes('2084') || col.includes('bt2020') || col.includes('arib') || col.includes('hlg') || col.includes('pq');
-      }
-      refs.hdrBadge.textContent = isHDR ? 'HDR' : 'SDR';
-      refs.hdrBadge.className = `aura-stat-badge ${isHDR ? 'aura-badge-amber' : 'aura-badge-blue'}`;
+    if (refs.bitrateVal) refs.bitrateVal.textContent = speedStr;
+    if (refs.bitrateBadge) {
+      refs.bitrateBadge.textContent = speedBadge;
+      refs.bitrateBadge.className = `aura-stat-badge ${speedClass}`;
     }
 
-    // 5. Dropped Frames & Rate
+    // 5. Codec & Audio
+    let videoCodec = 'AVC';
+    let audioCodec = 'AAC';
+    if (nerdStats && nerdStats.codecs) {
+      const parts = String(nerdStats.codecs).toLowerCase().split('/');
+      const vPart = parts[0] || '';
+      const aPart = parts[1] || '';
+
+      if (vPart.includes('av01') || vPart.includes('av1')) {
+        videoCodec = 'AV1';
+      } else if (vPart.includes('vp09') || vPart.includes('vp9')) {
+        videoCodec = 'VP9';
+      } else if (vPart.includes('avc') || vPart.includes('h264')) {
+        videoCodec = 'AVC';
+      }
+
+      if (aPart.includes('opus')) {
+        audioCodec = 'Opus';
+      } else if (aPart.includes('mp4a') || aPart.includes('aac')) {
+        audioCodec = 'AAC';
+      } else if (aPart.includes('vorbis')) {
+        audioCodec = 'Vorbis';
+      }
+    }
+    if (refs.codecVal) refs.codecVal.textContent = videoCodec;
+    if (refs.audioBadge) {
+      refs.audioBadge.textContent = audioCodec;
+      refs.audioBadge.className = 'aura-stat-badge aura-badge-blue';
+    }
+
+    // 6. Color Space & HDR
+    let colorSpace = 'BT.709';
+    let colorBadge = 'SDR';
+    let colorClass = 'aura-badge-blue';
+
+    if (nerdStats && nerdStats.color) {
+      const col = String(nerdStats.color).toLowerCase();
+      if (col.includes('bt2020')) {
+        colorSpace = 'BT.2020';
+      } else if (col.includes('dci-p3') || col.includes('p3')) {
+        colorSpace = 'DCI-P3';
+      } else if (col.includes('bt709') || col.includes('709')) {
+        colorSpace = 'BT.709';
+      } else if (col.includes('srgb')) {
+        colorSpace = 'sRGB';
+      }
+
+      if (col.includes('2084') || col.includes('pq')) {
+        colorBadge = 'HDR10';
+        colorClass = 'aura-badge-amber';
+      } else if (col.includes('arib') || col.includes('hlg')) {
+        colorBadge = 'HLG';
+        colorClass = 'aura-badge-amber';
+      } else if (col.includes('bt2020')) {
+        colorBadge = 'HDR';
+        colorClass = 'aura-badge-amber';
+      } else {
+        colorBadge = 'SDR';
+        colorClass = 'aura-badge-blue';
+      }
+    }
+    if (refs.colorVal) refs.colorVal.textContent = colorSpace;
+    if (refs.hdrBadge) {
+      refs.hdrBadge.textContent = colorBadge;
+      refs.hdrBadge.className = `aura-stat-badge ${colorClass}`;
+    }
+
+    // 7. Buffer Health
+    let bufferAhead = 0;
+    if (video && video.buffered && video.buffered.length > 0) {
+      const cur = video.currentTime;
+      for (let i = 0; i < video.buffered.length; i++) {
+        if (cur >= video.buffered.start(i) && cur <= video.buffered.end(i)) {
+          bufferAhead = Math.max(0, video.buffered.end(i) - cur);
+          break;
+        }
+      }
+    }
+    if (!bufferAhead && nerdStats) {
+      const bRaw = nerdStats.buffer_health_seconds || nerdStats.buffer_health;
+      if (bRaw) {
+        const b = parseFloat(String(bRaw).replace(/[^0-9.]/g, ''));
+        if (!isNaN(b)) bufferAhead = b;
+      }
+    }
+
+    let bufferBadge = 'HEALTHY';
+    let bufferClass = 'aura-badge-green';
+    if (bufferAhead >= 15) {
+      bufferBadge = 'HEALTHY';
+      bufferClass = 'aura-badge-green';
+    } else if (bufferAhead >= 6) {
+      bufferBadge = 'GOOD';
+      bufferClass = 'aura-badge-blue';
+    } else if (bufferAhead > 1) {
+      bufferBadge = 'LOW';
+      bufferClass = 'aura-badge-amber';
+    } else {
+      bufferBadge = (video && video.paused) ? 'PAUSED' : 'STALL';
+      bufferClass = 'aura-badge-red';
+    }
+
+    if (refs.bufferVal) refs.bufferVal.textContent = `${bufferAhead.toFixed(1)}s`;
+    if (refs.bufferBadge) {
+      refs.bufferBadge.textContent = bufferBadge;
+      refs.bufferBadge.className = `aura-stat-badge ${bufferClass}`;
+    }
+
+    // 8. Dropped Frames & Rate
     if (refs.dropVal) {
       refs.dropVal.textContent = String(droppedFrames);
     }
@@ -576,7 +725,7 @@
       refs.dropBadge.className = `aura-stat-badge ${dropClass}`;
     }
 
-    // 6. Ambient Glow Engine
+    // 9. Ambient Glow Engine
     if (refs.ambientVal) {
       refs.ambientVal.textContent = `${lastGlowFps.toFixed(2)} FPS`;
     }
