@@ -70,4 +70,29 @@
       console.error('[Aura Main World] Format extraction error:', err);
     }
   });
+
+  // --- 4. Stats for Nerds / Codec Info Extractor ---
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || event.data.type !== 'CINEGLOW_GET_STATS_NERDS') return;
+    try {
+      const player = document.getElementById('movie_player');
+      let stats = null;
+      if (player && typeof player.getStatsForNerds === 'function') {
+        const s = player.getStatsForNerds();
+        if (s) {
+          stats = {
+            codecs: s.codecs || '',
+            resolution: s.resolution || '',
+            color: s.color || '',
+            optimal_format: s.optimal_format || '',
+            fmt: s.fmt || ''
+          };
+        }
+      }
+      window.postMessage({
+        type: 'CINEGLOW_STATS_NERDS_RESPONSE',
+        stats: stats
+      }, '*');
+    } catch (e) {}
+  });
 })();

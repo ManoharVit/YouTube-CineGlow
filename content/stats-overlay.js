@@ -6,7 +6,16 @@
   let video = null;
   let updateInterval = 0;
   
+  let isGraphCollapsed = true;
+  try {
+    const saved = localStorage.getItem('cineglow_hud_graph_collapsed');
+    if (saved !== null) {
+      isGraphCollapsed = saved === 'true';
+    }
+  } catch (e) {}
+
   let refs = {};
+  let nerdStats = null;
 
   // Stats State
   let lastTime = 0;
@@ -26,22 +35,30 @@
   let lastDisplayFrames = 0;
   let lastDisplayFps = 0;
 
+  // Listen for Stats for Nerds response from MAIN world
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || !event.data || event.data.type !== 'CINEGLOW_STATS_NERDS_RESPONSE') return;
+    nerdStats = event.data.stats || null;
+  });
+
   function onRvfc(now, metadata) {
     if (!updateInterval) return;
     rvfcFrames++;
     
-    videoFrameTimes.push({
-      decode: metadata.presentationTime,
-      present: metadata.presentationTime,
-      compose: performance.now(),
-      receive: now,
-      display: metadata.expectedDisplayTime
-    });
-    
-    if (videoFrameTimes.length > 120) {
-      const dropped = videoFrameTimes.shift();
-      frameTimes.push({ video: dropped });
-      if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
+    if (!isGraphCollapsed) {
+      videoFrameTimes.push({
+        decode: metadata.presentationTime,
+        present: metadata.presentationTime,
+        compose: performance.now(),
+        receive: now,
+        display: metadata.expectedDisplayTime
+      });
+      
+      if (videoFrameTimes.length > 120) {
+        const dropped = videoFrameTimes.shift();
+        frameTimes.push({ video: dropped });
+        if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
+      }
     }
 
     if (video) {
@@ -66,33 +83,36 @@
     
     displayFrames++;
     
-    let currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
-    if (currentRenderCount !== lastSeenRenderCount) {
-      lastSeenRenderCount = currentRenderCount;
-      const vf = videoFrameTimes[videoFrameTimes.length - 1];
-      
-      let ft = {
-        video: vf,
-        drawStart: window.CineGlowMetrics.lastDrawStart,
-        drawEnd: window.CineGlowMetrics.lastDrawEnd,
-        display: now,
-        complete: performance.now()
-      };
-      
-      if (vf) {
-        const idx = videoFrameTimes.indexOf(vf);
-        if (idx !== -1) {
-          const droppedVideoFrameTimes = videoFrameTimes.splice(0, idx + 1);
-          droppedVideoFrameTimes.pop();
-          for (const video of droppedVideoFrameTimes) {
-            frameTimes.push({ video });
+    if (!isGraphCollapsed) {
+      let currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
+      if (currentRenderCount !== lastSeenRenderCount) {
+        lastSeenRenderCount = currentRenderCount;
+        const vf = videoFrameTimes[videoFrameTimes.length - 1];
+        
+        let ft = {
+          video: vf,
+          drawStart: window.CineGlowMetrics.lastDrawStart,
+          drawEnd: window.CineGlowMetrics.lastDrawEnd,
+          display: now,
+          complete: performance.now()
+        };
+        
+        if (vf) {
+          const idx = videoFrameTimes.indexOf(vf);
+          if (idx !== -1) {
+            const droppedVideoFrameTimes = videoFrameTimes.splice(0, idx + 1);
+            droppedVideoFrameTimes.pop();
+            for (const v of droppedVideoFrameTimes) {
+              frameTimes.push({ video: v });
+            }
           }
         }
+        
+        frameTimes.push(ft);
+        if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
       }
-      
-      frameTimes.push(ft);
-      if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
     }
+
     rafLoopId = requestAnimationFrame(statsLoop);
   }
 
@@ -107,59 +127,195 @@
     overlayEl = document.createElement('div');
     overlayEl.id = 'aura-stats-overlay';
     
+    // 1. Header
     const header = document.createElement('div');
     header.className = 'aura-stats-header';
-    header.textContent = 'CineGlow Telemetry';
-    
-    const list = document.createElement('div');
-    list.className = 'aura-stats-list';
-    
-    const makeItem = (id, text) => {
-      const div = document.createElement('div');
-      div.id = id;
-      div.textContent = text;
-      list.appendChild(div);
-      return div;
+
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'aura-stats-title-wrap';
+
+    const dot = document.createElement('span');
+    dot.className = 'aura-stats-dot';
+
+    const title = document.createElement('span');
+    title.className = 'aura-stats-title';
+    title.textContent = 'CineGlow HUD';
+
+    titleWrap.appendChild(dot);
+    titleWrap.appendChild(title);
+
+    const actions = document.createElement('div');
+    actions.className = 'aura-stats-actions';
+
+    // Graph toggle button
+    const graphToggleBtn = document.createElement('button');
+    graphToggleBtn.className = `aura-stats-icon-btn aura-stats-graph-toggle${isGraphCollapsed ? '' : ' active'}`;
+    graphToggleBtn.title = 'Toggle Frametimes Graph';
+    graphToggleBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+    `;
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'aura-stats-icon-btn aura-stats-close-btn';
+    closeBtn.title = 'Close HUD';
+    closeBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    `;
+
+    actions.appendChild(graphToggleBtn);
+    actions.appendChild(closeBtn);
+
+    header.appendChild(titleWrap);
+    header.appendChild(actions);
+
+    // 2. Telemetry Grid (6 Cards)
+    const grid = document.createElement('div');
+    grid.className = 'aura-stats-grid';
+
+    const createCard = (label, valClass = '', isFullWidth = false) => {
+      const card = document.createElement('div');
+      card.className = `aura-stat-card${isFullWidth ? ' full-width' : ''}`;
+
+      const lbl = document.createElement('span');
+      lbl.className = 'aura-stat-label';
+      lbl.textContent = label;
+
+      const row = document.createElement('div');
+      row.className = 'aura-stat-val-row';
+
+      const val = document.createElement('span');
+      val.className = `aura-stat-value ${valClass}`.trim();
+      val.textContent = '--';
+
+      row.appendChild(val);
+      card.appendChild(lbl);
+      card.appendChild(row);
+
+      return { card, row, val };
     };
-    
-    refs.display = makeItem('aura-stat-display', 'DISPLAY: 0');
-    refs.video = makeItem('aura-stat-video', 'VIDEO: 0');
-    refs.vdropped = makeItem('aura-stat-vdropped', 'VIDEO DROPPED: 0');
-    refs.ambient = makeItem('aura-stat-ambient', 'AMBIENT: 0');
-    refs.vbuffer = makeItem('aura-stat-vbuffer', 'VIDEO BUFFER: ?x?');
-    refs.abuffer = makeItem('aura-stat-abuffer', 'AMBIENT BUFFER: ?x?');
-    
+
+    // Card 1: Video FPS
+    const cVideo = createCard('Video FPS');
+    refs.videoVal = cVideo.val;
+    refs.videoUnit = document.createElement('span');
+    refs.videoUnit.className = 'aura-stat-unit';
+    refs.videoUnit.textContent = '(0.0ms)';
+    cVideo.row.appendChild(refs.videoUnit);
+    grid.appendChild(cVideo.card);
+
+    // Card 2: Display Refresh
+    const cDisplay = createCard('Display');
+    refs.displayVal = cDisplay.val;
+    refs.displayUnit = document.createElement('span');
+    refs.displayUnit.className = 'aura-stat-unit';
+    refs.displayUnit.textContent = '(0.0ms)';
+    cDisplay.row.appendChild(refs.displayUnit);
+    grid.appendChild(cDisplay.card);
+
+    // Card 3: Resolution & Aspect
+    const cRes = createCard('Resolution');
+    refs.resVal = cRes.val;
+    refs.resBadge = document.createElement('span');
+    refs.resBadge.className = 'aura-stat-badge aura-badge-blue';
+    refs.resBadge.textContent = 'HD';
+    cRes.row.appendChild(refs.resBadge);
+    grid.appendChild(cRes.card);
+
+    // Card 4: Codec & Color
+    const cCodec = createCard('Codec');
+    refs.codecVal = cCodec.val;
+    refs.hdrBadge = document.createElement('span');
+    refs.hdrBadge.className = 'aura-stat-badge aura-badge-blue';
+    refs.hdrBadge.textContent = 'SDR';
+    cCodec.row.appendChild(refs.hdrBadge);
+    grid.appendChild(cCodec.card);
+
+    // Card 5: Dropped Frames
+    const cDrop = createCard('Dropped Frames');
+    refs.dropVal = cDrop.val;
+    refs.dropBadge = document.createElement('span');
+    refs.dropBadge.className = 'aura-stat-badge aura-badge-green';
+    refs.dropBadge.textContent = '0.0%';
+    cDrop.row.appendChild(refs.dropBadge);
+    grid.appendChild(cDrop.card);
+
+    // Card 6: Ambient Engine (Full Width)
+    const cAmbient = createCard('Ambient Glow', '', true);
+    refs.ambientVal = cAmbient.val;
+    refs.ambientUnit = document.createElement('span');
+    refs.ambientUnit.className = 'aura-stat-unit';
+    refs.ambientUnit.textContent = '0.0ms • 64×36';
+    cAmbient.row.appendChild(refs.ambientUnit);
+    grid.appendChild(cAmbient.card);
+
+    // 3. Collapsible Frametimes Graph Section
+    const graphSection = document.createElement('div');
+    graphSection.className = `aura-stats-graph-section${isGraphCollapsed ? ' collapsed' : ''}`;
+
     const graphContainer = document.createElement('div');
     graphContainer.className = 'aura-stats-graph-container';
-    
+
     refs.canvas = document.createElement('canvas');
     refs.canvas.id = 'aura-stats-canvas';
-    refs.canvas.width = 360;
-    refs.canvas.height = 270;
+    refs.canvas.width = 336;
+    refs.canvas.height = 120;
     graphContainer.appendChild(refs.canvas);
-    
+
     const legend = document.createElement('div');
     legend.className = 'aura-stats-legend';
-    
+
     refs.max = document.createElement('div');
     refs.max.id = 'aura-stat-max';
     refs.max.textContent = '0.0ms';
     legend.appendChild(refs.max);
-    
+
     const spacer = document.createElement('div');
     spacer.style.flex = '1';
     legend.appendChild(spacer);
-    
+
     refs.min = document.createElement('div');
     refs.min.id = 'aura-stat-min';
     refs.min.textContent = '0.0ms';
     legend.appendChild(refs.min);
-    
+
     graphContainer.appendChild(legend);
-    
+    graphSection.appendChild(graphContainer);
+
+    // Event Listeners for Header Actions
+    graphToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isGraphCollapsed = !isGraphCollapsed;
+      try {
+        localStorage.setItem('cineglow_hud_graph_collapsed', String(isGraphCollapsed));
+      } catch (err) {}
+      graphSection.classList.toggle('collapsed', isGraphCollapsed);
+      graphToggleBtn.classList.toggle('active', !isGraphCollapsed);
+      if (!isGraphCollapsed) {
+        drawFrametimesCanvas();
+      }
+    });
+    graphToggleBtn.addEventListener('mousedown', e => e.stopPropagation());
+
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settings.statsEnabled = false;
+      try {
+        chrome.storage.sync.set({ statsEnabled: false });
+      } catch (err) {}
+      applyState();
+    });
+    closeBtn.addEventListener('mousedown', e => e.stopPropagation());
+
+    // Assemble Overlay
     overlayEl.appendChild(header);
-    overlayEl.appendChild(list);
-    overlayEl.appendChild(graphContainer);
+    overlayEl.appendChild(grid);
+    overlayEl.appendChild(graphSection);
     
     container.appendChild(overlayEl);
 
@@ -183,7 +339,6 @@
     let currentTop = overlayEl.offsetTop;
     
     if (!overlayEl.style.left) {
-      // If right/bottom were used instead of left/top, reset to left/top explicitly
       const rect = overlayEl.getBoundingClientRect();
       const parentRect = parent.getBoundingClientRect();
       currentLeft = rect.left - parentRect.left;
@@ -228,6 +383,7 @@
     lastDisplayFps = 0;
     videoFrameTimes = [];
     frameTimes = [];
+    nerdStats = null;
     if (video && typeof video.getVideoPlaybackQuality === 'function') {
       const q = video.getVideoPlaybackQuality();
       lastPresentedFrames = q.totalVideoFrames - q.droppedVideoFrames;
@@ -272,15 +428,20 @@
       container.appendChild(overlayEl);
     }
 
+    // Request fresh Stats for Nerds (codecs, color, format) from MAIN world
+    try {
+      window.postMessage({ type: 'CINEGLOW_GET_STATS_NERDS' }, '*');
+    } catch (e) {}
+
     const now = performance.now();
     const dt = (now - lastTime) / 1000;
-    
     if (dt <= 0) return;
 
     let vW = 0, vH = 0;
     let buffering = false;
     let playing = false;
     let droppedFrames = 0;
+    let totalFrames = 0;
 
     if (video) {
       vW = video.videoWidth;
@@ -291,6 +452,7 @@
       if (typeof video.getVideoPlaybackQuality === 'function') {
         const q = video.getVideoPlaybackQuality();
         droppedFrames = q.droppedVideoFrames;
+        totalFrames = q.totalVideoFrames;
       }
       
       if (useRvfc) {
@@ -341,31 +503,98 @@
 
     const displayMs = lastDisplayFps ? (1000 / lastDisplayFps).toFixed(1) : '0.0';
     const videoMs = lastVideoFps ? (1000 / lastVideoFps).toFixed(1) : '0.0';
-    const glowMs = lastGlowFps ? (1000 / lastGlowFps).toFixed(1) : '0.0';
 
-    if (refs.display) refs.display.textContent = `DISPLAY: ${lastDisplayFps.toFixed(2)} (${displayMs}ms)`;
-    if (refs.video) refs.video.textContent = `VIDEO: ${lastVideoFps.toFixed(2)} (${videoMs}ms)`;
-    if (refs.vdropped) {
-      refs.vdropped.textContent = `VIDEO DROPPED: ${droppedFrames}`;
-      refs.vdropped.style.color = droppedFrames > 0 ? '#ff3' : '#7f7';
+    // 1. Video FPS
+    if (refs.videoVal) refs.videoVal.textContent = lastVideoFps.toFixed(2);
+    if (refs.videoUnit) refs.videoUnit.textContent = `(${videoMs}ms)`;
+
+    // 2. Display
+    if (refs.displayVal) refs.displayVal.textContent = `${lastDisplayFps.toFixed(2)} Hz`;
+    if (refs.displayUnit) refs.displayUnit.textContent = `(${displayMs}ms)`;
+
+    // 3. Resolution & Quality Badge
+    if (refs.resVal) {
+      refs.resVal.textContent = (vW && vH) ? `${vW}×${vH}` : '--';
     }
-    if (refs.ambient) refs.ambient.textContent = `AMBIENT: ${lastGlowFps.toFixed(2)} (${glowMs}ms)`;
-    
-    if (refs.vbuffer) refs.vbuffer.textContent = `VIDEO BUFFER: ${vW}x${vH}`;
-    
-    // We assume 64x36 for the ambient buffer size for now, as that's what content.js uses
-    const aw = 64, ah = 36;
-    if (refs.abuffer) refs.abuffer.textContent = `AMBIENT BUFFER: ${aw}x${ah}  [ draw: ${glowDrawTime}ms ]`;
-    
-    drawFrametimesCanvas();
+    if (refs.resBadge) {
+      let badgeText = 'SD';
+      let badgeClass = 'aura-badge-blue';
+      if (vH >= 2160) {
+        badgeText = '4K';
+        badgeClass = 'aura-badge-amber';
+      } else if (vH >= 1440) {
+        badgeText = '1440p';
+        badgeClass = 'aura-badge-blue';
+      } else if (vH >= 1080) {
+        badgeText = '1080p';
+        badgeClass = 'aura-badge-blue';
+      } else if (vH >= 720) {
+        badgeText = '720p';
+        badgeClass = 'aura-badge-blue';
+      } else if (!vH) {
+        badgeText = '--';
+      }
+      refs.resBadge.textContent = badgeText;
+      refs.resBadge.className = `aura-stat-badge ${badgeClass}`;
+    }
+
+    // 4. Codec & HDR/SDR
+    if (refs.codecVal) {
+      let codecName = 'AVC';
+      if (nerdStats && nerdStats.codecs) {
+        const c = nerdStats.codecs.toLowerCase();
+        if (c.includes('av01') || c.includes('av1')) codecName = 'AV1';
+        else if (c.includes('vp09') || c.includes('vp9')) codecName = 'VP9';
+        else if (c.includes('avc') || c.includes('h264')) codecName = 'AVC';
+      }
+      refs.codecVal.textContent = codecName;
+    }
+    if (refs.hdrBadge) {
+      let isHDR = false;
+      if (nerdStats && nerdStats.color) {
+        const col = nerdStats.color.toLowerCase();
+        isHDR = col.includes('2084') || col.includes('bt2020') || col.includes('arib') || col.includes('hlg') || col.includes('pq');
+      }
+      refs.hdrBadge.textContent = isHDR ? 'HDR' : 'SDR';
+      refs.hdrBadge.className = `aura-stat-badge ${isHDR ? 'aura-badge-amber' : 'aura-badge-blue'}`;
+    }
+
+    // 5. Dropped Frames & Rate
+    if (refs.dropVal) {
+      refs.dropVal.textContent = String(droppedFrames);
+    }
+    if (refs.dropBadge) {
+      const dropPct = totalFrames > 0 ? ((droppedFrames / totalFrames) * 100).toFixed(1) : '0.0';
+      refs.dropBadge.textContent = `${dropPct}%`;
+      let dropClass = 'aura-badge-green';
+      const pctNum = parseFloat(dropPct);
+      if (pctNum > 2.0) {
+        dropClass = 'aura-badge-red';
+      } else if (pctNum > 0.5) {
+        dropClass = 'aura-badge-amber';
+      }
+      refs.dropBadge.className = `aura-stat-badge ${dropClass}`;
+    }
+
+    // 6. Ambient Glow Engine
+    if (refs.ambientVal) {
+      refs.ambientVal.textContent = `${lastGlowFps.toFixed(2)} FPS`;
+    }
+    if (refs.ambientUnit) {
+      refs.ambientUnit.textContent = `${glowDrawTime}ms draw • 64×36`;
+    }
+
+    if (!isGraphCollapsed) {
+      drawFrametimesCanvas();
+    }
   }
 
   function drawFrametimesCanvas() {
-    if (!refs.canvas || frameTimes.length === 0) return;
+    if (isGraphCollapsed || !refs.canvas || frameTimes.length === 0) return;
     const ctx = refs.canvas.getContext('2d', { alpha: true });
-    const width = 360;
-    const height = 270;
-    const xSize = 3;
+    const width = 336;
+    const height = 120;
+    const xSize = 2.5;
     
     ctx.clearRect(0, 0, width, height);
     
@@ -484,6 +713,10 @@
     };
 
     const onMouseDown = (e) => {
+      // Don't drag if clicking buttons or actions
+      if (e.target.closest('.aura-stats-actions') || e.target.closest('button')) {
+        return;
+      }
       e.stopPropagation();
       isDragging = true;
       startX = e.clientX;
@@ -523,7 +756,6 @@
   if (window.CineGlowPlayer) {
     if (window.CineGlowPlayer.isWatchPage && window.CineGlowPlayer.video) {
       video = window.CineGlowPlayer.video;
-      // We must apply the initial state immediately if the player is already active
       applyState();
     }
     

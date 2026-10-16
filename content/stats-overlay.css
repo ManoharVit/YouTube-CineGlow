@@ -2,22 +2,24 @@
   position: absolute;
   top: 65px;
   right: 20px;
-  z-index: 999999;
-  background: rgba(15, 15, 15, 0.85);
-  color: #aaa;
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 2147483647;
+  /* 90% transparent window with glassmorphism blur */
+  background: rgba(14, 14, 18, 0.10);
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   pointer-events: auto;
   cursor: grab;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
   user-select: none;
-  min-width: 384px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  transition: opacity 0.2s ease;
+  min-width: 310px;
+  max-width: 360px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
 #aura-stats-overlay:active {
@@ -25,44 +27,204 @@
 }
 
 .aura-stats-header {
-  font-weight: 600;
-  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 8px;
+  padding-bottom: 7px;
   margin-bottom: 8px;
-  text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  font-size: 11px;
 }
 
-.aura-stats-list {
+.aura-stats-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aura-stats-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+}
+
+.aura-stats-title {
+  font-weight: 700;
+  color: #f8fafc;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.aura-stats-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.aura-stats-icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.aura-stats-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.aura-stats-icon-btn.active {
+  background: rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.aura-stats-close-btn:hover {
+  background: rgba(239, 68, 68, 0.8) !important;
+  border-color: rgba(239, 68, 68, 0.9) !important;
+  color: #fff !important;
+}
+
+/* Grid of Telemetry Cards */
+.aura-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.aura-stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 5px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aura-stat-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.aura-stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.aura-stat-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aura-stat-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.aura-stat-unit {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.aura-stat-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.aura-badge-green {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.aura-badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.aura-badge-blue {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.aura-badge-red {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Collapsible Graph Section */
+.aura-stats-graph-section {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.aura-stats-graph-section.collapsed {
+  display: none !important;
 }
 
 .aura-stats-graph-container {
   position: relative;
-  width: 360px;
-  height: 270px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  width: 100%;
+  height: 120px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#aura-stats-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .aura-stats-legend {
   position: absolute;
-  right: -5px;
-  top: 0;
-  bottom: 0;
+  right: 4px;
+  top: 4px;
+  bottom: 4px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-size: 10px;
-  color: #888;
+  font-size: 9px;
+  color: #94a3b8;
   pointer-events: none;
-  text-shadow: 1px 1px 0 #000;
-  transform: translateX(100%);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  text-shadow: 0 1px 2px #000;
 }
