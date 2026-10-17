@@ -2,7 +2,7 @@
  * Aura – Ambient Light for YouTube (content script)
  *
  * How it works:
- *  1. Each frame, the current video frame is drawn into a tiny canvas (64x36).
+ *  1. Each frame, the current video frame is drawn into a tiny canvas (128x72).
  *  2. That canvas is stretched (bilinear-smoothed) to be larger than the video,
  *     then blurred and saturated using CSS filters.
  *  3. The canvas sits behind the page (z-index -1) and is positioned to stay
@@ -13,8 +13,8 @@
 
   const ROOT_CLASS = 'aura-active';
   const CANVAS_ID = 'aura-ambient-canvas';
-  const SAMPLE_W = 64;
-  const SAMPLE_H = 36;
+  const SAMPLE_W = 128;
+  const SAMPLE_H = 72;
   const SETTLE_FRAMES = 30;     // Extra draws after the video stops, so smoothing converges
   
   window.CineGlowMetrics = {

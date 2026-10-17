@@ -277,7 +277,7 @@
     refs.ambientVal = cAmbient.val;
     refs.ambientUnit = document.createElement('span');
     refs.ambientUnit.className = 'aura-stat-unit';
-    refs.ambientUnit.textContent = '0.0ms • 64×36';
+    refs.ambientUnit.textContent = '0.0ms • 128×72';
     cAmbient.row.appendChild(refs.ambientUnit);
     grid.appendChild(cAmbient.card);
 
@@ -730,7 +730,7 @@
       refs.ambientVal.textContent = `${lastGlowFps.toFixed(2)} FPS`;
     }
     if (refs.ambientUnit) {
-      refs.ambientUnit.textContent = `${glowDrawTime}ms draw • 64×36`;
+      refs.ambientUnit.textContent = `${glowDrawTime}ms draw • 128×72`;
     }
 
     if (!isGraphCollapsed) {

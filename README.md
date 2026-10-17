@@ -20,7 +20,7 @@ Along the way I added the other things I kept wishing YouTube had: ad skipping, 
 
 ## What It Does
 
-- Samples each video frame into a 64×36 offscreen canvas, blurs and stretches the result behind the player to create a live ambient glow.
+- Samples each video frame into a 128×72 offscreen canvas, blurs and stretches the result behind the player to create a live ambient glow.
 - Skips video ads and blocks tracker network requests using Manifest V3 declarative rules.
 - Injects a floating toolbar next to the player with buttons for Picture-in-Picture and full-resolution PNG frame capture.
 - Normalizes audio through a Web Audio gain node, boosting quiet dialogue up to 300% without clipping.
@@ -42,7 +42,7 @@ Along the way I added the other things I kept wishing YouTube had: ad skipping, 
 
 ## How the Rendering Works
 
-1. **Sample** — On each animation frame, `drawImage()` copies the current video frame onto a tiny 64×36 canvas.
+1. **Sample** — On each animation frame, `drawImage()` copies the current video frame onto a tiny 128×72 canvas.
 2. **Smooth** — New pixel values are blended into the previous frame using an exponential moving average, which prevents flickering during fast cuts.
 3. **Display** — The canvas is scaled larger than the video and placed behind it (`z-index: -1`). CSS `blur()` and `saturate()` filters spread the color outward to produce the glow.
 4. **Idle** — The rendering loop stops the moment the video pauses, the tab loses focus, or the user navigates away from the watch page. No background CPU burn.

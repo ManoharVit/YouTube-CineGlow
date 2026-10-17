@@ -17,7 +17,7 @@ Alongside ambient lighting, CineGlow packs everyday playback improvements: it ba
 
 KEY FEATURES
 
-• Real-Time Ambient Lighting: Samples frames into a lightweight 64x36 canvas and blurs the edges to project a smooth, color-matched glow. Customize brightness, spread, blur, saturation, or toggle individual sides (top, bottom, left, right).
+• Real-Time Ambient Lighting: Samples frames into a lightweight 128x72 canvas and blurs the edges to project a smooth, color-matched glow. Customize brightness, spread, blur, saturation, or toggle individual sides (top, bottom, left, right).
 • Audio Normalizer & Dialogue Booster: Uses the Web Audio API to boost quiet voices up to 300% while preventing loud explosions or music from clipping your speakers.
 • Audio-Reactive Glow: Reads bass frequencies from a real-time FFT analyzer to pulse the lighting in sync with the beat.
 • Smart Ad Skipping: Automatically detects ad overlays and clicks the skip button. Uses Chrome's fast declarative rules to filter tracker networks without inspecting your private traffic.
