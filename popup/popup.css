@@ -903,3 +903,117 @@ input[type="range"]:active::-webkit-slider-thumb {
 .reset-btn:hover svg {
   transform: rotate(-45deg);
 }
+
+/* ---------- 8. Equalizer & Audio Rack ---------- */
+.audio-rack-card {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.audio-rack-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.audio-rack-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.audio-preset-pills {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.audio-preset-pill {
+  flex: 1 1 0;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.audio-preset-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.audio-preset-pill.active {
+  background: #a855f7;
+  border-color: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.audio-reset-link {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: opacity 0.15s;
+}
+
+.audio-reset-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.eq-hbars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.eq-hbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eq-hbar-tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.eq-hbar-slider {
+  flex: 1;
+}
+
+.eq-hbar-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #38bdf8;
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+}

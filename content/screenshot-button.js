@@ -10,21 +10,28 @@
   let abortController = null;
 
   function removeExistingButton() {
-    if (currentButton) {
-      const parent = currentButton.parentElement;
-      currentButton.remove();
-      currentButton = null;
-      if (parent && parent.classList.contains('cineglow-floating-toolbar') && !parent.hasChildNodes()) {
-        parent.remove();
-      }
-    }
+    document.querySelectorAll(`.${SCREENSHOT_BUTTON_CLASS}`).forEach(el => el.remove());
+    currentButton = null;
   }
 
   function initToolbarAutohide(player, toolbar) {
     if (toolbar._autohideInitialized) return;
     toolbar._autohideInitialized = true;
 
+    let hideTimeout = 0;
+
     const syncVisibility = () => {
+      // NEVER hide if hovered, focused, or if any menu is open
+      const isHovered = toolbar.matches(':hover') || toolbar.querySelector(':hover');
+      const isMenuOpen = toolbar.classList.contains('cineglow-menu-open') || 
+                         toolbar.querySelector('.cineglow-rec-menu, .cineglow-speed-menu');
+      const isFocused = toolbar.matches(':focus-within');
+
+      if (isHovered || isMenuOpen || isFocused) {
+        toolbar.classList.remove('cineglow-toolbar-hidden');
+        return;
+      }
+
       const isAutohide = player.classList.contains('ytp-autohide') || 
                          player.classList.contains('ytp-hide-controls');
       const chromeBottom = player.querySelector('.ytp-chrome-bottom');
@@ -49,14 +56,25 @@
       observer.observe(chromeBottom, { attributes: true, attributeFilter: ['style', 'class'] });
     }
 
+    toolbar.addEventListener('mouseenter', () => {
+      toolbar.classList.remove('cineglow-toolbar-hidden');
+    });
+
+    toolbar.addEventListener('mousemove', () => {
+      toolbar.classList.remove('cineglow-toolbar-hidden');
+    });
+
+    toolbar.addEventListener('mouseleave', () => {
+      clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(syncVisibility, 200);
+    });
+
     player.addEventListener('mouseenter', () => {
       toolbar.classList.remove('cineglow-toolbar-hidden');
     });
 
     player.addEventListener('mousemove', () => {
-      if (!player.classList.contains('ytp-autohide')) {
-        toolbar.classList.remove('cineglow-toolbar-hidden');
-      }
+      toolbar.classList.remove('cineglow-toolbar-hidden');
     });
 
     syncVisibility();

@@ -11,9 +11,11 @@
       this.videoId = new URLSearchParams(window.location.search).get('v');
       this.isFullscreen = !!document.fullscreenElement;
       this.isMiniplayer = false;
+      this.isTheater = false;
       this.isAdShowing = false;
       this.isPiP = false;
       this.isPlaying = false;
+      this.watchFlexy = null;
       
       this.handlePiP = (e) => {
         const isPiP = e.type === 'enterpictureinpicture';
@@ -33,6 +35,7 @@
       
       this.playerObserver = new MutationObserver(() => this.checkState());
       this.appObserver = new MutationObserver(() => this.checkState());
+      this.watchFlexyObserver = new MutationObserver(() => this.checkState());
       
       this.initListeners();
       
@@ -64,6 +67,8 @@
       
       const isFullscreen = !!document.fullscreenElement;
       const isMiniplayer = app ? app.hasAttribute('miniplayer-is-active') : false;
+      const watchFlexy = document.querySelector('ytd-watch-flexy');
+      const isTheater = watchFlexy ? (watchFlexy.hasAttribute('theater') || watchFlexy.hasAttribute('theater-requested_')) : false;
       const isAdShowing = !!(
         (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) ||
         document.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-skip-button-slot') ||
@@ -78,9 +83,22 @@
       if (this.videoId !== videoId) { this.videoId = videoId; changed = true; }
       if (this.isFullscreen !== isFullscreen) { this.isFullscreen = isFullscreen; changed = true; }
       if (this.isMiniplayer !== isMiniplayer) { this.isMiniplayer = isMiniplayer; changed = true; }
+      if (this.isTheater !== isTheater) {
+        this.isTheater = isTheater;
+        changed = true;
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+      }
       if (this.isAdShowing !== isAdShowing) { this.isAdShowing = isAdShowing; changed = true; }
       if (this.isPiP !== isPiP) { this.isPiP = isPiP; changed = true; }
       if (this.isPlaying !== isPlaying) { this.isPlaying = isPlaying; changed = true; }
+
+      if (this.watchFlexy !== watchFlexy) {
+        this.watchFlexy = watchFlexy;
+        this.watchFlexyObserver.disconnect();
+        if (watchFlexy) {
+          this.watchFlexyObserver.observe(watchFlexy, { attributes: true, attributeFilter: ['theater', 'theater-requested_'] });
+        }
+      }
       
       if (this.app !== app) {
         this.app = app;

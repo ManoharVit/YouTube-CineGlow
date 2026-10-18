@@ -89,6 +89,32 @@
           }
         }
       }
+
+      // Extract encoded video stream bitrate and quality from streamingData
+      if (stats && player) {
+        try {
+          const resp = typeof player.getPlayerResponse === 'function' ? player.getPlayerResponse() : window.ytInitialPlayerResponse;
+          const adaptive = resp && resp.streamingData && resp.streamingData.adaptiveFormats;
+          if (Array.isArray(adaptive)) {
+            let itag = null;
+            if (stats.codecs) {
+              const m = String(stats.codecs).match(/\((\d+)\)/);
+              if (m) itag = m[1];
+            }
+            if (!itag && stats.fmt) itag = String(stats.fmt);
+            if (itag) {
+              const fmt = adaptive.find(f => String(f.itag) === String(itag));
+              if (fmt) {
+                stats.videoBitrate = fmt.bitrate || fmt.averageBitrate || null;
+                stats.averageBitrate = fmt.averageBitrate || null;
+                stats.formatQuality = fmt.qualityLabel || null;
+                stats.colorInfo = fmt.colorInfo || null;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
       window.postMessage({
         type: 'CINEGLOW_STATS_NERDS_RESPONSE',
         stats: stats

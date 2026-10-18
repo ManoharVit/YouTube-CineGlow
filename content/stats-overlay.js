@@ -147,26 +147,44 @@
     const actions = document.createElement('div');
     actions.className = 'aura-stats-actions';
 
-    // Graph toggle button
+    // Graph toggle button (Trusted Types safe)
     const graphToggleBtn = document.createElement('button');
     graphToggleBtn.className = `aura-stats-icon-btn aura-stats-graph-toggle${isGraphCollapsed ? '' : ' active'}`;
     graphToggleBtn.title = 'Toggle Frametimes Graph';
-    graphToggleBtn.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-      </svg>
-    `;
+    const graphSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    graphSvg.setAttribute('width', '12');
+    graphSvg.setAttribute('height', '12');
+    graphSvg.setAttribute('viewBox', '0 0 24 24');
+    graphSvg.setAttribute('fill', 'none');
+    graphSvg.setAttribute('stroke', 'currentColor');
+    graphSvg.setAttribute('stroke-width', '2.2');
+    graphSvg.setAttribute('stroke-linecap', 'round');
+    graphSvg.setAttribute('stroke-linejoin', 'round');
+    const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', '22 12 18 12 15 21 9 3 6 12 2 12');
+    graphSvg.appendChild(polyline);
+    graphToggleBtn.appendChild(graphSvg);
 
-    // Close button
+    // Close button (Trusted Types safe)
     const closeBtn = document.createElement('button');
     closeBtn.className = 'aura-stats-icon-btn aura-stats-close-btn';
     closeBtn.title = 'Close HUD';
-    closeBtn.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    `;
+    const closeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    closeSvg.setAttribute('width', '12');
+    closeSvg.setAttribute('height', '12');
+    closeSvg.setAttribute('viewBox', '0 0 24 24');
+    closeSvg.setAttribute('fill', 'none');
+    closeSvg.setAttribute('stroke', 'currentColor');
+    closeSvg.setAttribute('stroke-width', '2.4');
+    closeSvg.setAttribute('stroke-linecap', 'round');
+    closeSvg.setAttribute('stroke-linejoin', 'round');
+    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l1.setAttribute('x1', '18'); l1.setAttribute('y1', '6'); l1.setAttribute('x2', '6'); l1.setAttribute('y2', '18');
+    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l2.setAttribute('x1', '6'); l2.setAttribute('y1', '6'); l2.setAttribute('x2', '18'); l2.setAttribute('y2', '18');
+    closeSvg.appendChild(l1);
+    closeSvg.appendChild(l2);
+    closeBtn.appendChild(closeSvg);
 
     actions.appendChild(graphToggleBtn);
     actions.appendChild(closeBtn);
@@ -227,34 +245,25 @@
     cRes.row.appendChild(refs.resBadge);
     grid.appendChild(cRes.card);
 
-    // Card 4: Bitrate / Connection Speed
-    const cBitrate = createCard('Bitrate / Net');
-    refs.bitrateVal = cBitrate.val;
-    refs.bitrateBadge = document.createElement('span');
-    refs.bitrateBadge.className = 'aura-stat-badge aura-badge-blue';
-    refs.bitrateBadge.textContent = 'NET';
-    cBitrate.row.appendChild(refs.bitrateBadge);
-    grid.appendChild(cBitrate.card);
+    // Card 4: Video Bitrate (Encoded Stream Rate)
+    const cVideoBitrate = createCard('Video Bitrate');
+    refs.videoBitrateVal = cVideoBitrate.val;
+    refs.videoBitrateBadge = document.createElement('span');
+    refs.videoBitrateBadge.className = 'aura-stat-badge aura-badge-purple';
+    refs.videoBitrateBadge.textContent = 'STREAM';
+    cVideoBitrate.row.appendChild(refs.videoBitrateBadge);
+    grid.appendChild(cVideoBitrate.card);
 
-    // Card 5: Codec & Audio
-    const cCodec = createCard('Codec & Audio');
-    refs.codecVal = cCodec.val;
-    refs.audioBadge = document.createElement('span');
-    refs.audioBadge.className = 'aura-stat-badge aura-badge-blue';
-    refs.audioBadge.textContent = 'Opus';
-    cCodec.row.appendChild(refs.audioBadge);
-    grid.appendChild(cCodec.card);
+    // Card 5: Net Speed / Connection Bandwidth
+    const cNetSpeed = createCard('Net Speed');
+    refs.netSpeedVal = cNetSpeed.val;
+    refs.netSpeedBadge = document.createElement('span');
+    refs.netSpeedBadge.className = 'aura-stat-badge aura-badge-green';
+    refs.netSpeedBadge.textContent = 'FAST';
+    cNetSpeed.row.appendChild(refs.netSpeedBadge);
+    grid.appendChild(cNetSpeed.card);
 
-    // Card 6: Color Space & HDR
-    const cColor = createCard('Color Space');
-    refs.colorVal = cColor.val;
-    refs.hdrBadge = document.createElement('span');
-    refs.hdrBadge.className = 'aura-stat-badge aura-badge-blue';
-    refs.hdrBadge.textContent = 'SDR';
-    cColor.row.appendChild(refs.hdrBadge);
-    grid.appendChild(cColor.card);
-
-    // Card 7: Buffer Health
+    // Card 6: Buffer Health
     const cBuffer = createCard('Buffer Health');
     refs.bufferVal = cBuffer.val;
     refs.bufferBadge = document.createElement('span');
@@ -263,7 +272,33 @@
     cBuffer.row.appendChild(refs.bufferBadge);
     grid.appendChild(cBuffer.card);
 
-    // Card 8: Dropped Frames
+    // Card 7: Codec & Audio
+    const cCodec = createCard('Codec & Audio');
+    refs.codecVal = cCodec.val;
+    refs.audioBadge = document.createElement('span');
+    refs.audioBadge.className = 'aura-stat-badge aura-badge-blue';
+    refs.audioBadge.textContent = 'Opus';
+    cCodec.row.appendChild(refs.audioBadge);
+    refs.audioSubtitle = document.createElement('div');
+    refs.audioSubtitle.className = 'aura-stat-subtitle';
+    refs.audioSubtitle.textContent = 'Stereo • 48 kHz';
+    cCodec.card.appendChild(refs.audioSubtitle);
+    grid.appendChild(cCodec.card);
+
+    // Card 8: Color Depth & Range
+    const cColor = createCard('Color Depth & Range');
+    refs.colorVal = cColor.val;
+    refs.hdrBadge = document.createElement('span');
+    refs.hdrBadge.className = 'aura-stat-badge aura-badge-blue';
+    refs.hdrBadge.textContent = 'SDR';
+    cColor.row.appendChild(refs.hdrBadge);
+    refs.colorSubtitle = document.createElement('div');
+    refs.colorSubtitle.className = 'aura-stat-subtitle';
+    refs.colorSubtitle.textContent = '8-bit • Limited (TV)';
+    cColor.card.appendChild(refs.colorSubtitle);
+    grid.appendChild(cColor.card);
+
+    // Card 9: Dropped Frames
     const cDrop = createCard('Dropped Frames');
     refs.dropVal = cDrop.val;
     refs.dropBadge = document.createElement('span');
@@ -272,12 +307,12 @@
     cDrop.row.appendChild(refs.dropBadge);
     grid.appendChild(cDrop.card);
 
-    // Card 9: Ambient Engine (Full Width)
-    const cAmbient = createCard('Ambient Glow', '', true);
+    // Card 10: Ambient Glow Engine
+    const cAmbient = createCard('Ambient Glow');
     refs.ambientVal = cAmbient.val;
     refs.ambientUnit = document.createElement('span');
     refs.ambientUnit.className = 'aura-stat-unit';
-    refs.ambientUnit.textContent = '0.0ms • 128×72';
+    refs.ambientUnit.textContent = '(0.0ms)';
     cAmbient.row.appendChild(refs.ambientUnit);
     grid.appendChild(cAmbient.card);
 
@@ -565,7 +600,38 @@
       refs.resBadge.className = `aura-stat-badge ${badgeClass}`;
     }
 
-    // 4. Bitrate / Net Bandwidth
+    // 4. Video Bitrate (Encoded Stream Quality)
+    let vidBitrateStr = '--';
+    let vidBitrateBadge = 'STREAM';
+    let vidBitrateClass = 'aura-badge-purple';
+
+    const vBitrate = nerdStats ? (nerdStats.videoBitrate || nerdStats.averageBitrate) : null;
+    if (vBitrate && !isNaN(Number(vBitrate))) {
+      const bps = Number(vBitrate);
+      if (bps >= 1000000) {
+        vidBitrateStr = `${(bps / 1000000).toFixed(2)} Mbps`;
+      } else {
+        vidBitrateStr = `${Math.round(bps / 1000)} Kbps`;
+      }
+
+      if (nerdStats.formatQuality) {
+        vidBitrateBadge = nerdStats.formatQuality;
+      } else if (bps >= 15000000) {
+        vidBitrateBadge = 'ULTRA';
+      } else if (bps >= 4000000) {
+        vidBitrateBadge = 'HIGH';
+      } else {
+        vidBitrateBadge = 'STD';
+      }
+      vidBitrateClass = bps >= 10000000 ? 'aura-badge-purple' : (bps >= 3000000 ? 'aura-badge-blue' : 'aura-badge-green');
+    }
+    if (refs.videoBitrateVal) refs.videoBitrateVal.textContent = vidBitrateStr;
+    if (refs.videoBitrateBadge) {
+      refs.videoBitrateBadge.textContent = vidBitrateBadge;
+      refs.videoBitrateBadge.className = `aura-stat-badge ${vidBitrateClass}`;
+    }
+
+    // 5. Net Speed / Bandwidth
     let speedStr = '--';
     let speedBadge = 'NET';
     let speedClass = 'aura-badge-blue';
@@ -594,15 +660,16 @@
         }
       }
     }
-    if (refs.bitrateVal) refs.bitrateVal.textContent = speedStr;
-    if (refs.bitrateBadge) {
-      refs.bitrateBadge.textContent = speedBadge;
-      refs.bitrateBadge.className = `aura-stat-badge ${speedClass}`;
+    if (refs.netSpeedVal) refs.netSpeedVal.textContent = speedStr;
+    if (refs.netSpeedBadge) {
+      refs.netSpeedBadge.textContent = speedBadge;
+      refs.netSpeedBadge.className = `aura-stat-badge ${speedClass}`;
     }
 
-    // 5. Codec & Audio
+    // 7. Codec & Audio
     let videoCodec = 'AVC';
     let audioCodec = 'AAC';
+    let audioSubtitle = 'Stereo • 48 kHz';
     if (nerdStats && nerdStats.codecs) {
       const parts = String(nerdStats.codecs).toLowerCase().split('/');
       const vPart = parts[0] || '';
@@ -618,10 +685,17 @@
 
       if (aPart.includes('opus')) {
         audioCodec = 'Opus';
+        audioSubtitle = 'Stereo • 48 kHz';
       } else if (aPart.includes('mp4a') || aPart.includes('aac')) {
         audioCodec = 'AAC';
+        audioSubtitle = 'Stereo • 44.1 kHz';
       } else if (aPart.includes('vorbis')) {
         audioCodec = 'Vorbis';
+        audioSubtitle = 'Stereo • 48 kHz';
+      }
+
+      if (String(nerdStats.codecs).includes('surround') || String(nerdStats.codecs).includes('5.1')) {
+        audioSubtitle = '5.1 Surround';
       }
     }
     if (refs.codecVal) refs.codecVal.textContent = videoCodec;
@@ -629,42 +703,66 @@
       refs.audioBadge.textContent = audioCodec;
       refs.audioBadge.className = 'aura-stat-badge aura-badge-blue';
     }
+    if (refs.audioSubtitle) {
+      refs.audioSubtitle.textContent = audioSubtitle;
+    }
 
-    // 6. Color Space & HDR
+    // 8. Color Depth & Range
     let colorSpace = 'BT.709';
+    let colorDepth = '8-bit';
+    let colorRange = 'Limited (TV)';
     let colorBadge = 'SDR';
     let colorClass = 'aura-badge-blue';
 
-    if (nerdStats && nerdStats.color) {
-      const col = String(nerdStats.color).toLowerCase();
-      if (col.includes('bt2020')) {
-        colorSpace = 'BT.2020';
-      } else if (col.includes('dci-p3') || col.includes('p3')) {
-        colorSpace = 'DCI-P3';
-      } else if (col.includes('bt709') || col.includes('709')) {
-        colorSpace = 'BT.709';
-      } else if (col.includes('srgb')) {
-        colorSpace = 'sRGB';
-      }
+    const rawColor = nerdStats && nerdStats.color ? String(nerdStats.color).toLowerCase() : '';
+    const rawCodecs = nerdStats && nerdStats.codecs ? String(nerdStats.codecs).toLowerCase() : '';
+    const colorInfo = nerdStats && nerdStats.colorInfo ? nerdStats.colorInfo : null;
 
-      if (col.includes('2084') || col.includes('pq')) {
-        colorBadge = 'HDR10';
-        colorClass = 'aura-badge-amber';
-      } else if (col.includes('arib') || col.includes('hlg')) {
-        colorBadge = 'HLG';
-        colorClass = 'aura-badge-amber';
-      } else if (col.includes('bt2020')) {
-        colorBadge = 'HDR';
-        colorClass = 'aura-badge-amber';
-      } else {
-        colorBadge = 'SDR';
-        colorClass = 'aura-badge-blue';
-      }
+    if (rawColor.includes('bt2020') || (colorInfo && String(colorInfo.primaries).includes('BT2020'))) {
+      colorSpace = 'BT.2020';
+    } else if (rawColor.includes('dci-p3') || rawColor.includes('p3')) {
+      colorSpace = 'DCI-P3';
+    } else if (rawColor.includes('srgb')) {
+      colorSpace = 'sRGB';
+    } else if (rawColor.includes('bt709') || rawColor.includes('709') || (colorInfo && String(colorInfo.primaries).includes('BT709'))) {
+      colorSpace = 'BT.709';
     }
+
+    if (rawColor.includes('2084') || rawColor.includes('pq') || (colorInfo && String(colorInfo.transferCharacteristics).includes('SMPTE2084'))) {
+      colorBadge = 'HDR10';
+      colorClass = 'aura-badge-amber';
+    } else if (rawColor.includes('arib') || rawColor.includes('hlg') || (colorInfo && String(colorInfo.transferCharacteristics).includes('ARIB'))) {
+      colorBadge = 'HLG';
+      colorClass = 'aura-badge-amber';
+    } else if (rawColor.includes('bt2020') || rawCodecs.includes('vp09.02') || rawCodecs.includes('.10')) {
+      colorBadge = 'HDR';
+      colorClass = 'aura-badge-amber';
+    } else {
+      colorBadge = 'SDR';
+      colorClass = 'aura-badge-blue';
+    }
+
+    if (rawColor.includes('12-bit') || rawCodecs.includes('vp09.03')) {
+      colorDepth = '12-bit';
+    } else if (rawColor.includes('10-bit') || rawCodecs.includes('vp09.02') || rawCodecs.includes('.10') || colorBadge.startsWith('HDR') || colorBadge === 'HLG') {
+      colorDepth = '10-bit';
+    } else {
+      colorDepth = '8-bit';
+    }
+
+    if (rawColor.includes('full') || colorSpace === 'sRGB') {
+      colorRange = 'Full (PC)';
+    } else {
+      colorRange = 'Limited (TV)';
+    }
+
     if (refs.colorVal) refs.colorVal.textContent = colorSpace;
     if (refs.hdrBadge) {
       refs.hdrBadge.textContent = colorBadge;
       refs.hdrBadge.className = `aura-stat-badge ${colorClass}`;
+    }
+    if (refs.colorSubtitle) {
+      refs.colorSubtitle.textContent = `${colorDepth} • ${colorRange}`;
     }
 
     // 7. Buffer Health
@@ -725,12 +823,12 @@
       refs.dropBadge.className = `aura-stat-badge ${dropClass}`;
     }
 
-    // 9. Ambient Glow Engine
+    // 10. Ambient Glow Engine
     if (refs.ambientVal) {
-      refs.ambientVal.textContent = `${lastGlowFps.toFixed(2)} FPS`;
+      refs.ambientVal.textContent = `${lastGlowFps.toFixed(1)} fps`;
     }
     if (refs.ambientUnit) {
-      refs.ambientUnit.textContent = `${glowDrawTime}ms draw • 128×72`;
+      refs.ambientUnit.textContent = `(${glowDrawTime}ms)`;
     }
 
     if (!isGraphCollapsed) {

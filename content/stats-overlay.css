@@ -157,6 +157,18 @@
   flex-shrink: 0;
 }
 
+.aura-stat-subtitle {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 1px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .aura-stat-badge {
   display: inline-block;
   padding: 1px 5px;

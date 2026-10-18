@@ -110,59 +110,84 @@ html.aura-hide-scrollbar {
 }
 
 /* Clean Cinema Theater Mode (Hide UI & Center Video in Theater Mode) */
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container {
+html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container,
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container {
   display: none !important;
 }
-html.aura-hide-theater.aura-watch-page:has(ytd-watch-flexy[theater]:not([fullscreen])) ytd-page-manager {
+
+html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) ytd-page-manager,
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) ytd-page-manager {
   margin-top: 0 !important;
-  min-height: 100vh !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
+  padding-top: 0 !important;
 }
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) {
-  min-height: 100vh !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
+
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]),
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) {
+  padding-top: 0 !important;
+  margin-bottom: 0 !important;
 }
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
+
+/* Center theater player container to full viewport height for true cinema centering */
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #full-bleed-container,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #player-full-bleed-container,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #player-full-bleed-container,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #player-container,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #player-container,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #movie_player,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #movie_player {
+  height: 100vh !important;
+  height: 100% !important;
   max-height: 100vh !important;
-  margin: auto 0 !important;
-}
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #secondary,
-html.aura-hide-theater.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #below {
-  display: none !important;
+  min-height: 100vh !important;
+  width: 100% !important;
 }
 
-/* Reduced video zoom in theater mode: gives ambient light glow room on all 4 edges */
-html.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
-html.aura-watch-page ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
-  transform: scale(0.70) !important;
+/* Ensure the video container spans 100% of the player in theater mode */
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) .html5-video-container,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Pure percentage-based centering (50% / -50%) across all screen resolutions, laptops & tabs */
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) .html5-video-container video.html5-main-video,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container video.html5-main-video,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
   transform-origin: center center !important;
-  transition: transform 0.3s ease !important;
 }
 
-/* Vertically center in standard theater mode when toolbar is present */
-html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
-html.aura-watch-page:not(.aura-hide-theater) ytd-watch-flexy[theater]:not([fullscreen]) #player-theater-container {
-  margin-top: max(0px, calc(((100vh - var(--ytd-toolbar-offset, var(--ytd-toolbar-height, 56px))) - var(--ytd-watch-flexy-player-height, 480px)) / 2)) !important;
-  margin-bottom: max(0px, calc(((100vh - var(--ytd-toolbar-offset, var(--ytd-toolbar-height, 56px))) - var(--ytd-watch-flexy-player-height, 480px)) / 2)) !important;
+html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-flexy[theater]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video {
+  transform: translate(-50%, -50%) scale(1.34) !important;
 }
 
-/* Guard: strictly protect normal non-theater watch mode so it is never disturbed */
-html.aura-watch-page ytd-watch-flexy:not([theater]):not([fullscreen]) #full-bleed-container,
-html.aura-watch-page ytd-watch-flexy:not([theater]):not([fullscreen]) #player-theater-container {
-  margin: 0 !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  transform: none !important;
+/* Prevent unwanted vertical scrolling in Clean Cinema Theater Mode */
+html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])),
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) {
+  overflow-y: hidden !important;
 }
-html.aura-watch-page:not(:has(ytd-watch-flexy[theater])) ytd-page-manager {
-  margin-top: var(--ytd-toolbar-height, 56px) !important;
-  min-height: auto !important;
-  display: block !important;
+
+/* Hide comments, description, and related videos in Clean Theater mode */
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #secondary,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #secondary,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #below,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #below,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #related,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #related,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #panels,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #panels,
+html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #chat-container,
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #chat-container {
+  display: none !important;
 }
 
 /* AdBlock UI hiding */
@@ -220,8 +245,8 @@ html.aura-ultrawide-zoom video.html5-main-video {
   pointer-events: auto;
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.25s cubic-bezier(0, 0, 0.2, 1), 
-              visibility 0.25s cubic-bezier(0, 0, 0.2, 1), 
+  transition: opacity 0.35s ease, 
+              visibility 0.35s ease, 
               background-color 0.2s ease, 
               border-color 0.2s ease, 
               box-shadow 0.2s ease;
@@ -251,13 +276,25 @@ html.aura-ultrawide-zoom video.html5-main-video {
   display: none !important;
 }
 
-/* Autohide sync with player controls */
-.ytp-autohide .cineglow-floating-toolbar,
-.ytp-hide-controls .cineglow-floating-toolbar,
-.cineglow-floating-toolbar.cineglow-toolbar-hidden {
+/* Autohide sync with player controls: ONLY hide when NOT hovered, NOT focused, and NO menu open */
+.ytp-autohide .cineglow-floating-toolbar:not(:hover):not(:focus-within):not(.cineglow-menu-open):not(:has(.cineglow-rec-menu)):not(:has(.cineglow-speed-menu)),
+.ytp-hide-controls .cineglow-floating-toolbar:not(:hover):not(:focus-within):not(.cineglow-menu-open):not(:has(.cineglow-rec-menu)):not(:has(.cineglow-speed-menu)),
+.cineglow-floating-toolbar.cineglow-toolbar-hidden:not(:hover):not(:focus-within):not(.cineglow-menu-open):not(:has(.cineglow-rec-menu)):not(:has(.cineglow-speed-menu)) {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+  transition: opacity 0.35s ease 0.1s, visibility 0.35s ease 0.1s !important;
+}
+
+/* Force visible whenever hovered, focused, or menu is open */
+.cineglow-floating-toolbar:hover,
+.cineglow-floating-toolbar:focus-within,
+.cineglow-floating-toolbar.cineglow-menu-open,
+.cineglow-floating-toolbar:has(.cineglow-rec-menu),
+.cineglow-floating-toolbar:has(.cineglow-speed-menu) {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 /* Individual button styles inside the vertical toolbar */
@@ -301,17 +338,731 @@ html.aura-ultrawide-zoom video.html5-main-video {
   filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
 }
 
-/* Vertical stacking order: Screenshot (top), PiP (strictly bottom) */
+/* Vertical stacking order: Speed (top: 0), Screenshot (middle: 1), PiP (strictly bottom: 2) */
 .cineglow-download-button {
   display: none !important;
+}
+
+.cineglow-speed-button {
+  order: 0;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+
+.cineglow-speed-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cineglow-speed-icon {
+  width: 17px !important;
+  height: 17px !important;
+  display: block;
+  margin: 0 auto !important;
+  color: #fff;
+  opacity: 0.9;
+  transition: opacity 0.18s ease;
+}
+
+.cineglow-speed-badge {
+  font-family: 'YouTube Sans', 'Roboto', -apple-system, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #3ea6ff;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  margin-top: -1px;
+}
+
+.cineglow-speed-button:hover .cineglow-speed-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
 }
 
 .cineglow-screenshot-button {
   order: 1;
 }
 
-.cineglow-pip-button {
+.cineglow-record-wrapper {
   order: 2;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cineglow-record-button {
+  order: 2;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+
+.cineglow-record-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.cineglow-record-icon {
+  width: 17px !important;
+  height: 17px !important;
+  display: block;
+  margin: 0 auto !important;
+  color: #fff;
+  opacity: 0.9;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+.cineglow-record-badge {
+  font-family: 'YouTube Sans', 'Roboto', -apple-system, sans-serif;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  color: #ef4444;
+  letter-spacing: -0.2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  margin-top: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.15s ease;
+}
+
+.cineglow-record-badge:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.cineglow-record-badge .cineglow-rec-chevron {
+  font-size: 7px;
+  opacity: 0.75;
+  margin-left: 1px;
+}
+
+/* Quick Options slide-out button for Mac trackpad users */
+.cineglow-rec-gear-btn {
+  position: absolute;
+  right: 44px;
+  top: 50%;
+  transform: translateY(-50%) translateX(6px);
+  background: rgba(18, 18, 24, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s ease 0.4s, 
+              visibility 0.25s ease 0.4s, 
+              transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
+  white-space: nowrap;
+  z-index: 75;
+}
+
+/* Invisible bridge so cursor never leaves hover when moving between button and gear */
+.cineglow-rec-gear-btn::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  left: -12px;
+  right: -24px;
+}
+
+.cineglow-record-wrapper:hover .cineglow-rec-gear-btn,
+.cineglow-rec-gear-btn:hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(-50%) translateX(0);
+  transition-delay: 0s !important;
+}
+
+.cineglow-rec-gear-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+
+.cineglow-rec-gear-btn svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.cineglow-record-button:hover .cineglow-record-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.6));
+}
+
+.cineglow-record-button.cineglow-recording {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-radius: 7px;
+  animation: cineglow-rec-glow 1.5s infinite alternate ease-in-out;
+}
+
+.cineglow-record-button.cineglow-recording .cineglow-record-badge {
+  color: #fff;
+}
+
+@keyframes cineglow-rec-glow {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  100% { box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.8); }
+}
+
+/* On-Screen Recording HUD */
+.cineglow-rec-hud {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  background: rgba(15, 15, 18, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 70;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  animation: cineglow-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cineglow-rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: cineglow-rec-blink 1s infinite alternate ease-in-out;
+}
+
+@keyframes cineglow-rec-blink {
+  0% { opacity: 0.2; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+.cineglow-rec-hud-text {
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.cineglow-rec-saved-text {
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+/* Video Recording Flyout Menu */
+.cineglow-rec-menu {
+  position: absolute;
+  right: 52px;
+  bottom: 0;
+  width: 250px;
+  background: rgba(18, 18, 24, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  z-index: 100;
+  animation: cineglow-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.cineglow-rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.cineglow-rec-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cineglow-rec-header-icon {
+  width: 15px;
+  height: 15px;
+  color: #ef4444;
+}
+
+.cineglow-rec-current-badge {
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.cineglow-rec-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cineglow-rec-label {
+  font-family: 'Roboto', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.cineglow-rec-pills {
+  display: flex;
+  gap: 5px;
+}
+
+.cineglow-rec-pill {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  font-family: 'Roboto', sans-serif;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cineglow-rec-pill .pill-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cineglow-rec-pill .pill-sub {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.cineglow-rec-pill:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.cineglow-rec-pill.active {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+.cineglow-rec-pill.active .pill-name {
+  color: #ef4444;
+}
+
+.cineglow-rec-pill.active .pill-sub {
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.cineglow-rec-fps-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.cineglow-rec-fps-pill {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #bbb;
+  font-family: 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  text-align: center;
+}
+
+.cineglow-rec-fps-pill:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.cineglow-rec-fps-pill.active {
+  background: #3ea6ff;
+  border-color: #3ea6ff;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(62, 166, 255, 0.4);
+}
+
+.cineglow-rec-hint {
+  font-family: 'Roboto', sans-serif;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.35;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 2px solid #ef4444;
+}
+
+.cineglow-rec-hint b {
+  color: #fff;
+}
+
+.cineglow-pip-button {
+  order: 3;
+}
+
+/* Speed Multi-Scale Flyout Menu */
+.cineglow-speed-menu {
+  position: absolute;
+  right: 52px;
+  bottom: 0;
+  width: 275px;
+  background: rgba(18, 18, 24, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 12px 13px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  z-index: 100;
+  animation: cineglow-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.cineglow-speed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.cineglow-speed-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cineglow-speed-header-icon {
+  width: 15px;
+  height: 15px;
+  color: #3ea6ff;
+}
+
+.cineglow-speed-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cineglow-speed-current-val {
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #3ea6ff;
+  letter-spacing: -0.2px;
+}
+
+.cineglow-speed-reset-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #bbb;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cineglow-speed-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Multi Scale Boxes — strictly equal size and styling */
+.cineglow-scale-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.cineglow-scale-box.scale-active {
+  background: rgba(62, 166, 255, 0.06);
+  border-color: rgba(62, 166, 255, 0.4);
+}
+
+.cineglow-scale0-box.scale-active {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.cineglow-scale2-box.scale-active {
+  background: rgba(192, 132, 252, 0.06);
+  border-color: rgba(192, 132, 252, 0.4);
+}
+
+.cineglow-scale-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cineglow-scale-name {
+  font-family: 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cineglow-scale-box.scale-active .cineglow-scale-name {
+  color: #fff;
+}
+
+.cineglow-scale-val {
+  font-family: 'Roboto', sans-serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #3ea6ff;
+}
+
+.cineglow-scale0-box .cineglow-scale-val {
+  color: #10b981;
+}
+
+.cineglow-scale2-box .cineglow-scale-val {
+  color: #c084fc;
+}
+
+/* Sliders */
+.cineglow-scale-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100% !important;
+  height: 6px !important;
+  border-radius: 3px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  outline: none !important;
+  cursor: pointer !important;
+  margin: 4px 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.cineglow-scale-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.cineglow-scale0-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+}
+
+.cineglow-scale1-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: #3ea6ff;
+  box-shadow: 0 0 8px rgba(62, 166, 255, 0.8);
+}
+
+.cineglow-scale2-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  background: #c084fc;
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.8);
+}
+
+/* Scale Rulers (Tick numbers under track) */
+.cineglow-scale-ruler {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Roboto', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0 2px;
+}
+
+/* Presets Row */
+.cineglow-presets-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.cineglow-preset-pill {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #ccc;
+  font-family: 'Roboto', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  text-align: center;
+}
+
+.cineglow-preset-pill:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.cineglow-preset-pill.active {
+  background: #3ea6ff;
+  border-color: #3ea6ff;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(62, 166, 255, 0.5);
+}
+
+/* Speed OSD Toast */
+.cineglow-speed-toast {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cineglow-speed-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Recording OSD Toast */
+.cineglow-rec-toast {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(18, 18, 24, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cineglow-rec-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.cineglow-rec-badge-tag {
+  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: 3px;
+  letter-spacing: 0.2px;
 }
 
 /* PiP active state */
@@ -324,4 +1075,93 @@ html.aura-ultrawide-zoom video.html5-main-video {
 .cineglow-center-controls {
   display: none !important;
 }
+
+/* Return YouTube Dislike Feature */
+.cineglow-dislike-count {
+  font-family: 'Roboto', 'Arial', sans-serif;
+  font-size: 14px;
+  line-height: normal;
+  font-weight: 500;
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  user-select: none;
+  white-space: nowrap;
+  letter-spacing: normal;
+}
+
+dislike-button-view-model button.cineglow-has-dislikes,
+#segmented-dislike-button button.cineglow-has-dislikes,
+ytd-toggle-button-renderer button.cineglow-has-dislikes {
+  width: auto !important;
+  min-width: 52px !important;
+  padding-left: 10px !important;
+  padding-right: 12px !important;
+}
+
+/* Like/Dislike Rating Ratio Bar */
+.cineglow-ratio-bar {
+  height: 2.5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  overflow: hidden;
+  margin-top: 3px;
+  width: 100%;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.cineglow-ratio-likes {
+  background: #3ea6ff;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.cineglow-ratio-dislikes {
+  background: #ef4444;
+  height: 100%;
+  flex: 1;
+}
+
+/* Shorts Dislike Count */
+ytd-reel-video-renderer #dislike-button .cineglow-dislike-count {
+  font-size: 12px;
+  margin-top: 4px;
+  margin-left: 0;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Hide YouTube Shorts */
+html[cineglow-hide-shorts="true"] grid-shelf-view-model,
+html[cineglow-hide-shorts="true"] reel-shelf-view-model,
+html[cineglow-hide-shorts="true"] yt-reel-shelf-view-model,
+html[cineglow-hide-shorts="true"] ytd-reel-shelf-renderer,
+html[cineglow-hide-shorts="true"] ytd-rich-shelf-renderer[is-shorts],
+html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
+html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(reel-shelf-view-model),
+html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(yt-reel-shelf-view-model),
+html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(grid-shelf-view-model),
+html[cineglow-hide-shorts="true"] ytm-shorts-lockup-view-model,
+html[cineglow-hide-shorts="true"] ytm-shorts-lockup-view-model-v2,
+html[cineglow-hide-shorts="true"] yt-lockup-view-model:has(a[href*="/shorts/"]),
+html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(a[href*="/shorts/"]),
+html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(ytm-shorts-lockup-view-model),
+html[cineglow-hide-shorts="true"] ytd-video-renderer:has(a[href*="/shorts/"]),
+html[cineglow-hide-shorts="true"] ytd-compact-video-renderer:has(a[href*="/shorts/"]),
+html[cineglow-hide-shorts="true"] ytd-guide-entry-renderer:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] ytd-mini-guide-entry-renderer:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] yt-guide-entry-view-model:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] a#endpoint[title="Shorts"],
+html[cineglow-hide-shorts="true"] a#endpoint[href*="/shorts"],
+html[cineglow-hide-shorts="true"] ytm-pivot-bar-item-renderer:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] yt-tab-shape[tab-title="Shorts"],
+html[cineglow-hide-shorts="true"] yt-tab-shape:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] ytd-browse[page-subtype="channels"] ytd-tab-renderer:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] ytd-reel-video-renderer {
+  display: none !important;
+}
+
 

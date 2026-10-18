@@ -133,7 +133,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     })();
   }
-  // No async response needed, don't return true
+  if (message.type === 'FETCH_ANNOTATIONS') {
+    (async () => {
+      const videoId = message.videoId;
+      if (!videoId || typeof videoId !== 'string' || videoId.length !== 11) {
+        sendResponse({ success: false, error: 'Invalid video ID' });
+        return;
+      }
+      try {
+        const cacheKey = `ar_${videoId}`;
+        const cached = await chrome.storage.local.get(cacheKey);
+        if (cached && cached[cacheKey]) {
+          sendResponse({ success: true, xml: cached[cacheKey], cached: true });
+          return;
+        }
+
+        let dir = videoId[0];
+        if (dir === '-') dir = '-/ar-';
+        const url = `https://storage.googleapis.com/biggest_bucket/annotations/${dir}/${videoId.substring(0, 3)}/${videoId}.xml.gz`;
+
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          sendResponse({ success: false, status: resp.status });
+          return;
+        }
+
+        const xml = await resp.text();
+        if (xml && xml.length < 1000000) {
+          await chrome.storage.local.set({ [cacheKey]: xml }).catch(() => {});
+        }
+        sendResponse({ success: true, xml, cached: false });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+  return false;
 });
 
 // Initial sync on install/startup

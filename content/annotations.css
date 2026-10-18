@@ -1,0 +1,129 @@
+/* ==========================================================================
+   CineGlow Pro - Classic YouTube Video Annotations Restored
+   ========================================================================== */
+
+.cineglow-annotations-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 21;
+}
+
+.cineglow-annotation {
+  position: absolute;
+  box-sizing: border-box;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  color: #ffffff;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  text-rendering: optimizeLegibility;
+}
+
+.cineglow-annotation[hidden] {
+  display: none !important;
+}
+
+.cineglow-annotation-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+  overflow: hidden;
+  line-height: 1.28;
+  padding: 4px 6px;
+  z-index: 2;
+}
+
+/* Note / Popup style */
+.cineglow-annotation-note {
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.cineglow-annotation-note:hover {
+  filter: brightness(1.12);
+}
+
+/* Title banner style */
+.cineglow-annotation-title .cineglow-annotation-content {
+  font-weight: 700;
+  text-align: center;
+  justify-content: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.9);
+}
+
+/* Spotlight / Highlight outline */
+.cineglow-annotation-highlight {
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background-color: transparent !important;
+  cursor: pointer;
+  transition: border 0.15s ease, background-color 0.15s ease;
+}
+
+.cineglow-annotation-highlight:hover {
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Speech Bubble SVG tail */
+.cineglow-annotation-speech-tail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Clickable annotations cursor */
+.cineglow-annotation[data-clickable="true"] {
+  cursor: pointer;
+}
+
+/* Retro Dismiss Close Button */
+.cineglow-annotation-close {
+  display: none;
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(30, 30, 30, 0.9);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.cineglow-annotation-close:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  background: #dc2626;
+  border-color: #ef4444;
+}
+
+.cineglow-annotation:hover .cineglow-annotation-close {
+  display: flex;
+}

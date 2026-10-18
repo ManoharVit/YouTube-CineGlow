@@ -4,6 +4,7 @@
 
   let settings = { adblockEnabled: true };
   let adMutedByUs = false;
+  let preAdSpeed = 1.0;
   let lastAdSkipTime = 0;
   let adSkipTimer = 0;
   let activeVideo = null;
@@ -118,8 +119,13 @@
     // 2. Fast-forward video ad
     const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
     if (isAd && video) {
-      if (!video.muted) {
-        video.muted = true;
+      if (!adMutedByUs) {
+        if (video.playbackRate > 0 && video.playbackRate <= 10) {
+          preAdSpeed = video.playbackRate;
+        }
+        if (!video.muted) {
+          video.muted = true;
+        }
         adMutedByUs = true;
       }
       video.playbackRate = 16.0;
@@ -132,9 +138,9 @@
         lastAdSkipTime = Date.now();
       }
     } else if (!isAd && adMutedByUs && video) {
-      // Ad finished — restore audio and normal playback speed
+      // Ad finished — restore audio and user's playback speed
       video.muted = false;
-      video.playbackRate = 1.0;
+      video.playbackRate = preAdSpeed || 1.0;
       adMutedByUs = false;
     }
   }
@@ -163,7 +169,7 @@
         const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
         if (video) {
           video.muted = false;
-          video.playbackRate = 1.0;
+          video.playbackRate = preAdSpeed || 1.0;
         }
         adMutedByUs = false;
       }

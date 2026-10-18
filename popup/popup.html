@@ -253,6 +253,15 @@
           </div>
         </div>
 
+        <!-- Playback Speed -->
+        <div class="slider-row" style="margin-top: 8px;">
+          <div class="slider-header">
+            <label for="preferredSpeed">Default Playback Speed</label>
+            <div class="val-badge text-only"><span id="preferredSpeedVal">1.0×</span></div>
+          </div>
+          <input type="range" id="preferredSpeed" min="0.1" max="2.0" step="0.05" value="1.0">
+        </div>
+
         <!-- Eye Care & Video Filters -->
         <div class="sub-header">
           <span>Eye-Care & Color Filters</span>
@@ -337,8 +346,8 @@
       <div class="section-body">
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Volume Normalizer</span>
-            <span class="row-desc">Compress spikes and amplify quiet speech</span>
+            <span class="row-title">Audio Normaliser</span>
+            <span class="row-desc">Apply uniform gain to match a consistent loudness target</span>
           </div>
           <label class="switch modern-switch">
             <input type="checkbox" id="audioNormalizer">
@@ -352,6 +361,70 @@
             <div class="val-badge text-only"><span id="audioBoostVal">100%</span></div>
           </div>
           <input type="range" id="audioBoost" min="100" max="300" step="10">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <label for="bassBoost">🔊 Dedicated Bass Booster</label>
+            <div class="val-badge text-only"><span id="bassBoostVal">0 dB</span></div>
+          </div>
+          <input type="range" id="bassBoost" min="0" max="15" step="1" value="0">
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <label for="vocalBoost">🎙️ Vocal & Speech Clarity</label>
+            <div class="val-badge text-only"><span id="vocalBoostVal">0 dB</span></div>
+          </div>
+          <input type="range" id="vocalBoost" min="0" max="12" step="1" value="0">
+        </div>
+
+        <!-- 5-Band Music Equalizer -->
+        <div class="audio-rack-card">
+          <div class="audio-rack-header">
+            <span class="audio-rack-title">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+              5-Band Equalizer
+            </span>
+            <button type="button" class="audio-reset-link" id="eqReset">Reset EQ</button>
+          </div>
+
+          <div class="audio-preset-pills">
+            <button type="button" class="audio-preset-pill active" data-preset="flat">Flat</button>
+            <button type="button" class="audio-preset-pill" data-preset="bass">Bass</button>
+            <button type="button" class="audio-preset-pill" data-preset="vocal">Vocal</button>
+            <button type="button" class="audio-preset-pill" data-preset="rock">Rock</button>
+            <button type="button" class="audio-preset-pill" data-preset="pop">Pop</button>
+            <button type="button" class="audio-preset-pill" data-preset="electro">EDM</button>
+          </div>
+
+          <div class="eq-hbars-list">
+            <div class="eq-hbar-row">
+              <span class="eq-hbar-tag">60Hz</span>
+              <input type="range" class="eq-hbar-slider" id="eq60" min="-12" max="12" step="1" value="0">
+              <span class="eq-hbar-val" id="eq60Val">0 dB</span>
+            </div>
+            <div class="eq-hbar-row">
+              <span class="eq-hbar-tag">250Hz</span>
+              <input type="range" class="eq-hbar-slider" id="eq250" min="-12" max="12" step="1" value="0">
+              <span class="eq-hbar-val" id="eq250Val">0 dB</span>
+            </div>
+            <div class="eq-hbar-row">
+              <span class="eq-hbar-tag">1kHz</span>
+              <input type="range" class="eq-hbar-slider" id="eq1000" min="-12" max="12" step="1" value="0">
+              <span class="eq-hbar-val" id="eq1000Val">0 dB</span>
+            </div>
+            <div class="eq-hbar-row">
+              <span class="eq-hbar-tag">4kHz</span>
+              <input type="range" class="eq-hbar-slider" id="eq4000" min="-12" max="12" step="1" value="0">
+              <span class="eq-hbar-val" id="eq4000Val">0 dB</span>
+            </div>
+            <div class="eq-hbar-row">
+              <span class="eq-hbar-tag">12kHz</span>
+              <input type="range" class="eq-hbar-slider" id="eq12000" min="-12" max="12" step="1" value="0">
+              <span class="eq-hbar-val" id="eq12000Val">0 dB</span>
+            </div>
+          </div>
         </div>
       </div>
     </details>
@@ -415,6 +488,50 @@
               <option value="app">When switching tabs or apps</option>
             </select>
           </div>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Return YouTube Dislike</span>
+            <span class="row-desc">Restore public dislike counters & ratings</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="returnDislikes">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Hide YouTube Shorts</span>
+            <span class="row-desc">Remove Shorts shelves, sidebar tabs & feeds</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="hideShorts">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Restore Classic Annotations</span>
+            <span class="row-desc">Bring back interactive notes, speech bubbles & spotlights</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="restoreAnnotations">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title">Hide End Screens & Cards</span>
+            <span class="row-desc">Automatically hide video cards, suggestions & subscribe popups</span>
+          </div>
+          <label class="switch modern-switch">
+            <input type="checkbox" id="hideEndCards">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
         </div>
       </div>
     </details>

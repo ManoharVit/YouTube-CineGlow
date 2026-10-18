@@ -2,9 +2,10 @@
   "manifest_version": 3,
   "name": "YouTube CineGlow Pro",
   "short_name": "CineGlow Pro",
-  "version": "2.1.2",
-  "version_name": "2.1.2 Pro",
-  "description": "Adds a customizable cinematic glow around YouTube videos, blocks ads, and enables high-bitrate 4K tweaks.",
+  "version": "2.2.0",
+  "version_name": "2.2.0 Pro",
+  "minimum_chrome_version": "105",
+  "description": "Ambient lighting, full audio suite (EQ, bass, vocal), speed control, annotations, cinema tools, ad blocker, and live stats — all built into YouTube.",
   "permissions": [
     "storage",
     "declarativeNetRequest",
@@ -13,7 +14,9 @@
   ],
   "host_permissions": [
     "*://*.youtube.com/*",
-    "*://*.googlevideo.com/*"
+    "*://*.googlevideo.com/*",
+    "https://returnyoutubedislikeapi.com/*",
+    "https://storage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background/background.js"
@@ -36,8 +39,8 @@
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/defaults.js", "content/player-manager.js", "content/blackbar.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js", "content/audio-processor.js", "content/smart-pause.js", "content/screenshot-button.js"],
-      "css": ["content/content.css", "content/stats-overlay.css"],
+      "js": ["shared/defaults.js", "content/player-manager.js", "content/blackbar.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js", "content/audio-processor.js", "content/smart-pause.js", "content/screenshot-button.js", "content/record-button.js", "content/speed-button.js", "content/return-dislikes.js", "content/hide-shorts.js", "content/annotations.js", "content/hide-endcards.js"],
+      "css": ["content/content.css", "content/stats-overlay.css", "content/annotations.css"],
       "run_at": "document_idle"
     }
   ],

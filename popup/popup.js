@@ -8,6 +8,68 @@ const adblockEnabledEl = document.getElementById('adblockEnabled');
 const audioNormalizerEl = document.getElementById('audioNormalizer');
 const audioBoostEl = document.getElementById('audioBoost');
 const audioBoostValEl = document.getElementById('audioBoostVal');
+const bassBoostEl = document.getElementById('bassBoost');
+const bassBoostValEl = document.getElementById('bassBoostVal');
+const vocalBoostEl = document.getElementById('vocalBoost');
+const vocalBoostValEl = document.getElementById('vocalBoostVal');
+
+const eq60El = document.getElementById('eq60');
+const eq60ValEl = document.getElementById('eq60Val');
+const eq250El = document.getElementById('eq250');
+const eq250ValEl = document.getElementById('eq250Val');
+const eq1000El = document.getElementById('eq1000');
+const eq1000ValEl = document.getElementById('eq1000Val');
+const eq4000El = document.getElementById('eq4000');
+const eq4000ValEl = document.getElementById('eq4000Val');
+const eq12000El = document.getElementById('eq12000');
+const eq12000ValEl = document.getElementById('eq12000Val');
+
+const eqResetEl = document.getElementById('eqReset');
+const eqPresetBtns = document.querySelectorAll('.audio-preset-pill');
+
+const EQ_PRESETS = {
+  flat:    { eq60: 0,  eq250: 0,  eq1000: 0,  eq4000: 0,  eq12000: 0 },
+  bass:    { eq60: 6,  eq250: 4,  eq1000: 0,  eq4000: 0,  eq12000: 0 },
+  vocal:   { eq60: -2, eq250: 0,  eq1000: 5,  eq4000: 3,  eq12000: 0 },
+  rock:    { eq60: 4,  eq250: 2,  eq1000: -1, eq4000: 3,  eq12000: 4 },
+  pop:     { eq60: 2,  eq250: 3,  eq1000: 4,  eq4000: 2,  eq12000: 1 },
+  electro: { eq60: 6,  eq250: 3,  eq1000: -1, eq4000: 2,  eq12000: 4 }
+};
+
+function formatDb(val) {
+  const n = parseInt(val, 10) || 0;
+  return n > 0 ? `+${n} dB` : `${n} dB`;
+}
+
+function updateActivePresetPill(activeKey) {
+  eqPresetBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-preset') === activeKey);
+  });
+}
+
+function checkMatchingPreset() {
+  if (!eq60El) return;
+  const current = {
+    eq60: parseInt(eq60El.value, 10) || 0,
+    eq250: parseInt(eq250El.value, 10) || 0,
+    eq1000: parseInt(eq1000El.value, 10) || 0,
+    eq4000: parseInt(eq4000El.value, 10) || 0,
+    eq12000: parseInt(eq12000El.value, 10) || 0
+  };
+  for (const [key, preset] of Object.entries(EQ_PRESETS)) {
+    if (preset.eq60 === current.eq60 &&
+        preset.eq250 === current.eq250 &&
+        preset.eq1000 === current.eq1000 &&
+        preset.eq4000 === current.eq4000 &&
+        preset.eq12000 === current.eq12000) {
+      updateActivePresetPill(key);
+      queueSave('eqPreset', key);
+      return;
+    }
+  }
+  updateActivePresetPill('custom');
+  queueSave('eqPreset', 'custom');
+}
 const qualityEnabledEl = document.getElementById('qualityEnabled');
 const statsEnabledEl = document.getElementById('statsEnabled');
 const adblockCountEl = document.getElementById('adblockCount');
@@ -27,10 +89,26 @@ const glowRightEl = document.getElementById('glowRight');
 const glowBottomEl = document.getElementById('glowBottom');
 const glowLeftEl = document.getElementById('glowLeft');
 const fpsEl = document.getElementById('fps');
+const preferredSpeedEl = document.getElementById('preferredSpeed');
+const preferredSpeedValEl = document.getElementById('preferredSpeedVal');
 const autoPauseModeEl = document.getElementById('autoPauseMode');
+const returnDislikesEl = document.getElementById('returnDislikes');
+const hideShortsEl = document.getElementById('hideShorts');
+const restoreAnnotationsEl = document.getElementById('restoreAnnotations');
+const hideEndCardsEl = document.getElementById('hideEndCards');
 const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
 const masterStatusTag = document.getElementById('masterStatusTag');
+
+function formatSpeedDisplay(rate) {
+  if (rate === 1) return '1.0×';
+  if (Number.isInteger(rate)) return `${rate}.0×`;
+  const rounded = Math.round(rate * 100) / 100;
+  if (Math.round(rounded * 10) === rounded * 10) {
+    return `${rounded.toFixed(1)}×`;
+  }
+  return `${rounded.toFixed(2)}×`;
+}
 
 function updateMasterStatus(enabled) {
   if (masterStatusTag) {
@@ -49,9 +127,47 @@ function render(settings) {
   updateMasterStatus(settings.enabled);
   adblockEnabledEl.checked = settings.adblockEnabled;
   if (autoPauseModeEl) autoPauseModeEl.value = settings.autoPauseMode || 'off';
+  if (returnDislikesEl) returnDislikesEl.checked = !!settings.returnDislikes;
+  if (hideShortsEl) hideShortsEl.checked = !!settings.hideShorts;
+  if (restoreAnnotationsEl) restoreAnnotationsEl.checked = !!settings.restoreAnnotations;
+  if (hideEndCardsEl) hideEndCardsEl.checked = !!settings.hideEndCards;
+  if (preferredSpeedEl) {
+    const spd = settings.preferredSpeed ?? 1.0;
+    preferredSpeedEl.value = Math.min(Math.max(spd, 0.1), 2.0);
+    if (preferredSpeedValEl) preferredSpeedValEl.textContent = formatSpeedDisplay(spd);
+  }
   audioNormalizerEl.checked = settings.audioNormalizer;
   audioBoostEl.value = settings.audioBoost;
   audioBoostValEl.textContent = settings.audioBoost + '%';
+  if (bassBoostEl) {
+    bassBoostEl.value = settings.bassBoost || 0;
+    bassBoostValEl.textContent = formatDb(settings.bassBoost);
+  }
+  if (vocalBoostEl) {
+    vocalBoostEl.value = settings.vocalBoost || 0;
+    vocalBoostValEl.textContent = formatDb(settings.vocalBoost);
+  }
+  if (eq60El) {
+    eq60El.value = settings.eq60 || 0;
+    eq60ValEl.textContent = formatDb(settings.eq60);
+  }
+  if (eq250El) {
+    eq250El.value = settings.eq250 || 0;
+    eq250ValEl.textContent = formatDb(settings.eq250);
+  }
+  if (eq1000El) {
+    eq1000El.value = settings.eq1000 || 0;
+    eq1000ValEl.textContent = formatDb(settings.eq1000);
+  }
+  if (eq4000El) {
+    eq4000El.value = settings.eq4000 || 0;
+    eq4000ValEl.textContent = formatDb(settings.eq4000);
+  }
+  if (eq12000El) {
+    eq12000El.value = settings.eq12000 || 0;
+    eq12000ValEl.textContent = formatDb(settings.eq12000);
+  }
+  updateActivePresetPill(settings.eqPreset || 'flat');
   qualityEnabledEl.checked = settings.qualityEnabled;
   statsEnabledEl.checked = settings.statsEnabled;
   preferredQualityEl.value = settings.preferredQuality;
@@ -149,6 +265,96 @@ async function init() {
     await save({ audioBoost: parseInt(audioBoostEl.value, 10) });
   });
 
+  if (bassBoostEl) {
+    bassBoostEl.addEventListener('input', () => {
+      bassBoostValEl.textContent = formatDb(bassBoostEl.value);
+      queueSave('bassBoost', parseInt(bassBoostEl.value, 10));
+    });
+    bassBoostEl.addEventListener('change', async () => {
+      await save({ bassBoost: parseInt(bassBoostEl.value, 10) });
+    });
+  }
+
+  if (vocalBoostEl) {
+    vocalBoostEl.addEventListener('input', () => {
+      vocalBoostValEl.textContent = formatDb(vocalBoostEl.value);
+      queueSave('vocalBoost', parseInt(vocalBoostEl.value, 10));
+    });
+    vocalBoostEl.addEventListener('change', async () => {
+      await save({ vocalBoost: parseInt(vocalBoostEl.value, 10) });
+    });
+  }
+
+  // 5-Band Equalizer Sliders
+  const eqSliders = [
+    { el: eq60El, valEl: eq60ValEl, key: 'eq60' },
+    { el: eq250El, valEl: eq250ValEl, key: 'eq250' },
+    { el: eq1000El, valEl: eq1000ValEl, key: 'eq1000' },
+    { el: eq4000El, valEl: eq4000ValEl, key: 'eq4000' },
+    { el: eq12000El, valEl: eq12000ValEl, key: 'eq12000' }
+  ];
+
+  eqSliders.forEach(({ el, valEl, key }) => {
+    if (!el) return;
+    el.addEventListener('input', () => {
+      valEl.textContent = formatDb(el.value);
+      queueSave(key, parseInt(el.value, 10));
+      checkMatchingPreset();
+    });
+    el.addEventListener('change', async () => {
+      await save({ [key]: parseInt(el.value, 10) });
+      checkMatchingPreset();
+    });
+  });
+
+  // EQ Presets
+  eqPresetBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const presetKey = btn.getAttribute('data-preset');
+      const preset = EQ_PRESETS[presetKey];
+      if (!preset) return;
+
+      eqSliders.forEach(({ el, valEl, key }) => {
+        if (el && preset[key] !== undefined) {
+          el.value = preset[key];
+          valEl.textContent = formatDb(preset[key]);
+        }
+      });
+
+      updateActivePresetPill(presetKey);
+      await save({
+        eq60: preset.eq60,
+        eq250: preset.eq250,
+        eq1000: preset.eq1000,
+        eq4000: preset.eq4000,
+        eq12000: preset.eq12000,
+        eqPreset: presetKey
+      });
+    });
+  });
+
+  // Reset EQ
+  if (eqResetEl) {
+    eqResetEl.addEventListener('click', async () => {
+      const flat = EQ_PRESETS.flat;
+      eqSliders.forEach(({ el, valEl, key }) => {
+        if (el) {
+          el.value = flat[key];
+          valEl.textContent = formatDb(flat[key]);
+        }
+      });
+      updateActivePresetPill('flat');
+      await save({
+        eq60: flat.eq60,
+        eq250: flat.eq250,
+        eq1000: flat.eq1000,
+        eq4000: flat.eq4000,
+        eq12000: flat.eq12000,
+        eqPreset: 'flat'
+      });
+    });
+  }
+
   adblockEnabledEl.addEventListener('change', async () => {
     await save({ adblockEnabled: adblockEnabledEl.checked });
   });
@@ -164,6 +370,30 @@ async function init() {
   if (autoPauseModeEl) {
     autoPauseModeEl.addEventListener('change', async () => {
       await save({ autoPauseMode: autoPauseModeEl.value });
+    });
+  }
+
+  if (returnDislikesEl) {
+    returnDislikesEl.addEventListener('change', async () => {
+      await save({ returnDislikes: returnDislikesEl.checked });
+    });
+  }
+
+  if (hideShortsEl) {
+    hideShortsEl.addEventListener('change', async () => {
+      await save({ hideShorts: hideShortsEl.checked });
+    });
+  }
+
+  if (restoreAnnotationsEl) {
+    restoreAnnotationsEl.addEventListener('change', async () => {
+      await save({ restoreAnnotations: restoreAnnotationsEl.checked });
+    });
+  }
+
+  if (hideEndCardsEl) {
+    hideEndCardsEl.addEventListener('change', async () => {
+      await save({ hideEndCards: hideEndCardsEl.checked });
     });
   }
 
@@ -244,6 +474,14 @@ async function init() {
         queueSave(key, value);
       });
     }
+  }
+
+  if (preferredSpeedEl) {
+    preferredSpeedEl.addEventListener('input', () => {
+      const val = parseFloat(preferredSpeedEl.value);
+      if (preferredSpeedValEl) preferredSpeedValEl.textContent = formatSpeedDisplay(val);
+      queueSave('preferredSpeed', val);
+    });
   }
 
   fpsEl.addEventListener('change', async () => {
