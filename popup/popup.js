@@ -46,7 +46,9 @@ const glowPresetBtns = document.querySelectorAll('.glow-preset-pill');
 
 function updateActiveGlowPresetPill(activeKey) {
   glowPresetBtns.forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-preset') === activeKey);
+    const isActive = btn.getAttribute('data-preset') === activeKey;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
 }
 
@@ -76,7 +78,9 @@ function formatDb(val) {
 
 function updateActivePresetPill(activeKey) {
   eqPresetBtns.forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-preset') === activeKey);
+    const isActive = btn.getAttribute('data-preset') === activeKey;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
 }
 
@@ -241,6 +245,10 @@ function render(settings) {
   glowRightEl.classList.toggle('active', settings.glowRight);
   glowBottomEl.classList.toggle('active', settings.glowBottom);
   glowLeftEl.classList.toggle('active', settings.glowLeft);
+  glowTopEl.setAttribute('aria-pressed', settings.glowTop ? 'true' : 'false');
+  glowRightEl.setAttribute('aria-pressed', settings.glowRight ? 'true' : 'false');
+  glowBottomEl.setAttribute('aria-pressed', settings.glowBottom ? 'true' : 'false');
+  glowLeftEl.setAttribute('aria-pressed', settings.glowLeft ? 'true' : 'false');
   adblockCountEl.textContent = settings.adblockCount;
   
   controlsEl.classList.toggle('disabled', !settings.enabled);
@@ -297,16 +305,41 @@ async function init() {
     await save({ enabled: enabledEl.checked });
   });
 
-  // Category pill navigation
-  document.querySelectorAll('.nav-pill').forEach(pill => {
+  // Category pill navigation & section dropdown synchronization
+  const navPills = document.querySelectorAll('.nav-pill');
+  const sectionDropdowns = document.querySelectorAll('details.section-dropdown');
+
+  function updateNavPillState(targetId) {
+    navPills.forEach(pill => {
+      const match = pill.getAttribute('data-target') === targetId;
+      pill.classList.toggle('active', match);
+      if (match) {
+        pill.setAttribute('aria-current', 'true');
+      } else {
+        pill.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  navPills.forEach(pill => {
     pill.addEventListener('click', () => {
-      document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
       const targetId = pill.getAttribute('data-target');
+      updateNavPillState(targetId);
       const section = document.getElementById(targetId);
       if (section) {
         section.open = true;
         section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  });
+
+  sectionDropdowns.forEach(sec => {
+    sec.addEventListener('toggle', () => {
+      if (sec.open) {
+        updateNavPillState(sec.id);
+      } else {
+        const anyOpen = Array.from(sectionDropdowns).find(s => s.open);
+        updateNavPillState(anyOpen ? anyOpen.id : null);
       }
     });
   });
@@ -550,6 +583,7 @@ async function init() {
     el.addEventListener('click', async () => {
       const active = !el.classList.contains('active');
       el.classList.toggle('active', active);
+      el.setAttribute('aria-pressed', active ? 'true' : 'false');
       await save({ ['glow' + dir]: active });
     });
   }

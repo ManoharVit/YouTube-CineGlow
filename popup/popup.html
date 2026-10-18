@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <!-- Top App Bar: Focused strictly on CineGlow -->
+  <!-- Top App Bar -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-logo-wrap">
@@ -25,79 +25,79 @@
   </header>
 
   <main id="controls">
-    <!-- Hero Master Switch Card -->
+    <!-- Master Switch Card -->
     <section class="hero-card" id="heroCard">
       <div class="hero-content">
         <div class="hero-info">
           <div class="hero-label-row">
-            <span class="hero-title">Ambient Lighting</span>
+            <span class="hero-title" id="heroTitle">Ambient Lighting</span>
             <span class="hero-status-tag" id="masterStatusTag">ACTIVE</span>
           </div>
           <span class="hero-desc">Real-time edge aura & cinema glow</span>
         </div>
-        <label class="switch modern-switch hero-switch">
-          <input type="checkbox" id="enabled">
+        <label class="switch modern-switch hero-switch" for="enabled">
+          <input type="checkbox" id="enabled" aria-labelledby="heroTitle">
           <span class="track"><span class="thumb"></span></span>
         </label>
       </div>
     </section>
 
-    <!-- Quick Category Pill Navigation (4 equal columns, no clipping) -->
+    <!-- Category Section Navigation -->
     <nav class="category-nav" aria-label="Sections">
-      <button type="button" class="nav-pill active" data-target="glowSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <button type="button" class="nav-pill active" data-target="glowSection" aria-controls="glowSection" aria-current="true">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         <span>Glow</span>
       </button>
-      <button type="button" class="nav-pill" data-target="videoSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <button type="button" class="nav-pill" data-target="videoSection" aria-controls="videoSection">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         <span>Video</span>
       </button>
-      <button type="button" class="nav-pill" data-target="audioSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      <button type="button" class="nav-pill" data-target="audioSection" aria-controls="audioSection">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
         <span>Audio</span>
       </button>
-      <button type="button" class="nav-pill" data-target="toolsSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      <button type="button" class="nav-pill" data-target="toolsSection" aria-controls="toolsSection">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
         <span>Tools</span>
       </button>
     </nav>
 
-    <!-- 1. Glow & Lighting Section (Dropdown) -->
+    <!-- 1. Glow & Lighting Section -->
     <details class="modern-card section-dropdown glow-settings" id="glowSection" open>
       <summary class="section-summary">
         <div class="section-leading">
           <div class="squircle-icon squircle-purple">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           </div>
           <div class="section-text">
             <span class="section-title">Glow & Aura</span>
             <span class="section-subtitle">Diffusion, colors & spread</span>
           </div>
         </div>
-        <div class="chevron-btn">
+        <div class="chevron-btn" aria-hidden="true">
           <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
         </div>
       </summary>
       <div class="section-body">
         <!-- Glow Presets -->
         <div class="preset-bar">
-          <span class="preset-bar-title">Presets</span>
-          <div class="glow-preset-pills">
-            <button type="button" class="glow-preset-pill" data-preset="subtle">Subtle</button>
-            <button type="button" class="glow-preset-pill active" data-preset="balanced">Balanced</button>
-            <button type="button" class="glow-preset-pill" data-preset="vivid">Vivid</button>
+          <span class="preset-bar-title" id="glowPresetsLabel">Presets</span>
+          <div class="glow-preset-pills" role="group" aria-labelledby="glowPresetsLabel">
+            <button type="button" class="glow-preset-pill" data-preset="subtle" aria-pressed="false">Subtle</button>
+            <button type="button" class="glow-preset-pill active" data-preset="balanced" aria-pressed="true">Balanced</button>
+            <button type="button" class="glow-preset-pill" data-preset="vivid" aria-pressed="false">Vivid</button>
           </div>
         </div>
 
-        <!-- Primary Sliders: Intensity, Spread, Smoothness -->
+        <!-- Primary Sliders -->
         <div class="slider-group">
           <div class="slider-row">
             <div class="slider-header">
               <div>
-                <label for="opacity">Intensity</label>
+                <label for="opacity" id="opacity-label">Intensity</label>
                 <span class="slider-subtext">Overall glow opacity</span>
               </div>
-              <div class="val-badge"><input type="number" id="opacity-val" min="0" max="100"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="opacity-val" min="0" max="100" aria-label="Intensity percentage" aria-labelledby="opacity-label"><span>%</span></div>
             </div>
             <input type="range" id="opacity" min="0" max="100" step="1">
           </div>
@@ -105,10 +105,10 @@
           <div class="slider-row">
             <div class="slider-header">
               <div>
-                <label for="spread">Spread</label>
+                <label for="spread" id="spread-label">Spread</label>
                 <span class="slider-subtext">Aura distance from video</span>
               </div>
-              <div class="val-badge"><input type="number" id="spread-val" min="100" max="500"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="spread-val" min="100" max="500" aria-label="Spread percentage" aria-labelledby="spread-label"><span>%</span></div>
             </div>
             <input type="range" id="spread" min="100" max="500" step="1">
           </div>
@@ -116,42 +116,42 @@
           <div class="slider-row">
             <div class="slider-header">
               <div>
-                <label for="smoothness">Smoothness</label>
+                <label for="smoothness" id="smoothness-label">Smoothness</label>
                 <span class="slider-subtext">Frame transition blend</span>
               </div>
-              <div class="val-badge"><input type="number" id="smoothness-val" min="0" max="100"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="smoothness-val" min="0" max="100" aria-label="Smoothness percentage" aria-labelledby="smoothness-label"><span>%</span></div>
             </div>
             <input type="range" id="smoothness" min="0" max="100" step="1">
           </div>
         </div>
 
-        <!-- Collapsible Advanced Adjustments (Blur, Saturation, Contrast, Luminance, Fade-In) -->
+        <!-- Advanced Adjustments -->
         <details class="advanced-adjustments-block" id="advancedGlowDetails">
           <summary class="advanced-summary">
             <span class="advanced-summary-text">Advanced Adjustments</span>
-            <svg class="chevron-sm" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
+            <svg class="chevron-sm" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
           </summary>
           <div class="advanced-body">
             <div class="slider-row">
               <div class="slider-header">
-                <label for="blur">Blur Radius</label>
-                <div class="val-badge"><input type="number" id="blur-val" min="0" max="150"><span>px</span></div>
+                <label for="blur" id="blur-label">Blur Radius</label>
+                <div class="val-badge"><input type="number" id="blur-val" min="0" max="150" aria-label="Blur radius in pixels" aria-labelledby="blur-label"><span>px</span></div>
               </div>
               <input type="range" id="blur" min="0" max="150" step="1">
             </div>
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="saturation">Color Saturation</label>
-                <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150"><span>%</span></div>
+                <label for="saturation" id="saturation-label">Color Saturation</label>
+                <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150" aria-label="Color saturation percentage" aria-labelledby="saturation-label"><span>%</span></div>
               </div>
               <input type="range" id="saturation" min="0" max="150" step="1">
             </div>
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="contrast">Color Contrast</label>
-                <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200"><span>%</span></div>
+                <label for="contrast" id="contrast-label">Color Contrast</label>
+                <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200" aria-label="Color contrast percentage" aria-labelledby="contrast-label"><span>%</span></div>
               </div>
               <input type="range" id="contrast" min="0" max="200" step="1">
             </div>
@@ -159,18 +159,18 @@
             <div class="slider-row">
               <div class="slider-header">
                 <div>
-                  <label for="brightness">Luminance</label>
+                  <label for="brightness" id="brightness-label">Luminance</label>
                   <span class="slider-subtext">Canvas white-point boost</span>
                 </div>
-                <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200"><span>%</span></div>
+                <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200" aria-label="Luminance percentage" aria-labelledby="brightness-label"><span>%</span></div>
               </div>
               <input type="range" id="brightness" min="20" max="200" step="1">
             </div>
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="fadeInDuration">Fade-In Time</label>
-                <div class="val-badge"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1"><span>s</span></div>
+                <label for="fadeInDuration" id="fadeInDuration-label">Fade-In Time</label>
+                <div class="val-badge"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1" aria-label="Fade-in duration in seconds" aria-labelledby="fadeInDuration-label"><span>s</span></div>
               </div>
               <input type="range" id="fadeInDuration" min="0" max="10" step="0.1">
             </div>
@@ -179,17 +179,17 @@
 
         <!-- Directions Pad -->
         <div class="control-block">
-          <div class="block-label">
+          <div class="block-label" id="directionsLabel">
             <span>Active Directions</span>
             <span class="block-hint">Click sides to toggle</span>
           </div>
           <div class="directions-pad-wrap">
-            <div class="directions-pad">
-              <button type="button" class="dir-btn top" id="glowTop" title="Top Edge"></button>
-              <button type="button" class="dir-btn right" id="glowRight" title="Right Edge"></button>
-              <button type="button" class="dir-btn bottom" id="glowBottom" title="Bottom Edge"></button>
-              <button type="button" class="dir-btn left" id="glowLeft" title="Left Edge"></button>
-              <div class="dir-center">
+            <div class="directions-pad" role="group" aria-labelledby="directionsLabel">
+              <button type="button" class="dir-btn top" id="glowTop" title="Top Edge" aria-label="Top edge glow" aria-pressed="true"></button>
+              <button type="button" class="dir-btn right" id="glowRight" title="Right Edge" aria-label="Right edge glow" aria-pressed="true"></button>
+              <button type="button" class="dir-btn bottom" id="glowBottom" title="Bottom Edge" aria-label="Bottom edge glow" aria-pressed="true"></button>
+              <button type="button" class="dir-btn left" id="glowLeft" title="Left Edge" aria-label="Left edge glow" aria-pressed="true"></button>
+              <div class="dir-center" aria-hidden="true">
                 <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><rect x="3" y="4" width="10" height="8" rx="1.5"/></svg>
               </div>
             </div>
@@ -198,22 +198,22 @@
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Glow in PiP</span>
+            <span class="row-title" id="pipTitle">Glow in PiP</span>
             <span class="row-desc">Keep aura during Picture-in-Picture</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="enableInPiP">
+          <label class="switch modern-switch" for="enableInPiP">
+            <input type="checkbox" id="enableInPiP" aria-labelledby="pipTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Audio-Reactive Glow</span>
+            <span class="row-title" id="audioReactiveTitle">Audio-Reactive Glow</span>
             <span class="row-desc">Pulse ambient light to bass frequencies</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="audioReactive">
+          <label class="switch modern-switch" for="audioReactive">
+            <input type="checkbox" id="audioReactive" aria-labelledby="audioReactiveTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
@@ -231,26 +231,26 @@
 
         <div class="section-footer-row">
           <button type="button" class="section-reset-btn" id="glowReset" title="Reset Glow settings to defaults">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             <span>Reset Glow Settings</span>
           </button>
         </div>
       </div>
     </details>
 
-    <!-- 2. Video & Display Section (Dropdown) -->
+    <!-- 2. Video & Display Section -->
     <details class="modern-card section-dropdown" id="videoSection">
       <summary class="section-summary">
         <div class="section-leading">
           <div class="squircle-icon squircle-blue">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
           <div class="section-text">
             <span class="section-title">Video & Display</span>
             <span class="section-subtitle">Resolution, filters & crop</span>
           </div>
         </div>
-        <div class="chevron-btn">
+        <div class="chevron-btn" aria-hidden="true">
           <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
         </div>
       </summary>
@@ -258,17 +258,17 @@
         <!-- Auto-HD Quality -->
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Force High Definition</span>
+            <span class="row-title" id="qualityTitle">Force High Definition</span>
             <span class="row-desc">Always start videos in max quality</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="qualityEnabled">
+          <label class="switch modern-switch" for="qualityEnabled">
+            <input type="checkbox" id="qualityEnabled" aria-labelledby="qualityTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
         <div class="select-row inset">
           <div class="select-container full-width">
-            <select id="preferredQuality" class="modern-select">
+            <select id="preferredQuality" class="modern-select" aria-label="Preferred video resolution">
               <option value="highres">Maximum Available (8K / 4K)</option>
               <option value="hd2160">Ultra HD (4K / 2160p)</option>
               <option value="hd1440">Quad HD (1440p)</option>
@@ -294,16 +294,16 @@
         <div class="slider-group">
           <div class="slider-row">
             <div class="slider-header">
-              <label for="videoBrightness">Video Brightness</label>
-              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200"><span>%</span></div>
+              <label for="videoBrightness" id="videoBrightness-label">Video Brightness</label>
+              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200" aria-label="Video brightness percentage" aria-labelledby="videoBrightness-label"><span>%</span></div>
             </div>
             <input type="range" id="videoBrightness" min="20" max="200" step="1">
           </div>
 
           <div class="slider-row">
             <div class="slider-header">
-              <label for="videoContrast">Video Contrast</label>
-              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200"><span>%</span></div>
+              <label for="videoContrast" id="videoContrast-label">Video Contrast</label>
+              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200" aria-label="Video contrast percentage" aria-labelledby="videoContrast-label"><span>%</span></div>
             </div>
             <input type="range" id="videoContrast" min="20" max="200" step="1">
           </div>
@@ -311,10 +311,10 @@
           <div class="slider-row">
             <div class="slider-header">
               <div>
-                <label for="videoSepia">Warmth</label>
+                <label for="videoSepia" id="videoSepia-label">Warmth</label>
                 <span class="slider-subtext">Eye-care blue light filter</span>
               </div>
-              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100" aria-label="Warmth blue-light filter percentage" aria-labelledby="videoSepia-label"><span>%</span></div>
             </div>
             <input type="range" id="videoSepia" min="0" max="100" step="1">
           </div>
@@ -322,70 +322,70 @@
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Auto-Crop Black Bars</span>
+            <span class="row-title" id="blackBarsTitle">Auto-Crop Black Bars</span>
             <span class="row-desc">Remove letterboxing & cinema bars</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="removeBlackBars">
+          <label class="switch modern-switch" for="removeBlackBars">
+            <input type="checkbox" id="removeBlackBars" aria-labelledby="blackBarsTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Fill ultrawide screen</span>
+            <span class="row-title" id="ultrawideTitle">Fill ultrawide screen</span>
             <span class="row-desc">Expand video to fill 21:9 monitors</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="ultrawideZoom">
+          <label class="switch modern-switch" for="ultrawideZoom">
+            <input type="checkbox" id="ultrawideZoom" aria-labelledby="ultrawideTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Lights Out Cinema Mode</span>
+            <span class="row-title" id="lightsOutTitle">Lights Out Cinema Mode</span>
             <span class="row-desc">Dim the page around the video</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="lightsOut">
+          <label class="switch modern-switch" for="lightsOut">
+            <input type="checkbox" id="lightsOut" aria-labelledby="lightsOutTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="section-footer-row">
           <button type="button" class="section-reset-btn" id="videoReset" title="Reset Video settings to defaults">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             <span>Reset Video Settings</span>
           </button>
         </div>
       </div>
     </details>
 
-    <!-- 3. Audio & Sound Section (Dropdown) -->
+    <!-- 3. Audio & Sound Section -->
     <details class="modern-card section-dropdown" id="audioSection">
       <summary class="section-summary">
         <div class="section-leading">
           <div class="squircle-icon squircle-amber">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
           </div>
           <div class="section-text">
             <span class="section-title">Audio & Sound</span>
             <span class="section-subtitle">Boost, normalize & balance</span>
           </div>
         </div>
-        <div class="chevron-btn">
+        <div class="chevron-btn" aria-hidden="true">
           <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
         </div>
       </summary>
       <div class="section-body">
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Audio Normaliser</span>
-            <span class="row-desc">Apply uniform gain to match a consistent loudness target</span>
+            <span class="row-title" id="audioNormalizerTitle">Audio Normaliser</span>
+            <span class="row-desc">Reduce differences between loud and quiet passages</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="audioNormalizer">
+          <label class="switch modern-switch" for="audioNormalizer">
+            <input type="checkbox" id="audioNormalizer" aria-labelledby="audioNormalizerTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
@@ -414,49 +414,49 @@
           <input type="range" id="vocalBoost" min="0" max="12" step="1" value="0">
         </div>
 
-        <!-- 5-Band Music Equalizer -->
+        <!-- 5-Band Equalizer -->
         <div class="audio-rack-card">
           <div class="audio-rack-header">
-            <span class="audio-rack-title">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+            <span class="audio-rack-title" id="eqRackTitle">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
               5-Band Equalizer
             </span>
             <button type="button" class="audio-reset-link" id="eqReset">Reset EQ</button>
           </div>
 
-          <div class="audio-preset-pills">
-            <button type="button" class="audio-preset-pill active" data-preset="flat">Flat</button>
-            <button type="button" class="audio-preset-pill" data-preset="bass">Bass</button>
-            <button type="button" class="audio-preset-pill" data-preset="vocal">Vocal</button>
-            <button type="button" class="audio-preset-pill" data-preset="rock">Rock</button>
-            <button type="button" class="audio-preset-pill" data-preset="pop">Pop</button>
-            <button type="button" class="audio-preset-pill" data-preset="electro">EDM</button>
+          <div class="audio-preset-pills" role="group" aria-label="Equalizer Presets">
+            <button type="button" class="audio-preset-pill active" data-preset="flat" aria-pressed="true">Flat</button>
+            <button type="button" class="audio-preset-pill" data-preset="bass" aria-pressed="false">Bass</button>
+            <button type="button" class="audio-preset-pill" data-preset="vocal" aria-pressed="false">Vocal</button>
+            <button type="button" class="audio-preset-pill" data-preset="rock" aria-pressed="false">Rock</button>
+            <button type="button" class="audio-preset-pill" data-preset="pop" aria-pressed="false">Pop</button>
+            <button type="button" class="audio-preset-pill" data-preset="electro" aria-pressed="false">EDM</button>
           </div>
 
-          <div class="eq-hbars-list">
+          <div class="eq-hbars-list" role="group" aria-labelledby="eqRackTitle">
             <div class="eq-hbar-row">
-              <span class="eq-hbar-tag">60Hz</span>
-              <input type="range" class="eq-hbar-slider" id="eq60" min="-12" max="12" step="1" value="0">
+              <label for="eq60" class="eq-hbar-tag">60Hz</label>
+              <input type="range" class="eq-hbar-slider" id="eq60" min="-12" max="12" step="1" value="0" aria-label="60Hz Sub-Bass gain">
               <span class="eq-hbar-val" id="eq60Val">0 dB</span>
             </div>
             <div class="eq-hbar-row">
-              <span class="eq-hbar-tag">250Hz</span>
-              <input type="range" class="eq-hbar-slider" id="eq250" min="-12" max="12" step="1" value="0">
+              <label for="eq250" class="eq-hbar-tag">250Hz</label>
+              <input type="range" class="eq-hbar-slider" id="eq250" min="-12" max="12" step="1" value="0" aria-label="250Hz Warmth gain">
               <span class="eq-hbar-val" id="eq250Val">0 dB</span>
             </div>
             <div class="eq-hbar-row">
-              <span class="eq-hbar-tag">1kHz</span>
-              <input type="range" class="eq-hbar-slider" id="eq1000" min="-12" max="12" step="1" value="0">
+              <label for="eq1000" class="eq-hbar-tag">1kHz</label>
+              <input type="range" class="eq-hbar-slider" id="eq1000" min="-12" max="12" step="1" value="0" aria-label="1kHz Midrange gain">
               <span class="eq-hbar-val" id="eq1000Val">0 dB</span>
             </div>
             <div class="eq-hbar-row">
-              <span class="eq-hbar-tag">4kHz</span>
-              <input type="range" class="eq-hbar-slider" id="eq4000" min="-12" max="12" step="1" value="0">
+              <label for="eq4000" class="eq-hbar-tag">4kHz</label>
+              <input type="range" class="eq-hbar-slider" id="eq4000" min="-12" max="12" step="1" value="0" aria-label="4kHz Presence gain">
               <span class="eq-hbar-val" id="eq4000Val">0 dB</span>
             </div>
             <div class="eq-hbar-row">
-              <span class="eq-hbar-tag">12kHz</span>
-              <input type="range" class="eq-hbar-slider" id="eq12000" min="-12" max="12" step="1" value="0">
+              <label for="eq12000" class="eq-hbar-tag">12kHz</label>
+              <input type="range" class="eq-hbar-slider" id="eq12000" min="-12" max="12" step="1" value="0" aria-label="12kHz Air gain">
               <span class="eq-hbar-val" id="eq12000Val">0 dB</span>
             </div>
           </div>
@@ -464,31 +464,30 @@
 
         <div class="section-footer-row">
           <button type="button" class="section-reset-btn" id="audioReset" title="Reset Audio settings to defaults">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             <span>Reset Audio Settings</span>
           </button>
         </div>
       </div>
     </details>
 
-    <!-- 4. Tools & Tweaks Section (Unified) -->
+    <!-- 4. Tools & Tweaks Section -->
     <details class="modern-card section-dropdown" id="toolsSection">
       <summary class="section-summary">
         <div class="section-leading">
           <div class="squircle-icon squircle-emerald">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <div class="section-text">
             <span class="section-title">Tools & Tweaks</span>
             <span class="section-subtitle">AdBlock, HUD & cinema options</span>
           </div>
         </div>
-        <div class="chevron-btn">
+        <div class="chevron-btn" aria-hidden="true">
           <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
         </div>
       </summary>
       <div class="section-body">
-        <!-- Sub-block 1: Player Telemetry & Automation -->
         <div class="sub-header">
           <span>Automation & Telemetry</span>
         </div>
@@ -496,40 +495,40 @@
         <div class="control-row">
           <div class="row-info">
             <div class="title-with-badge">
-              <span class="row-title">Smart AdBlock</span>
+              <span class="row-title" id="adblockTitle">Smart AdBlock</span>
               <div id="stats" class="adblock-counter-pill" title="Ads blocked/skipped">
                 <span class="status-dot"></span>
                 <span class="status-text"><strong id="adblockCount">0</strong> skipped</span>
               </div>
             </div>
-            <span class="row-desc">Automatically skip sponsorships & video ads</span>
+            <span class="row-desc">Skip supported YouTube video ads</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="adblockEnabled">
+          <label class="switch modern-switch" for="adblockEnabled">
+            <input type="checkbox" id="adblockEnabled" aria-labelledby="adblockTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Quality Stats HUD</span>
+            <span class="row-title" id="statsTitle">Quality Stats HUD</span>
             <span class="row-desc">Show live rendering & frame timing overlay</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="statsEnabled">
+          <label class="switch modern-switch" for="statsEnabled">
+            <input type="checkbox" id="statsEnabled" aria-labelledby="statsTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Smart Auto-Pause</span>
+            <label for="autoPauseMode" class="row-title" id="autoPauseTitle">Smart Auto-Pause</label>
             <span class="row-desc">Pause playback when not actively watching</span>
           </div>
         </div>
         <div class="select-row inset">
           <div class="select-container full-width">
-            <select id="autoPauseMode" class="modern-select">
+            <select id="autoPauseMode" class="modern-select" aria-labelledby="autoPauseTitle">
               <option value="off">Off (Keep playing)</option>
               <option value="tab">When switching tabs</option>
               <option value="app">When switching tabs or apps</option>
@@ -537,111 +536,109 @@
           </div>
         </div>
 
-        <!-- Sub-block 2: Content Enhancements -->
         <div class="sub-header">
           <span>Content Tweaks</span>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Return YouTube Dislike</span>
+            <span class="row-title" id="dislikeTitle">Return YouTube Dislike</span>
             <span class="row-desc">Restore public dislike counters & ratings</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="returnDislikes">
+          <label class="switch modern-switch" for="returnDislikes">
+            <input type="checkbox" id="returnDislikes" aria-labelledby="dislikeTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Hide YouTube Shorts</span>
+            <span class="row-title" id="shortsTitle">Hide YouTube Shorts</span>
             <span class="row-desc">Remove Shorts shelves, sidebar tabs & feeds</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="hideShorts">
+          <label class="switch modern-switch" for="hideShorts">
+            <input type="checkbox" id="hideShorts" aria-labelledby="shortsTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Restore Classic Annotations</span>
+            <span class="row-title" id="annotationsTitle">Restore Classic Annotations</span>
             <span class="row-desc">Bring back interactive notes, speech bubbles & spotlights</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="restoreAnnotations">
+          <label class="switch modern-switch" for="restoreAnnotations">
+            <input type="checkbox" id="restoreAnnotations" aria-labelledby="annotationsTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Hide End Screens & Cards</span>
+            <span class="row-title" id="endCardsTitle">Hide End Screens & Cards</span>
             <span class="row-desc">Automatically hide video cards, suggestions & subscribe popups</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="hideEndCards">
+          <label class="switch modern-switch" for="hideEndCards">
+            <input type="checkbox" id="hideEndCards" aria-labelledby="endCardsTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
-        <!-- Sub-block 3: Display & Codec Controls -->
         <div class="sub-header">
           <span>Layout & Codecs</span>
         </div>
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title">Clean Cinema Theater Mode</span>
+            <span class="row-title" id="theaterTitle">Clean Cinema Theater Mode</span>
             <span class="row-desc">Hide UI & center video in frame</span>
           </div>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="hideInTheater">
+          <label class="switch modern-switch" for="hideInTheater">
+            <input type="checkbox" id="hideInTheater" aria-labelledby="theaterTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
-          <span class="row-title">Hide Page Scrollbar</span>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="hideScrollbar">
+          <label for="hideScrollbar" class="row-title" id="scrollbarTitle">Hide Page Scrollbar</label>
+          <label class="switch modern-switch" for="hideScrollbar">
+            <input type="checkbox" id="hideScrollbar" aria-labelledby="scrollbarTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
-          <span class="row-title">Block AV1 Codec</span>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="blockAV1">
+          <label for="blockAV1" class="row-title" id="av1Title">Block AV1 Codec</label>
+          <label class="switch modern-switch" for="blockAV1">
+            <input type="checkbox" id="blockAV1" aria-labelledby="av1Title">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
-          <span class="row-title">Block VP9 Codec</span>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="blockVP9">
+          <label for="blockVP9" class="row-title" id="vp9Title">Block VP9 Codec</label>
+          <label class="switch modern-switch" for="blockVP9">
+            <input type="checkbox" id="blockVP9" aria-labelledby="vp9Title">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="control-row">
-          <span class="row-title">Block 60fps Video</span>
-          <label class="switch modern-switch">
-            <input type="checkbox" id="block60fps">
+          <label for="block60fps" class="row-title" id="fpsBlockTitle">Block 60fps Video</label>
+          <label class="switch modern-switch" for="block60fps">
+            <input type="checkbox" id="block60fps" aria-labelledby="fpsBlockTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
         <div class="warning-callout">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>Blocking both AV1 and VP9 caps YouTube resolution to 1080p maximum.</span>
         </div>
 
         <div class="section-footer-row">
           <button type="button" class="section-reset-btn" id="toolsReset" title="Reset Tools settings to defaults">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             <span>Reset Tools &amp; Tweaks</span>
           </button>
         </div>
@@ -649,26 +646,26 @@
     </details>
   </main>
 
-  <!-- App Footer: Creator attribution moved here, leaving header clean -->
+  <!-- App Footer -->
   <footer class="app-footer">
     <div class="footer-attribution">
       <span class="attribution-label">By</span>
       <a href="https://github.com/ManoharVit" target="_blank" rel="noopener noreferrer" class="creator-name-link">Giri Manohar Vemula</a>
       <div class="creator-links">
-        <a href="https://github.com/ManoharVit" target="_blank" rel="noopener noreferrer" class="social-icon-link" title="GitHub">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+        <a href="https://github.com/ManoharVit" target="_blank" rel="noopener noreferrer" class="social-icon-link" title="GitHub" aria-label="GitHub profile">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
           </svg>
         </a>
-        <a href="https://www.linkedin.com/in/manoharv511/" target="_blank" rel="noopener noreferrer" class="social-icon-link" title="LinkedIn">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+        <a href="https://www.linkedin.com/in/manoharv511/" target="_blank" rel="noopener noreferrer" class="social-icon-link" title="LinkedIn" aria-label="LinkedIn profile">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
             <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.45a1.65 1.65 0 0 0-1.66 1.66 1.66 1.66 0 0 0 1.66 1.66 1.66 1.66 0 0 0 1.66-1.66c0-.92-.74-1.66-1.66-1.66Z"/>
           </svg>
         </a>
       </div>
     </div>
     <button type="button" id="reset" class="reset-btn" title="Reset all settings to default values">
-      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
       <span>Reset All</span>
     </button>
   </footer>

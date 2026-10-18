@@ -19,12 +19,27 @@ Your settings — glow intensity, blur radius, audio boost level, preferred reso
 - **Audio normalization** connects Web Audio API nodes to the video element in local memory. No audio data is recorded or transmitted.
 - **Screenshots** render a single video frame to a `<canvas>`, convert it to PNG, and trigger a download to your local machine. The image data never leaves your browser.
 
-## Third-Party Services
+## Third-Party Services & Network Requests
 
-None. The extension contains no analytics SDKs, advertising libraries, or external telemetry of any kind.
+The extension operates locally by default. When specific optional features are enabled by the user, the background service worker communicates with the following external endpoints:
+
+1. **Return YouTube Dislike API (`returnyoutubedislikeapi.com`)**:
+   - **Feature**: Restore Dislike Counter (`returnDislikes`).
+   - **Data Transmitted**: Only the public 11-character YouTube video ID (e.g., `?videoId=dQw4w9WgXcQ`).
+   - **Purpose**: Retrieves public community like/dislike statistics.
+   - **Privacy Guarantee**: No cookies, authentication tokens, personal identifiers, or browsing history are sent.
+
+2. **Classic YouTube Annotations Archive (`storage.googleapis.com`)**:
+   - **Feature**: Restore Annotations (`restoreAnnotations`).
+   - **Data Transmitted**: The public YouTube video ID in the archive file path.
+   - **Purpose**: Fetches public archived XML annotation files created prior to YouTube's 2019 annotation deprecation.
+   - **Privacy Guarantee**: No user accounts, credentials, or tracking metrics are transmitted. Downloaded XML is cached locally in `chrome.storage.local`.
+
+The extension contains zero advertising libraries, zero behavioral tracking scripts, and zero telemetry analytics SDKs.
 
 ## Contact
 
-- **Developer**: Giri Manohar Vemula
+- **Developer / Lead Architect**: Giri Manohar Vemula
 - **Email**: girimanohar.v@gmail.com
+- **LinkedIn**: [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)
 - **GitHub**: [https://github.com/ManoharVit/YouTube-CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)

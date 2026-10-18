@@ -292,6 +292,11 @@ body {
   box-shadow: 0 1px 6px rgba(168, 85, 247, 0.22);
 }
 
+.nav-pill:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
 .nav-icon-svg {
   flex-shrink: 0;
 }
@@ -346,6 +351,11 @@ body {
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
 }
 
+.glow-preset-pill:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
 /* Section Footer Row & Reset Button (Bottom of Dropdown) */
 .section-footer-row {
   display: flex;
@@ -376,6 +386,11 @@ body {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.3);
   color: #f87171;
+}
+
+.section-reset-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
 
 .section-reset-btn svg {
@@ -487,6 +502,11 @@ summary {
   list-style: none !important;
   list-style-type: none !important;
   outline: none;
+}
+summary:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 summary::-webkit-details-marker,
 summary::marker {
@@ -736,6 +756,11 @@ details[open] .chevron-btn {
   margin: 0;
 }
 
+.val-badge:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+}
+
 .val-badge.text-only {
   padding: 2px 8px;
 }
@@ -751,6 +776,12 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
   transition: background 0.15s ease;
+}
+
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 input[type="range"]:hover {
@@ -858,6 +889,12 @@ input[type="range"]:active::-webkit-slider-thumb {
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
 }
 
+.dir-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  z-index: 3;
+}
+
 .dir-center {
   position: absolute;
   inset: 22px;
@@ -927,6 +964,11 @@ input[type="range"]:active::-webkit-slider-thumb {
   box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
 }
 
+.modern-select:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
 /* ---------- 9. Alerts & Footers ---------- */
 .notice-pill {
   font-size: 11px;
@@ -993,6 +1035,12 @@ input[type="range"]:active::-webkit-slider-thumb {
   color: #ffffff;
 }
 
+.creator-name-link:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .creator-links {
   display: flex;
   align-items: center;
@@ -1014,6 +1062,11 @@ input[type="range"]:active::-webkit-slider-thumb {
 .social-icon-link:hover {
   color: var(--text-main);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.social-icon-link:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
 
 .reset-btn {
@@ -1038,6 +1091,11 @@ input[type="range"]:active::-webkit-slider-thumb {
   background: rgba(239, 68, 68, 0.12);
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+.reset-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
 
 .reset-btn svg {
@@ -1111,6 +1169,11 @@ input[type="range"]:active::-webkit-slider-thumb {
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
 }
 
+.audio-preset-pill:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
 .audio-reset-link {
   background: none;
   border: none;
@@ -1125,6 +1188,12 @@ input[type="range"]:active::-webkit-slider-thumb {
 .audio-reset-link:hover {
   opacity: 0.8;
   text-decoration: underline;
+}
+
+.audio-reset-link:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .eq-hbars-list {

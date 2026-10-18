@@ -499,8 +499,9 @@
   <h2>2.1 Centralized Player Manager (`player-manager.js`)</h2>
   <ul>
     <li><strong>URL & Video Change Detection:</strong> Subscribes directly to YouTube's SPA navigation hooks (<code>yt-navigate-finish</code>, <code>yt-page-data-updated</code>) and tracks URL query parameters (<code>v=</code> parameter changes).</li>
-    <li><strong>Observer Management:</strong> Deploys a minimal <code>MutationObserver</code> exclusively while locating the player DOM. The observer automatically disconnects once the player node is secured, preventing CPU waste on homepage feeds.</li>
-    <li><strong>EventTarget Dispatch:</strong> Broadcasts standardized <code>state-change</code>, <code>player-ready</code>, and <code>dispose</code> events, ensuring all subsystems attach and detach deterministically.</li>
+    <li><strong>Observer Management:</strong> Deploys targeted <code>MutationObserver</code> instances scoped to <code>#movie_player</code>, <code>ytd-app</code>, and <code>ytd-watch-flexy</code> to track player state, theater mode, ad-interrupting states, and miniplayer transitions.</li>
+    <li><strong>Cold-Load Fallback:</strong> If YouTube's player elements have not yet mounted when a watch page loads, a 500ms safety interval polls until the nodes are acquired, disconnecting immediately once secured.</li>
+    <li><strong>Consolidated <code>state-change</code> Event:</strong> Emits a single <code>state-change</code> event (<code>CustomEvent('state-change', { detail: this })</code>) broadcasting active player references and playback flags (<code>isWatchPage</code>, <code>isPlaying</code>, <code>isPiP</code>, <code>isTheater</code>, <code>isFullscreen</code>, <code>isAdShowing</code>). Subsystems synchronize deterministically in response to this single source of truth.</li>
   </ul>
 
   <h2>2.2 Dual-World Scripting Architecture</h2>
@@ -524,7 +525,7 @@
   <ul>
     <li><strong>Directional Clipping:</strong> Independent Top, Right, Bottom, and Left toggles allow selective clipping of any glow perimeter.</li>
     <li><strong>Audio-Reactive Pulsing:</strong> Connects to an FFT <code>AnalyserNode</code>; bass energy spikes (40–180 Hz) dynamically scale and brighten the glow in sync with musical beats.</li>
-    <li><strong>Idle Suspension:</strong> The <code>requestAnimationFrame</code> loop halts instantly when video playback pauses or buffers, reducing GPU load to 0.00%.</li>
+    <li><strong>Idle Suspension:</strong> The <code>requestAnimationFrame</code> and <code>requestVideoFrameCallback</code> loops halt when playback pauses, ends, or buffers, suspending canvas redraws and conserving CPU and GPU cycles.</li>
   </ul>
 
   <h2>3.2 Studio Audio DSP Pipeline (`audio-processor.js`)</h2>
@@ -533,14 +534,17 @@
   </p>
 
   <div class="diagram-box">
-  [Video Audio] ---> [Master Gain (0-300%)] ---> [Audio Normalizer] ---> [5-Band Equalizer] ---> [Destination]
-                                                                                |
-                                                                                +---> [AnalyserNode (FFT)] ---> [Beat Pulse]</div>
+[Video Audio] --+--> [Normalizer Gain (Dry)] ------------------------------+--> [Bass Filter (80Hz)] --> [Vocal Filter (2.5kHz)]
+                |                                                          |
+                +--> [Compressor (-24dB)] --> [Compressed Gain (Wet)] -----+
+                                                                               |
+[Speakers] &lt;--- [Limiter (-1dB)] &lt;--- [Gain (100-300%)] &lt;--- [5-Band Equalizer (60Hz - 12kHz)]
+     |
+     +---> [AnalyserNode (FFT)] ---> [Beat Pulse to Glow Engine]</div>
 
-  <h3>Audio Normalization vs. Dynamic Compression</h3>
+  <h3>Audio Normalization Architecture</h3>
   <ul>
-    <li><strong>Uniform Perceived Loudness:</strong> Unlike aggressive dynamic compressors that squash musical transients and cause audible pumping, CineGlow's <strong>Audio Normalizer</strong> applies uniform gain adjustment to align audio with a consistent target loudness level.</li>
-    <li><strong>Preserves Dynamics:</strong> Intonation, vocal nuances, and acoustic dynamics remain intact while equalizing the volume difference between quiet speech and loud mastering.</li>
+    <li><strong>DynamicsCompressorNode Staging:</strong> Implemented via a Web Audio <code>DynamicsCompressorNode</code> (threshold: -24 dB, knee: 30 dB, ratio: 12:1, attack: 3ms, release: 250ms) paired with smooth dry/wet gain crossfading (<code>normalizerGain</code> and <code>compressedGain</code>). When enabled, loud audio peaks exceeding -24 dB are compressed with a soft knee while boosting lower-level dialogue, followed by a brickwall limiter (<code>threshold: -1 dB</code>, <code>ratio: 20:1</code>) to prevent clipping.</li>
     <li><strong>5-Band Biquad Equalizer:</strong> ±12 dB studio-grade filtering across 60 Hz (Sub-Bass), 250 Hz (Warmth), 1 kHz (Midrange), 4 kHz (Presence), and 12 kHz (Air).</li>
     <li><strong>One-Click Presets:</strong> Instant acoustic profiles: <em>Flat</em>, <em>Bass Boost</em>, <em>Vocal Clarity</em>, <em>Rock</em>, <em>Pop</em>, and <em>Electro</em>.</li>
   </ul>
@@ -639,9 +643,9 @@
       <tr>
         <td><code>fadeInDuration</code></td>
         <td>number</td>
-        <td><code>300</code></td>
+        <td><code>1</code></td>
         <td>Glow</td>
-        <td>Video transition fade-in duration (0ms to 2000ms)</td>
+        <td>Video transition fade-in duration in seconds (0s to 2s)</td>
       </tr>
       <tr>
         <td><code>glowTop/Right/Bottom/Left</code></td>
@@ -709,7 +713,7 @@
       <tr>
         <td><code>removeBlackBars</code></td>
         <td>boolean</td>
-        <td><code>false</code></td>
+        <td><code>true</code></td>
         <td>Video</td>
         <td>Automatic letterbox and pillarbox black-bar detection and crop</td>
       </tr>
@@ -730,9 +734,9 @@
       <tr>
         <td><code>audioNormalizer</code></td>
         <td>boolean</td>
-        <td><code>true</code></td>
+        <td><code>false</code></td>
         <td>Audio</td>
-        <td>Perceived loudness normalization gain staging</td>
+        <td>Perceived loudness normalization via DynamicsCompressorNode</td>
       </tr>
       <tr>
         <td><code>audioBoost</code></td>
@@ -756,6 +760,13 @@
         <td>5-Band Biquad Filter gains in decibels (-12 dB to +12 dB)</td>
       </tr>
       <tr>
+        <td><code>eqPreset</code></td>
+        <td>string</td>
+        <td><code>'flat'</code></td>
+        <td>Audio</td>
+        <td>Equalizer preset profile ('flat', 'bass', 'vocal', 'rock', 'pop', 'electro')</td>
+      </tr>
+      <tr>
         <td><code>adblockEnabled</code></td>
         <td>boolean</td>
         <td><code>true</code></td>
@@ -772,7 +783,7 @@
       <tr>
         <td><code>returnDislikes</code></td>
         <td>boolean</td>
-        <td><code>true</code></td>
+        <td><code>false</code></td>
         <td>Tools</td>
         <td>Restores public YouTube dislike counter via Return YouTube Dislike API</td>
       </tr>
@@ -784,11 +795,18 @@
         <td>Restores legacy interactive notes, speech bubbles, and spotlights</td>
       </tr>
       <tr>
-        <td><code>hideShorts / hideEndCards</code></td>
+        <td><code>hideShorts</code></td>
         <td>boolean</td>
         <td><code>false</code></td>
         <td>Tools</td>
-        <td>Removes Shorts feeds / suppresses post-roll end-screen cards</td>
+        <td>Removes Shorts shelves and recommendation feeds</td>
+      </tr>
+      <tr>
+        <td><code>hideEndCards</code></td>
+        <td>boolean</td>
+        <td><code>true</code></td>
+        <td>Tools</td>
+        <td>Suppresses post-roll end-screen cards and subscription popups</td>
       </tr>
       <tr>
         <td><code>blockAV1 / blockVP9</code></td>
@@ -800,54 +818,51 @@
       <tr>
         <td><code>autoPauseMode</code></td>
         <td>string</td>
-        <td><code>'disabled'</code></td>
+        <td><code>'off'</code></td>
         <td>Tools</td>
-        <td>Smart auto-pause when leaving tab (<code>'tab'</code> or <code>'window'</code>)</td>
+        <td>Smart auto-pause mode ('off', 'tab', or 'app')</td>
+      </tr>
+      <tr>
+        <td><code>recordFormat</code></td>
+        <td>string</td>
+        <td><code>'mkv'</code></td>
+        <td>Tools</td>
+        <td>Preferred recording container format ('mkv', 'webm', or 'mp4')</td>
+      </tr>
+      <tr>
+        <td><code>recordFps</code></td>
+        <td>number</td>
+        <td><code>30</code></td>
+        <td>Tools</td>
+        <td>Video recording framerate target (30 or 60 fps)</td>
       </tr>
     </tbody>
   </table>
 
   <!-- SECTION 5 -->
-  <h1>5. Security, Privacy & Performance Verification</h1>
+  <h1>5. Security, Privacy & Resource Architecture</h1>
 
-  <h2>5.1 Privacy & Permission Hardening</h2>
+  <h2>5.1 Privacy & Permission Model</h2>
   <ul>
-    <li><strong>Zero External Data Collection:</strong> CineGlow collects, transmits, and logs zero analytics, telemetry, or user identities.</li>
-    <li><strong>Local Storage Isolation:</strong> All user configurations reside strictly within the browser's local sandbox via <code>chrome.storage.sync</code>.</li>
+    <li><strong>Local Storage by Default:</strong> All user configurations reside strictly within the browser's local sandbox via <code>chrome.storage.sync</code>.</li>
     <li><strong>Declarative Network Rules:</strong> Ad blocking is performed natively by Chromium's network stack via <code>declarativeNetRequest</code> without inspecting request payloads or browsing history.</li>
+    <li><strong>External Endpoint Transparency:</strong>
+      <ul>
+        <li><code>returnyoutubedislikeapi.com</code>: Contacted only when <code>returnDislikes</code> is explicitly enabled. Transmits only the public 11-character video ID to fetch vote statistics. No cookies, auth tokens, or browsing history are sent.</li>
+        <li><code>storage.googleapis.com</code>: Contacted only when <code>restoreAnnotations</code> is enabled. Fetches archived XML annotation files by video ID from a public storage bucket. No user identification is transmitted.</li>
+      </ul>
+    </li>
+    <li><strong>Zero Behavioral Tracking:</strong> The extension contains no analytics SDKs, advertising libraries, or external telemetry of any kind.</li>
   </ul>
 
-  <h2>5.2 Performance & Resource Benchmarking</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Execution State</th>
-        <th>CPU Overhead</th>
-        <th>GPU Overhead</th>
-        <th>Memory Footprint</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Video Paused / Tab Inactive</td>
-        <td>0.00%</td>
-        <td>0.00%</td>
-        <td>~14 MB</td>
-      </tr>
-      <tr>
-        <td>1080p 60fps Active Playback (30fps Glow)</td>
-        <td>~0.8% – 1.4%</td>
-        <td>~2.1%</td>
-        <td>~22 MB</td>
-      </tr>
-      <tr>
-        <td>4K 60fps Active Playback (60fps Glow)</td>
-        <td>~1.6% – 2.4%</td>
-        <td>~3.8%</td>
-        <td>~28 MB</td>
-      </tr>
-    </tbody>
-  </table>
+  <h2>5.2 Resource Conservation & Runtime Optimization</h2>
+  <p>Rather than continuous polling loops or unthrottled render cycles, CineGlow utilizes an event-driven resource management design:</p>
+  <ul>
+    <li><strong>Render Loop Cessation:</strong> When video playback is paused, ended, or buffering, both <code>requestAnimationFrame</code> and <code>requestVideoFrameCallback</code> render chains halt completely. Canvas redraws cease until the player fires <code>playing</code>.</li>
+    <li><strong>Constrained Canvas Resolution:</strong> The ambient sampling pipeline utilizes an internal <code>128×72</code> offscreen canvas. By sampling at a compact aspect ratio, pixel read/write operations remain minimal on the CPU/GPU, delegating blurring and scaling to hardware-accelerated CSS layers.</li>
+    <li><strong>Scoped Mutation Observers:</strong> Mutation observers are strictly targeted to specific YouTube containers (<code>#movie_player</code>, <code>ytd-app</code>, <code>ytd-watch-flexy</code>) and filter by attribute names. Broad document-wide mutation observers are avoided to prevent CPU overhead during dynamic page scrolling.</li>
+    <li><strong>Decoupled Audio Graph:</strong> Audio processing nodes use native Web Audio API biquad filters and compressors implemented in browser C++ internals, avoiding JavaScript-level audio sample processing.</li>
+  </ul>
 
   <!-- SECTION 6 -->
   <div class="no-break">
@@ -860,10 +875,13 @@
       <li>Validate JavaScript syntax:
         <pre>node --check popup/popup.js content/*.js background/*.js shared/*.js</pre>
       </li>
+      <li>Run the automated test suite:
+        <pre>npm test</pre>
+      </li>
     </ol>
 
     <div class="callout" style="margin-top: 18px;">
-      <strong>Author:</strong> Giri Manohar Vemula · <a href="https://github.com/ManoharVit">GitHub: @ManoharVit</a> · <a href="https://www.linkedin.com/in/manoharv511/">LinkedIn: manoharv511</a><br>
+      <strong>Author & Lead Architect:</strong> Giri Manohar Vemula · <a href="https://github.com/ManoharVit">GitHub: @ManoharVit</a> · <a href="https://www.linkedin.com/in/manoharv511/">LinkedIn: manoharv511</a><br>
       <strong>Project Repository:</strong> <a href="https://github.com/ManoharVit/YouTube-CineGlow">https://github.com/ManoharVit/YouTube-CineGlow</a>
     </div>
   </div>
