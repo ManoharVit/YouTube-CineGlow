@@ -69,38 +69,42 @@
     fetchAbortController = new AbortController();
 
     try {
-      const response = await fetch(`${API_ENDPOINT}${encodeURIComponent(videoId)}`, {
-        signal: fetchAbortController.signal,
-        cache: 'no-cache'
+      const result = await new Promise((resolve) => {
+        if (!chrome.runtime?.id) {
+          resolve(null);
+          return;
+        }
+        chrome.runtime.sendMessage({ type: 'FETCH_DISLIKES', videoId }, (res) => {
+          if (chrome.runtime.lastError || !res || !res.success) {
+            resolve(null);
+          } else {
+            resolve(res.data);
+          }
+        });
       });
 
-      if (!response.ok) return null;
+      if (!result || typeof result.dislikes !== 'number') return null;
 
-      const data = await response.json();
-      if (data && typeof data.dislikes === 'number') {
-        const voteRecord = {
-          id: videoId,
-          likes: Number(data.likes) || 0,
-          dislikes: Number(data.dislikes) || 0,
-          rating: Number(data.rating) || 5,
-          viewCount: Number(data.viewCount) || 0,
-          userVote: 0 // 0 = none, 1 = liked, -1 = disliked
-        };
+      const voteRecord = {
+        id: videoId,
+        likes: Number(result.likes) || 0,
+        dislikes: Number(result.dislikes) || 0,
+        rating: Number(result.rating) || 5,
+        viewCount: Number(result.viewCount) || 0,
+        userVote: 0 // 0 = none, 1 = liked, -1 = disliked
+      };
 
-        votesCache.set(videoId, voteRecord);
+      votesCache.set(videoId, voteRecord);
 
-        // Keep cache bounded to 100 entries
-        if (votesCache.size > 100) {
-          const oldestKey = votesCache.keys().next().value;
-          votesCache.delete(oldestKey);
-        }
-
-        return voteRecord;
+      // Keep cache bounded to 100 entries
+      if (votesCache.size > 100) {
+        const oldestKey = votesCache.keys().next().value;
+        votesCache.delete(oldestKey);
       }
+
+      return voteRecord;
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        // Silently handle network/API errors without disrupting YouTube playback
-      }
+      // Silently handle errors
     }
 
     return null;

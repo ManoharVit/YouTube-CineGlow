@@ -127,7 +127,7 @@ store_assets/              Screenshots and promo graphics for the Chrome Web Sto
 
 ## Author
 
-**G.Manohar.V** · [@ManoharVit](https://github.com/ManoharVit) · [LinkedIn](https://www.linkedin.com/in/manohar511/)
+**Giri Manohar Vemula** · [@ManoharVit](https://github.com/ManoharVit) · [LinkedIn](https://www.linkedin.com/in/manoharv511/)
 
 ## License
 

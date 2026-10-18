@@ -185,7 +185,8 @@
   // ---------- Per-frame work ----------
 
   function layout(rect) {
-    const scale = settings.spread / 100;
+    // Offset by +50 so 100% spread extends 50% beyond the video frame (1.5x scale), ensuring glow is always visible
+    const scale = (settings.spread + 50) / 100;
     const w = rect.width * scale;
     const h = rect.height * scale;
     const x = rect.left - (w - rect.width) / 2;

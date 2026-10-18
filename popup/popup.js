@@ -36,6 +36,39 @@ const EQ_PRESETS = {
   electro: { eq60: 6,  eq250: 3,  eq1000: -1, eq4000: 2,  eq12000: 4 }
 };
 
+// Glow Presets: Subtle, Balanced (Default), Vivid
+const GLOW_PRESETS = {
+  subtle:   { opacity: 50, spread: 100, smoothness: 70, blur: 30, saturation: 100, contrast: 100, brightness: 90 },
+  balanced: { opacity: 75, spread: 150, smoothness: 60, blur: 40, saturation: 110, contrast: 100, brightness: 100 },
+  vivid:    { opacity: 90, spread: 200, smoothness: 50, blur: 50, saturation: 130, contrast: 110, brightness: 105 }
+};
+const glowPresetBtns = document.querySelectorAll('.glow-preset-pill');
+
+function updateActiveGlowPresetPill(activeKey) {
+  glowPresetBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-preset') === activeKey);
+  });
+}
+
+function checkMatchingGlowPreset() {
+  const op = Number(document.getElementById('opacity')?.value);
+  const sp = Number(document.getElementById('spread')?.value);
+  const sm = Number(document.getElementById('smoothness')?.value);
+  const bl = Number(document.getElementById('blur')?.value);
+  const sa = Number(document.getElementById('saturation')?.value);
+  const co = Number(document.getElementById('contrast')?.value);
+  const br = Number(document.getElementById('brightness')?.value);
+
+  for (const [key, p] of Object.entries(GLOW_PRESETS)) {
+    if (p.opacity === op && p.spread === sp && p.smoothness === sm &&
+        p.blur === bl && p.saturation === sa && p.contrast === co && p.brightness === br) {
+      updateActiveGlowPresetPill(key);
+      return;
+    }
+  }
+  updateActiveGlowPresetPill('');
+}
+
 function formatDb(val) {
   const n = parseInt(val, 10) || 0;
   return n > 0 ? `+${n} dB` : `${n} dB`;
@@ -70,6 +103,7 @@ function checkMatchingPreset() {
   updateActivePresetPill('custom');
   queueSave('eqPreset', 'custom');
 }
+
 const qualityEnabledEl = document.getElementById('qualityEnabled');
 const statsEnabledEl = document.getElementById('statsEnabled');
 const adblockCountEl = document.getElementById('adblockCount');
@@ -99,6 +133,28 @@ const hideEndCardsEl = document.getElementById('hideEndCards');
 const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
 const masterStatusTag = document.getElementById('masterStatusTag');
+
+// Section Reset Buttons
+const glowResetEl = document.getElementById('glowReset');
+const videoResetEl = document.getElementById('videoReset');
+const audioResetEl = document.getElementById('audioReset');
+const toolsResetEl = document.getElementById('toolsReset');
+
+const GLOW_KEYS = ['opacity', 'spread', 'smoothness', 'blur', 'saturation', 'contrast', 'brightness', 'fadeInDuration', 'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'enableInPiP', 'audioReactive', 'fps'];
+const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'videoBrightness', 'videoContrast', 'videoSepia', 'removeBlackBars', 'ultrawideZoom', 'lightsOut'];
+const AUDIO_KEYS = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset'];
+const TOOLS_KEYS = ['adblockEnabled', 'statsEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
+
+async function resetSectionKeys(keys) {
+  const current = await chrome.storage.sync.get(AURA_DEFAULTS);
+  const partial = {};
+  for (const k of keys) {
+    partial[k] = AURA_DEFAULTS[k];
+  }
+  const merged = { ...current, ...partial };
+  render(merged);
+  await save(partial);
+}
 
 function formatSpeedDisplay(rate) {
   if (rate === 1) return '1.0×';
@@ -189,10 +245,12 @@ function render(settings) {
   
   controlsEl.classList.toggle('disabled', !settings.enabled);
   for (const key of SLIDER_KEYS) {
-    document.getElementById(key).value = settings[key];
+    const el = document.getElementById(key);
+    if (el) el.value = settings[key];
     setOutput(key, settings[key]);
   }
   fpsEl.value = String(settings.fps);
+  checkMatchingGlowPreset();
 }
 
 async function save(partial) {
@@ -252,6 +310,52 @@ async function init() {
       }
     });
   });
+
+  // Glow Presets
+  glowPresetBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const presetKey = btn.getAttribute('data-preset');
+      const preset = GLOW_PRESETS[presetKey];
+      if (!preset) return;
+
+      for (const [k, v] of Object.entries(preset)) {
+        const slider = document.getElementById(k);
+        if (slider) slider.value = v;
+        setOutput(k, v);
+      }
+      updateActiveGlowPresetPill(presetKey);
+      await save(preset);
+    });
+  });
+
+  // Section Resets
+  if (glowResetEl) {
+    glowResetEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await resetSectionKeys(GLOW_KEYS);
+    });
+  }
+
+  if (videoResetEl) {
+    videoResetEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await resetSectionKeys(VIDEO_KEYS);
+    });
+  }
+
+  if (audioResetEl) {
+    audioResetEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await resetSectionKeys(AUDIO_KEYS);
+    });
+  }
+
+  if (toolsResetEl) {
+    toolsResetEl.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await resetSectionKeys(TOOLS_KEYS);
+    });
+  }
 
   audioNormalizerEl.addEventListener('change', async () => {
     await save({ audioNormalizer: audioNormalizerEl.checked });
@@ -459,6 +563,7 @@ async function init() {
       const value = Number(el.value);
       setOutput(key, value);
       queueSave(key, value);
+      checkMatchingGlowPreset();
     });
 
     // When number input changes
@@ -472,6 +577,7 @@ async function init() {
         numEl.value = value;
         el.value = value;
         queueSave(key, value);
+        checkMatchingGlowPreset();
       });
     }
   }

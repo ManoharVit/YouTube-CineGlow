@@ -15,6 +15,7 @@
   transition: opacity var(--aura-fade, 1.5s) ease;
   /* Fade the glow out towards its edges so it never shows a hard rectangle. */
   mask-image: radial-gradient(ellipse farthest-side, #000 50%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse farthest-side, #000 50%, transparent 100%);
 }
 
 html.aura-active #aura-ambient-canvas {
@@ -46,8 +47,12 @@ html.aura-active #player-container,
 html.aura-active #secondary,
 html.aura-active #secondary-inner,
 html.aura-active ytd-watch-next-secondary-results-renderer,
+html.aura-active #below,
+html.aura-active ytd-watch-metadata,
 html.aura-active ytd-engagement-panel-section-list-renderer {
   background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 /* Make playlist panel fully transparent so pure glow shows through, without backdrop-filter to prevent stacking bugs */

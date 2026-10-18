@@ -17,14 +17,14 @@ const AURA_DEFAULTS = Object.freeze({
   glowRight: true,
   glowBottom: true,
   glowLeft: true,
-  opacity: 95,           // %
+  opacity: 75,           // % (balanced, comfortable default)
   fadeInDuration: 1,     // seconds
-  blur: 50,              // px
-  spread: 250,           // % of video size
-  saturation: 120,       // %
-  contrast: 110,         // %
-  brightness: 105,       // %
-  smoothness: 50,        // % — temporal blend between frames
+  blur: 40,              // px
+  spread: 150,           // % of video size (concentrated halo, avoids washing over page)
+  saturation: 110,       // %
+  contrast: 100,         // %
+  brightness: 100,       // %
+  smoothness: 60,        // % — temporal blend between frames
   removeBlackBars: true,
   fps: 30,               // max glow updates per second
   audioNormalizer: false,

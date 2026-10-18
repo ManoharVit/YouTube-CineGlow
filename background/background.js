@@ -64,7 +64,12 @@ async function updateCodecBlockers() {
   }
 
   try {
-    await chrome.scripting.unregisterContentScripts({ ids: ['block-av1', 'block-vp9', 'block-60fps'] }).catch((err) => { console.debug('[Aura] Unregister note:', err); });
+    const registered = await chrome.scripting.getRegisteredContentScripts().catch(() => []);
+    const targetIds = ['block-av1', 'block-vp9', 'block-60fps'];
+    const registeredIds = registered.map(s => s.id).filter(id => targetIds.includes(id));
+    if (registeredIds.length > 0) {
+      await chrome.scripting.unregisterContentScripts({ ids: registeredIds }).catch(() => {});
+    }
     if (scriptsToRegister.length > 0) {
       await chrome.scripting.registerContentScripts(scriptsToRegister);
     }
@@ -132,6 +137,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('[Aura] Download failed:', err);
       }
     })();
+  }
+  if (message.type === 'FETCH_DISLIKES') {
+    (async () => {
+      const videoId = message.videoId;
+      if (!videoId || typeof videoId !== 'string') {
+        sendResponse({ success: false, error: 'Invalid video ID' });
+        return;
+      }
+      try {
+        const resp = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${encodeURIComponent(videoId)}`, {
+          cache: 'no-cache'
+        });
+        if (!resp.ok) {
+          sendResponse({ success: false, status: resp.status });
+          return;
+        }
+        const data = await resp.json();
+        sendResponse({ success: true, data });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true;
   }
   if (message.type === 'FETCH_ANNOTATIONS') {
     (async () => {
