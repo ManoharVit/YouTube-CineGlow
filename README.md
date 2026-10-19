@@ -1,134 +1,141 @@
 # YouTube CineGlow Pro
 
-I got tired of watching YouTube in a dark room and staring at a bright rectangle floating in blackness. CineGlow fixes that. It reads the edge colors from every video frame and projects a soft, color-matched glow onto the page behind the player — the same idea as Ambilight TVs, but running entirely inside a Chrome extension.
+CineGlow adds a soft glow around the YouTube player, using colours from the video as it plays. You can keep it subtle or turn up the spread and saturation for a stronger effect. It runs in Chrome without extra hardware.
 
-Along the way I added everything else I kept wishing YouTube had: automatic ad skipping, a full audio suite (normaliser, bass booster, vocal clarity, 5-band EQ), a playback speed wheel, a video recorder, restored classic annotations, and a clean cinema theater mode that actually centers the video.
+There are playback tools too: an equaliser, volume and speech controls, a speed menu, screenshots, video recording, and a theatre layout that gives the player more room. Most controls live in the extension popup; the floating player toolbar puts the actions you use while watching within reach.
 
-## Showcase
+## See it in use
 
-| ![Ambient Lighting](store_assets/screenshot_1_ambient_lighting.png) | ![Settings Popup](store_assets/screenshot_2_settings_popup.png) |
+| ![Ambient lighting around the player](store_assets/screenshot_1_ambient_lighting.png) | ![Playback and precision speed settings](store_assets/screenshot_2_playback_settings.png) |
 |:---:|:---:|
-| Ambient glow reacting to video edge colors | Settings popup with glow, video, and audio controls |
+| Glow follows the video colours | Playback, precision speed, and lighting tools |
 
-| ![Stats Overlay](store_assets/screenshot_3_stats_overlay.png) | ![Theatre Mode](store_assets/screenshot_4_theatre_mode.png) |
+| ![Playback statistics](store_assets/screenshot_3_stats_overlay.png) | ![Theatre layout](store_assets/screenshot_4_theatre_mode.png) |
 |:---:|:---:|
-| Live telemetry: FPS, dropped frames, codec, color depth & range | Full-page theatre mode with centered player and edge lighting |
+| Frame rate, resolution, and codec details | A centred player with fewer distractions |
 
-| ![Floating Toolbar](store_assets/screenshot_5_frame_snap.png) |
+| ![Floating player toolbar](store_assets/screenshot_5_frame_snap.png) |
 |:---:|
-| Floating toolbar with PiP, speed control, screenshot, and record buttons |
+| Picture-in-picture, speed, screenshot, and recording controls |
 
-## What It Does
+## What you can change
 
-### 🌟 Ambient Glow
-- Samples each video frame into a 128×72 offscreen canvas, blurs and stretches the result behind the player to create a live ambient glow.
-- Customize opacity, blur, spread, saturation, contrast, brightness, and temporal smoothness.
-- Toggle glow independently per side: Top, Right, Bottom, Left.
-- Pulses glow brightness in sync with bass frequencies via a real-time Web Audio FFT analyser (Audio-Reactive mode).
-- Glow-in-PiP: optionally keep the glow rendering when the video enters Picture-in-Picture mode.
+### Ambient lighting
 
-### 🎬 Video & Display
-- **Clean Cinema Theater Mode** — in theater mode, hides the YouTube header and sidebar and centers the video with percentage-based positioning (works across all screen sizes).
-- **Lights Out Cinema Mode** — dims the entire page around the player for a true cinema feel.
-- **Auto-Crop Black Bars** — detects letterbox black bars on cinematic content and zooms the video to fill the screen.
-- **Ultrawide Zoom-to-Fit (21:9)** — fills ultrawide displays without pillarboxes.
-- Per-video **brightness**, **contrast**, and **sepia** (blue-light) filters.
-- **Force High-Definition** — auto-selects your preferred quality (default 1080p) on every video.
-- **Hide Page Scrollbar** — removes the browser scrollbar on watch pages.
-- **Default Playback Speed** — set a preferred speed (0.1× to 2.0×) that applies automatically on load.
+The glow comes from a small 128×72 canvas that samples the video. Blur and colour filters spread it behind the player, while temporal smoothing softens changes between frames.
 
-### 🔊 Audio Suite
-- **Audio Normaliser** — applies uniform gain to match a consistent loudness target; quiet videos and loud videos play at the same perceived volume without altering dynamics or EQ.
-- **Extra Volume Boost** — amplify audio up to 300% beyond the browser limit.
-- **Dedicated Bass Booster** — shelf filter targeting sub-bass frequencies (0–15 dB).
-- **Vocal & Speech Clarity** — presence boost targeting the vocal midrange (0–12 dB).
-- **5-Band Equalizer** — precise control at 60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz (±12 dB per band).
-- **EQ Presets** — one-click presets: Flat, Bass, Vocal, Rock, Pop, EDM. Custom preset saves your manual adjustments.
+Adjust opacity, spread, blur, saturation, contrast, brightness, and smoothness. Each edge has its own switch, so you can keep the glow on just the top and sides, for example. Audio-reactive mode changes its size and brightness with bass energy. An optional setting keeps the glow on the original page while the video is in picture-in-picture.
 
-### ⚡ Playback Speed
-- Speed range **0.1× to 10×** — fine-grained slow-motion down to 0.1× and turbo mode up to 10×.
-- Floating speed menu with three scales: Slow-Mo (0.1–1.0), Precision (1.0–2.0), Turbo (2.0–10.0).
-- **Quick Presets bar** — single-row chips: 0.25×, 0.5×, 1×, 1.5×, 2×, 5×.
-- Toast icon feedback: 🐢 for slow-mo, ⚡ for normal, 🚀 for turbo.
+### Video and layout
 
-### 🛠️ Floating Toolbar & Buttons
-- **Picture-in-Picture button** — injected directly into the YouTube player control bar (no double right-click needed). Toggles PiP with a single click.
-- **Screenshot button** — captures a full-resolution lossless PNG of the current frame and saves it to Downloads.
-- **Record button** — records the current video tab to MKV, WebM, or MP4 at 30 or 60 fps.
-- **Speed button** — opens the speed menu inline next to the player.
+- **Cinema theatre mode** hides the YouTube header and recommendations around the centred player.
+- **Lights Out** dims the page around the video.
+- **Auto-Crop Black Bars** detects dark borders in the video and crops them. **Ultrawide Zoom-to-Fit** provides a separate option for 21:9 displays.
+- **Video filters** adjust brightness, contrast, and sepia warmth.
+- **Preferred quality** asks YouTube for 720p, 1080p, 1440p, 4K, or the maximum available quality when a video loads. The video still needs to offer that resolution.
+- **Hide Page Scrollbar** removes the scrollbar on watch pages.
+- **Default playback speed** has a 0.1× to 2× slider in the popup. The floating speed menu extends the range to 10×.
 
-### 📊 Quality Stats Overlay
-- Draggable HUD showing:
-  - **Display FPS** (vsync-derived), **Video FPS**, **Dropped Frames**
-  - **Ambient Glow FPS** vs. configured FPS cap
-  - **Resolution** (actual video dimensions)
-  - **Codecs** (video + audio stream identifiers)
-  - **Color Depth & Range** — 8-bit / 10-bit / 12-bit with SDR / HDR / HDR10 / HLG badge
-  - **Scrolling frame-timing canvas graph**
-- Toggle on/off from the popup; persists across sessions.
+Cropping and zooming can cut off part of the image. Turn them off when you want to see the full frame.
 
-### 🧹 Tweaks
-- **Smart AdBlock** — detects ad overlays and clicks skip; declarative network rules block tracker CDNs.
-- **Return YouTube Dislike** — restores the public dislike count below the video.
-- **Hide YouTube Shorts** — removes Shorts shelves and feed items from every YouTube page.
-- **Restore Classic Annotations** — brings back the original note, speech-bubble, and spotlight-style video annotations that YouTube removed in 2017.
-- **Hide End Screens & Cards** — removes end-card overlays and info-card suggestions.
-- **Block AV1 / VP9 / 60fps** — forces YouTube away from specific codecs or frame rates.
-- **Smart Auto-Pause** — pauses when you switch tabs or minimize; resumes on return.
+### Audio
 
-## Installation
+The audio controls work through the browser's Web Audio API:
+
+- **Audio Normaliser** uses compression to reduce the difference between quieter and louder passages. It changes audio dynamics; it is not a fixed-gain loudness match between videos.
+- **Volume boost** goes from 100% to 300% of the normal level.
+- **Bass boost** adds up to 15 dB through an 80 Hz low-shelf filter.
+- **Vocal clarity** adds up to 12 dB around 2.5 kHz.
+- **Five-band EQ** covers 60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz, with ±12 dB per band.
+- **Presets** include Flat, Bass, Vocal, Rock, Pop, and EDM. Manual changes appear as Custom.
+
+A limiter follows the volume boost to help control peaks. Start with a small boost and adjust by ear.
+
+### Player tools
+
+The floating toolbar adds picture-in-picture, screenshots, recording, and speed controls. Screenshots save the current video frame as a PNG at its source resolution.
+
+The recorder captures the video image and available video audio, rather than the whole tab or desktop. It offers MKV, WebM, and MP4 preferences at 30 or 60 fps. The current implementation scales recordings to fit within 1920×1080 and falls back to a supported format when necessary. Use the format badge, options button, or right-click menu to change recording settings.
+
+The speed menu has slow-motion, precision, and turbo ranges, plus quick buttons for 0.25×, 0.5×, 1×, 1.5×, 2×, and 5×.
+
+### Playback statistics
+
+The draggable stats panel shows display and video frame rates, dropped frames, glow update rate, video dimensions, codecs, and a frame-timing graph. It also labels colour depth and SDR/HDR formats using the metadata available from YouTube. Those labels describe the stream information; they do not certify the display's HDR output.
+
+### Other options
+
+- **Smart AdBlock** attempts to skip ads and blocks requests that match the bundled ad and tracker rules.
+- **Return YouTube Dislike** fetches community dislike counts when enabled.
+- **Restore Classic Annotations** loads archived notes, speech bubbles, and spotlights where an archive is available.
+- **Hide Shorts** removes Shorts shelves and feed entries.
+- **Hide End Screens & Cards** removes end-card and information-card overlays.
+- **Codec and frame-rate switches** ask YouTube to avoid AV1, VP9, or 60 fps playback.
+- **Smart Auto-Pause** can pause playback when you leave the tab or the Chrome window, depending on the selected mode.
+
+YouTube changes its player and page layout regularly, so features that depend on those elements may need updates.
+
+## Install locally
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/ManoharVit/YouTube-CineGlow.git
    ```
-2. Open Chrome → `chrome://extensions` → enable **Developer mode**.
+
+2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the cloned folder.
-4. Play any YouTube video. Dark mode gives the best visual result.
+4. Open a YouTube video, then click the CineGlow toolbar icon to adjust the settings. YouTube's dark theme makes the glow easier to see.
 
-> Requires **Chrome 105 or newer**.
+The manifest declares Chrome 105 as the minimum version. Individual media and recording features also depend on the browser's API and codec support.
 
-## How the Rendering Works
+## Settings and privacy
 
-1. **Sample** — On each animation frame, `drawImage()` copies the current video frame onto a tiny 128×72 canvas.
-2. **Smooth** — New pixel values are blended into the previous frame using an exponential moving average, preventing flickering during fast cuts.
-3. **Display** — The canvas is scaled larger than the video and placed behind it (`z-index: -1`). CSS `blur()` and `saturate()` filters spread the color outward to produce the glow.
-4. **Idle** — The rendering loop stops immediately when the video pauses, the tab loses focus, or the user navigates away from the watch page. No background CPU burn.
+Preferences are saved through `chrome.storage.sync`, so Chrome can sync them across your signed-in devices when sync is enabled. Archived annotations are cached in `chrome.storage.local`. Screenshots and recordings are saved on your computer.
 
-## Project Structure
+Glow rendering and audio processing happen in the browser. The two optional lookup features contact the Return YouTube Dislike API and an annotation archive on Google Cloud Storage using the video ID. See [PRIVACY.md](PRIVACY.md) for what is stored and sent.
 
-```
-manifest.json              Manifest V3 config: permissions, service worker, content scripts
-background/background.js   Service worker: codec script registration and messaging
+## How the glow works
+
+1. `drawImage()` copies the current video frame onto the 128×72 canvas.
+2. The new image is blended with the previous one according to the smoothness setting.
+3. CSS scales, blurs, and colours the canvas behind the player.
+4. Playback state and page visibility determine when the glow loop runs. Other enabled features, such as recording or the stats panel, have their own update loops.
+
+## Project layout
+
+```text
+manifest.json              Extension permissions and script registration
+background/background.js   Messages, downloads, network rules, optional lookups
 content/
-  player-manager.js        Centralized player lifecycle — tracks video/SPA changes via URL
-  content.js + content.css Glow renderer: canvas sampling, blur, layout, CSS variables
-  stats-overlay.js + .css  Draggable HUD: FPS, frames, codec, color depth & range, canvas graph
-  audio-processor.js       Web Audio: normaliser, volume boost, bass, vocal, 5-band EQ, FFT
-  blackbar.js              Letterbox detection via pixel scanning on a downscaled canvas
-  pip-button.js            Injects a PiP toggle button into the YouTube player controls
-  screenshot-button.js     Floating toolbar button: lossless PNG frame capture
-  record-button.js         Floating toolbar button: tab recording to MKV/WebM/MP4
-  speed-button.js          Floating toolbar button: speed menu with slider and quick presets
-  smart-pause.js           Pauses playback on tab switch or window minimize
-  youtube-ads.js           Ad overlay detection and skip-button automation
-  youtube-quality.js       Forces preferred resolution on video load
-  annotations.js           Restores classic YouTube video annotations
-  hide-endcards.js         Hides end-screen overlays and info cards
-  hide-shorts.js           Hides YouTube Shorts shelves and feed items
-  return-dislikes.js       Fetches and displays public dislike counts
-  main-world.js            MAIN-world script for codec capability overrides
-popup/
-  popup.html + .css + .js  Extension popup: glow, video, audio, tools, tweaks sections
-shared/defaults.js         Single source of truth for all default setting values
-rules/adblock.json         Declarative network rules blocking ad/tracker domains
-store_assets/              Screenshots and promo graphics for the Chrome Web Store listing
+  player-manager.js        Player discovery, navigation, and playback state
+  content.js + content.css Glow sampling, blending, and layout
+  stats-overlay.js + .css  Playback statistics and frame-timing graph
+  audio-processor.js       Compression, volume, EQ, and frequency analysis
+  blackbar.js              Black-border detection and crop settings
+  pip-button.js            Picture-in-picture control
+  screenshot-button.js     PNG frame capture
+  record-button.js         Video-element recording and format selection
+  speed-button.js          Playback-speed menu and presets
+  smart-pause.js           Tab/window-based pause behaviour
+  youtube-ads.js            Ad detection and skip-button handling
+  youtube-quality.js       Preferred-resolution selection
+  annotations.js           Archived annotation display
+  hide-endcards.js          End-screen and information-card removal
+  hide-shorts.js            Shorts shelf and feed removal
+  return-dislikes.js        Dislike-count display
+  main-world.js            Page-context hooks and player statistics
+popup/                     Extension controls and settings interface
+shared/defaults.js         Default setting values
+rules/adblock.json         Bundled ad and tracker request rules
+test/                      Node-based tests
+store_assets/              Store screenshots and promotional images
 ```
 
-## Author
+For implementation details and the settings reference, see [DOCUMENTATION.md](DOCUMENTATION.md).
 
-**Giri Manohar Vemula** · [@ManoharVit](https://github.com/ManoharVit) · [LinkedIn](https://www.linkedin.com/in/manoharv511/)
+## Author and licence
 
-## License
+Giri Manohar Vemula · [GitHub](https://github.com/ManoharVit) · [LinkedIn](https://www.linkedin.com/in/manoharv511)
 
-[MIT](LICENSE) © 2026 Giri Manohar Vemula
+[MIT licence](LICENSE), © 2026 Giri Manohar Vemula.

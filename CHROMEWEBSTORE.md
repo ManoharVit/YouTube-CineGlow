@@ -1,164 +1,150 @@
-# Chrome Web Store Listing — YouTube CineGlow Pro
+# Chrome Web Store listing: YouTube CineGlow Pro
 
-> Last Updated: 2026-10-18
+Updated: October 20, 2026
 
-## Store Listing
+## Listing copy
 
-**Extension Name** [REQUIRED]
+**Extension name**  
 YouTube CineGlow Pro
 
-**Short Description** [REQUIRED]
-Ambient lighting, full audio suite, ad blocker, speed control, annotations, and cinema tools — all built into YouTube.
+**Short description**  
+Add ambient lighting to YouTube, adjust audio and playback speed, and keep useful player tools close by.
 
-**Detailed Description** [REQUIRED]
-If you watch YouTube in a dark room, staring at a bright video surrounded by pitch-black borders strains your eyes. CineGlow fixes that. It samples colors along the edges of every video frame in real time and projects a soft, matched ambient aura onto the page around the player — like Philips Ambilight TVs, but running directly in your browser.
+**Detailed description**
 
-Alongside ambient lighting, CineGlow packs a complete set of playback tools: a full audio suite with equalizer and bass booster, fine-grained speed control down to 0.1×, restored classic video annotations, cinema theater mode that actually centers the video, and a live stats overlay with HDR color depth information.
+CineGlow adds a soft glow around the YouTube player that follows the colours in the video. Keep it faint for a little background light, or increase the spread and saturation for a more noticeable effect.
 
-KEY FEATURES
+It also brings together playback controls that would otherwise need separate tools: an equaliser, volume and vocal controls, a speed menu, screenshots, video recording, and a cleaner theatre layout. Adjust them from the extension popup or use the floating toolbar while watching.
 
-🌟 AMBIENT LIGHTING
-• Real-Time Ambient Glow: Samples every frame into a 128×72 canvas and blurs the edges to project a smooth, color-matched glow. Customize opacity, spread, blur, saturation, and toggle individual sides (top, bottom, left, right).
-• Audio-Reactive Glow: Reads bass frequencies from a real-time FFT analyser to pulse the lighting in sync with the beat.
-• Glow in Picture-in-Picture: Optionally keep the glow running when video enters PiP mode.
+AMBIENT LIGHTING
 
-🎬 VIDEO & CINEMA
-• Clean Cinema Theater Mode: In theater mode, hides YouTube's header and sidebar and centers the video precisely — works on all screen sizes.
-• Lights Out Mode: Dims the full page around the player for a true cinema feel.
-• Auto-Crop Black Bars: Detects letterbox bars and zooms the video to fill the screen.
-• Ultrawide Zoom-to-Fit: Fills 21:9 ultrawide displays without pillarboxes.
-• Force High-Definition: Automatically selects your preferred quality on every video (default 1080p).
-• Eye-Care Filters: Per-video brightness, contrast, and sepia/blue-light filter for late-night viewing.
+- Adjust opacity, spread, blur, saturation, contrast, brightness, and smoothness.
+- Turn the glow on or off for each edge of the player.
+- Let bass energy change the glow's size and brightness with audio-reactive mode.
+- Optionally keep the glow on the original page while the video is in picture-in-picture.
 
-🔊 AUDIO SUITE
-• Audio Normaliser: Applies uniform gain to match a consistent loudness target — quiet videos and loud videos play at the same perceived volume, without altering dynamics or EQ character.
-• Extra Volume Boost: Amplify audio up to 300% beyond the browser limit.
-• Dedicated Bass Booster: Sub-bass shelf filter (0–15 dB).
-• Vocal & Speech Clarity: Presence boost targeting the vocal midrange (0–12 dB).
-• 5-Band Equalizer: Precise control at 60 Hz, 250 Hz, 1 kHz, 4 kHz, 12 kHz (±12 dB per band).
-• EQ Presets: Flat, Bass, Vocal, Rock, Pop, EDM — or save your own Custom setting.
+VIDEO AND LAYOUT
 
-⚡ PLAYBACK SPEED
-• Speed range 0.1× to 10× with a fine-grained slider and three scales: Slow-Mo, Precision, and Turbo.
-• Quick Presets bar: 0.25×, 0.5×, 1×, 1.5×, 2×, 5× with a single click.
+- Centre the player and hide the surrounding header and recommendations in cinema theatre mode.
+- Dim the page around the player with Lights Out.
+- Detect and crop black borders, or use the separate zoom option for 21:9 displays. Cropping can remove part of the image.
+- Adjust video brightness, contrast, and sepia warmth.
+- Choose 720p, 1080p, 1440p, 4K, or the maximum available quality for each video.
+- Hide the watch-page scrollbar.
 
-🛠️ PLAYER TOOLS
-• Picture-in-Picture Button: One-click PiP injected directly into the YouTube control bar — no double right-click needed.
-• Screenshot: Captures a full-resolution lossless PNG of the current frame.
-• Screen Recorder: Records the tab to MKV, WebM, or MP4 at 30 or 60 fps.
-• Smart Ad Skipping: Automatically clicks the skip button and uses Chrome's declarative rules to block tracker network requests — no private traffic is inspected.
-• Smart Auto-Pause: Pauses when you switch tabs or minimize the window; resumes when you return.
+AUDIO CONTROLS
 
-📊 QUALITY STATS OVERLAY
-• Draggable HUD showing: display FPS, video FPS, dropped frames, ambient glow FPS, resolution, codec identifiers, and color depth & range (8-bit / 10-bit / 12-bit with SDR / HDR / HDR10 / HLG badge).
-• Scrolling frame-timing canvas graph for visual frame pacing analysis.
+- Use the Audio Normaliser's compression to reduce differences between quieter and louder passages.
+- Raise volume from 100% to 300% of the normal level.
+- Add bass with up to 15 dB of boost, or bring vocals forward with up to 12 dB of presence boost.
+- Adjust five EQ bands: 60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz, each with a ±12 dB range.
+- Start with Flat, Bass, Vocal, Rock, Pop, or EDM presets, then make your own adjustments.
 
-🧹 TWEAKS
-• Restore Classic Annotations: Brings back the original note, speech-bubble, and spotlight annotations YouTube removed in 2017.
-• Return YouTube Dislike: Restores the public dislike count below the video.
-• Hide YouTube Shorts: Removes Shorts shelves and feed items across all YouTube pages.
-• Hide End Screens & Cards: Removes end-card overlays and info-card suggestions.
-• Block AV1 / VP9 / 60fps: Forces YouTube away from specific codecs or frame rates.
+PLAYBACK AND PLAYER TOOLS
 
-PERFORMANCE & PRIVACY
+- Set playback speed from 0.1× to 10× in the floating speed menu.
+- Jump to 0.25×, 0.5×, 1×, 1.5×, 2×, or 5× with the quick presets.
+- Open picture-in-picture from the player toolbar.
+- Save the current video frame as a PNG at its source resolution.
+- Record the video image and available video audio, with MKV, WebM, and MP4 format preferences at 30 or 60 fps. Recordings fit within 1080p; available formats depend on browser support. The recorder captures the video, not the whole tab or desktop.
+- Pause playback when you leave the tab or Chrome window, according to your auto-pause setting.
 
-• Zero Battery Drain When Idle: Rendering and audio loops stop immediately when you pause, switch tabs, or leave the watch page.
-• 100% Local & Private: Frame sampling, color math, and audio processing run entirely inside your browser's local memory. No watch history or personal data is ever collected, stored, or sent to any server.
-• Requires Chrome 105 or newer.
+STATS AND OPTIONAL TWEAKS
 
-HOW TO USE
+The draggable stats panel shows frame rates, dropped frames, glow update rate, video dimensions, codec details, and a frame-timing graph. Colour-depth and SDR/HDR labels use the metadata available from YouTube.
 
-1. Install YouTube CineGlow Pro.
-2. Open any video on YouTube (YouTube dark theme recommended).
-3. Click the CineGlow icon in your browser toolbar to fine-tune lighting, audio, speed, and more.
-4. Settings sync across your Chrome devices automatically.
+You can also hide Shorts, end screens, and cards; request alternatives to AV1, VP9, or 60 fps streams; and enable ad skipping with bundled ad and tracker request rules. Ad skipping and page changes depend on YouTube's current layout and may need updates.
+
+Two optional features fetch information from outside YouTube: Return YouTube Dislike retrieves community vote counts, and Restore Classic Annotations loads archived notes and speech bubbles where available. Both are off by default.
+
+STORAGE AND PRIVACY
+
+Lighting and audio processing run in the browser. Screenshots and recordings save to your computer. Preferences use Chrome Sync, so they can follow your signed-in account when sync is enabled; archived annotations are cached locally.
+
+The optional dislike and annotation features send the public video ID to the relevant service. CineGlow does not include developer-run analytics or telemetry. Read the privacy policy for the storage and request details.
+
+GET STARTED
+
+1. Install CineGlow and open a YouTube video.
+2. Click the CineGlow toolbar icon to adjust lighting, audio, and other options.
+3. Try YouTube's dark theme if you want the glow to stand out more.
+
+The manifest declares Chrome 105 as the minimum version. Media formats and individual features depend on the browser's available APIs and codecs.
 
 SOURCE CODE
 
-YouTube CineGlow Pro is open source: https://github.com/ManoharVit/YouTube-CineGlow
+https://github.com/ManoharVit/YouTube-CineGlow
 
-**Category** [REQUIRED]
+**Category**  
 Photos
 
-**Single Purpose** [REQUIRED]
-Projects live ambient lighting around YouTube videos and enhances playback with audio processing, speed control, ad blocking, and cinema display tools.
+**Single purpose**  
+Customise YouTube viewing with ambient lighting and related playback, audio, display, and player controls.
 
-**Primary Language** [REQUIRED]
+**Primary language**  
 English
 
----
+## Graphics and assets
 
-## Graphics & Assets
-
-| Asset | Dimensions | Status | Filename |
-|---|---|---|---|
-| Store Icon [REQUIRED] | 128×128 PNG | Ready | `icons/icon-128.png` |
-| Small Icon | 48×48 PNG | Ready | `icons/icon-48.png` |
-| Toolbar Icon | 16×16 PNG | Ready | `icons/icon-16.png` |
-| Screenshot 1 [REQUIRED] | 2879×1567 PNG | Ready | `store_assets/screenshot_1_ambient_lighting.png` |
-| Screenshot 2 [RECOMMENDED] | 2879×1655 PNG | Ready | `store_assets/screenshot_2_settings_popup.png` |
-| Screenshot 3 [RECOMMENDED] | 2879×1567 PNG | Ready | `store_assets/screenshot_3_stats_overlay.png` |
-| Screenshot 4 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_4_theatre_mode.png` |
-| Screenshot 5 [RECOMMENDED] | 2879×1565 PNG | Ready | `store_assets/screenshot_5_frame_snap.png` |
-| Small Promo Tile [RECOMMENDED] | 440×280 PNG | Ready | `store_assets/promo_tile_440x280.png` |
-| Marquee Promo Tile [RECOMMENDED] | 1400×560 PNG/JPG | Ready | `store_assets/marquee_promo_1400x560.png` |
-
----
-
-## Permissions Justification
-
-| Permission | Type | Why it's needed |
+| Asset | Current file dimensions | File |
 |---|---|---|
-| `storage` | permissions | Saves and syncs all user preferences (glow settings, audio levels, EQ, speed, tweaks) across Chrome sessions and devices. |
-| `declarativeNetRequest` | permissions | Blocks ad and tracker network requests on YouTube without reading or logging any request payload. |
-| `scripting` | permissions | Registers a MAIN-world content script at runtime to override codec capability reporting for codec-blocking features. |
-| `downloads` | permissions | Saves full-resolution PNG screenshots and video recordings to the user's Downloads folder. |
-| `tabCapture` | permissions | Captures the tab's audio/video stream for the screen recorder feature. |
-| `*://*.youtube.com/*` | host_permissions | Lets the extension inject content scripts that sample video frames, add player controls, and monitor playback state. |
-| `*://*.googlevideo.com/*` | host_permissions | Required by declarativeNetRequest to match and block ad stream segments served from YouTube's video CDN. |
-| `*://returnyoutubedislikeapi.com/*` | host_permissions | Fetches aggregated public dislike counts from the Return YouTube Dislike API when that feature is enabled. |
+| Store icon | 128×128 | `icons/icon-128.png` |
+| Small icon | 48×48 | `icons/icon-48.png` |
+| Toolbar icon | 16×16 | `icons/icon-16.png` |
+| Ambient lighting screenshot | 1894×1141 | `store_assets/screenshot_1_ambient_lighting.png` |
+| Playback settings screenshot | 1395×756 | `store_assets/screenshot_2_playback_settings.png` |
+| Stats screenshot | 1561×846 | `store_assets/screenshot_3_stats_overlay.png` |
+| Theatre screenshot | 1561×846 | `store_assets/screenshot_4_theatre_mode.png` |
+| Toolbar screenshot | 1395×757 | `store_assets/screenshot_5_frame_snap.png` |
+| Small promo tile | 440×280 | `store_assets/promo_tile_440x280.png` |
+| Marquee promo | 1400×560 | `store_assets/marquee_promo_1400x560.png` |
 
----
+## Permission explanations
 
-## Privacy & Data Use
+This table follows the permissions in the current `manifest.json`.
 
-**Does the extension collect user data?** No
+| Permission or host | Type | Use |
+|---|---|---|
+| `storage` | Permission | Save preferences and the ad-skip counter through Chrome Sync; cache annotation XML locally. |
+| `declarativeNetRequest` | Permission | Apply bundled ad/tracker rules and the download-header rule without logging request bodies. |
+| `scripting` | Permission | Register page-context scripts for the selected codec and frame-rate blocking options. |
+| `downloads` | Permission | Save screenshots and recordings, and handle download requests. |
+| `*://*.youtube.com/*` | Host permission | Run the player, glow, audio, and control scripts on YouTube pages. |
+| `*://*.googlevideo.com/*` | Host permission | Apply the network-rule and download-header handling for YouTube's video CDN. |
+| `https://returnyoutubedislikeapi.com/*` | Host permission | Retrieve community vote counts when dislike restoration is enabled. |
+| `https://storage.googleapis.com/*` | Host permission | Retrieve archived annotation XML when annotation restoration is enabled. |
 
-### Data Use Certification
-- [x] Data is NOT sold to third parties
-- [x] Data is NOT used for purposes unrelated to the extension's core functionality
-- [x] Data is NOT used for creditworthiness or lending purposes
+The current manifest does not request `tabCapture`. Recording uses the video element and a canvas stream.
 
----
+## Data use
 
-## Privacy Policy
+The extension handles synced preferences, an ad-skip counter, optional video-ID lookups, an annotation cache, and user-requested media downloads. The privacy policy describes these separately rather than treating all of them as local-only storage.
 
-**Privacy Policy URL** [REQUIRED]
-https://github.com/ManoharVit/YouTube-CineGlow/blob/main/PRIVACY.md
+The project's data-use declarations are:
 
----
+- Data is not sold to third parties.
+- Data is not used for purposes unrelated to the extension's functionality.
+- Data is not used for creditworthiness or lending purposes.
 
-## Distribution
+## Privacy policy and distribution
 
-**Visibility**: Public
-**Regions**: All regions
+**Privacy policy URL:** https://github.com/ManoharVit/YouTube-CineGlow/blob/main/PRIVACY.md  
+**Visibility:** Public  
+**Regions:** All regions
 
----
+## Developer details
 
-## Developer Info
+**Publisher:** Giri Manohar Vemula  
+**Contact:** girimanohar.v@gmail.com  
+**Source and support:** https://github.com/ManoharVit/YouTube-CineGlow  
+**LinkedIn:** https://www.linkedin.com/in/manoharv511
 
-**Publisher Name**: Giri Manohar Vemula
-**Contact Email**: girimanohar.v@gmail.com
-**Support / Repository URL**: https://github.com/ManoharVit/YouTube-CineGlow
+## Project version history
 
----
-
-## Version History
-
-| Version | Date | Changes | Status |
+| Version | Date | Changes | Listing status |
 |---|---|---|---|
-| 2.2.0 | 2026-10-18 | Audio suite (bass booster, vocal clarity, 5-band EQ + presets), speed control (0.1–10×), quick presets bar, classic annotations restore, return dislike, hide shorts, hide end cards, screen recorder, clean cinema theater mode (percent-based centering), stats overlay color depth & range card, audio normaliser rename, manifest minimum_chrome_version 105 | Ready to Submit |
-| 2.1.2 | 2026-10-17 | Compact popup (-20% width), full-res store screenshots, black bar crop fixes | Archived |
-| 2.1.0 | 2026-10-15 | New popup UI, Smart Auto-Pause, floating toolbar, Web Audio normalizer, eye-care filters, MIT license | Archived |
-| 2.0.0 | 2026-10-09 | Stats overlay, PiP controls | Archived |
+| 2.2.0 | 2026-10-18 | Bass and vocal controls, five-band EQ, 0.1×-10× speed menu, quick presets, annotation and dislike restoration, Shorts and end-card controls, video recording, theatre centring, and colour-depth stats | Ready to Submit |
+| 2.1.2 | 2026-10-17 | Smaller popup, store screenshots, and black-border crop fixes | Archived |
+| 2.1.0 | 2026-10-15 | Popup redesign, auto-pause, floating toolbar, audio normaliser, video filters, and MIT licence | Archived |
+| 2.0.0 | 2026-10-09 | Stats overlay and PiP controls | Archived |
 | 1.0.0 | 2026-10-05 | Initial release | Archived |

@@ -53,8 +53,8 @@ im_rgb = im_resized.convert('RGB') # Strip alpha channel for 24-bit RGB
 out_png = os.path.join('${path.resolve(__dirname, '../store_assets')}', 'marquee_promo_1400x560.png')
 out_jpg = os.path.join('${path.resolve(__dirname, '../store_assets')}', 'marquee_promo_1400x560.jpg')
 
-im_rgb.save(out_png, format='PNG', optimize=True)
-im_rgb.save(out_jpg, format='JPEG', quality=95, optimize=True)
+im_rgb.save(out_png, format='PNG', compress_level=0)
+im_rgb.save(out_jpg, format='JPEG', quality=98, optimize=True)
 
 print(f"Saved {out_png}: Size={im_rgb.size}, Mode={im_rgb.mode}, Bytes={os.path.getsize(out_png):,}")
 print(f"Saved {out_jpg}: Size={im_rgb.size}, Mode={im_rgb.mode}, Bytes={os.path.getsize(out_jpg):,}")

@@ -1,6 +1,6 @@
 {
   "name": "youtube-cineglow-pro",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "YouTube CineGlow Pro Chrome Extension",
   "scripts": {
     "test": "node --test test/**/*.test.js"

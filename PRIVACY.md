@@ -1,45 +1,44 @@
-# Privacy Policy — YouTube CineGlow Pro
+# Privacy policy: YouTube CineGlow Pro
 
-Last updated: October 17, 2026
+Last updated: October 20, 2026
 
-YouTube CineGlow Pro is developed by Giri Manohar Vemula. This document explains what data the extension accesses and how it handles that data.
+YouTube CineGlow Pro is developed by Giri Manohar Vemula. This policy describes the extension's storage, media processing, and optional network requests.
 
-## No Data Collection
+## Information saved by the extension
 
-The extension does not collect, store, or transmit any personal information. It does not track browsing history, record keystrokes, or assign user identifiers.
+CineGlow saves your preferences, including lighting levels, audio settings, preferred quality, playback speed, and enabled tools, through `chrome.storage.sync`. It also stores the counter used for skipped ads. Chrome may sync these values across your signed-in devices when sync is enabled; they are not restricted to storage on one computer.
 
-## What Gets Stored Locally
+If you enable classic annotations, downloaded annotation XML is cached in `chrome.storage.local`. Cache keys include the YouTube video ID, so the cache can identify videos for which annotations were requested. This cache is separate from synced preferences. The preferred-quality feature also writes the selected resolution to YouTube's `yt-player-quality` local-storage entry.
 
-Your settings — glow intensity, blur radius, audio boost level, preferred resolution, auto-pause mode, and similar preferences — are saved using `chrome.storage.sync`. This keeps your configuration consistent across Chrome sessions on the same Google account. Nothing leaves Chrome's built-in sync mechanism.
+CineGlow does not maintain a separate browsing-history log or add analytics, advertising SDKs, or a developer-run telemetry service.
 
-## How Network and Media Are Handled
+## Video, audio, and downloads
 
-- **Ad blocking** uses `declarativeNetRequest` rules. The browser engine evaluates these rules internally. The extension never reads or logs your network traffic.
-- **Frame sampling** for the ambient glow copies pixels from the `<video>` element into a small in-memory canvas. No frames are saved, uploaded, or sent anywhere.
-- **Audio normalization** connects Web Audio API nodes to the video element in local memory. No audio data is recorded or transmitted.
-- **Screenshots** render a single video frame to a `<canvas>`, convert it to PNG, and trigger a download to your local machine. The image data never leaves your browser.
+The ambient-lighting feature samples video frames into an in-memory canvas. Audio controls process the video's sound through Web Audio nodes in the browser. These features do not upload the sampled frames or audio.
 
-## Third-Party Services & Network Requests
+When you choose to take a screenshot or record a video, CineGlow creates a media file for download to your computer. The recorder captures the video element and available audio; it does not record the desktop or request the microphone. Media downloads are separate from Chrome's settings sync.
 
-The extension operates locally by default. When specific optional features are enabled by the user, the background service worker communicates with the following external endpoints:
+Ad blocking uses Chrome's `declarativeNetRequest` rules. Chrome applies the rules without the extension logging request bodies. The extension also checks player elements so it can attempt to skip ads.
 
-1. **Return YouTube Dislike API (`returnyoutubedislikeapi.com`)**:
-   - **Feature**: Restore Dislike Counter (`returnDislikes`).
-   - **Data Transmitted**: Only the public 11-character YouTube video ID (e.g., `?videoId=dQw4w9WgXcQ`).
-   - **Purpose**: Retrieves public community like/dislike statistics.
-   - **Privacy Guarantee**: No cookies, authentication tokens, personal identifiers, or browsing history are sent.
+## Optional third-party requests
 
-2. **Classic YouTube Annotations Archive (`storage.googleapis.com`)**:
-   - **Feature**: Restore Annotations (`restoreAnnotations`).
-   - **Data Transmitted**: The public YouTube video ID in the archive file path.
-   - **Purpose**: Fetches public archived XML annotation files created prior to YouTube's 2019 annotation deprecation.
-   - **Privacy Guarantee**: No user accounts, credentials, or tracking metrics are transmitted. Downloaded XML is cached locally in `chrome.storage.local`.
+Two features make requests outside YouTube when enabled:
 
-The extension contains zero advertising libraries, zero behavioral tracking scripts, and zero telemetry analytics SDKs.
+| Feature | Service | Information included | Use |
+|---|---|---|---|
+| Return YouTube Dislike | `returnyoutubedislikeapi.com` | The public video ID in the request URL | Retrieve community like/dislike statistics |
+| Restore Classic Annotations | `storage.googleapis.com` | The public video ID in the archive path | Retrieve archived annotation XML; a cached copy is reused when available |
+
+These features are off by default. Their requests do not add account credentials, authentication tokens, or a user profile. As with other HTTPS requests, the receiving service can see connection information such as your IP address. The requested video ID identifies the video being looked up.
+
+## Your choices
+
+You can turn off either lookup feature in the extension popup. Preferences remain in Chrome's storage, and the annotation cache remains in local extension storage, until you change or remove them. Downloaded screenshots and recordings remain as files on your computer and can be deleted separately.
 
 ## Contact
 
-- **Developer / Lead Architect**: Giri Manohar Vemula
-- **Email**: girimanohar.v@gmail.com
-- **LinkedIn**: [https://www.linkedin.com/in/manoharv511](https://www.linkedin.com/in/manoharv511)
-- **GitHub**: [https://github.com/ManoharVit/YouTube-CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)
+Giri Manohar Vemula
+
+- Email: girimanohar.v@gmail.com
+- LinkedIn: [manoharv511](https://www.linkedin.com/in/manoharv511)
+- Source and support: [YouTube CineGlow](https://github.com/ManoharVit/YouTube-CineGlow)

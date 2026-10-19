@@ -2,29 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>YouTube CineGlow Pro — Product Specification & Technical Architecture</title>
+  <title>YouTube CineGlow Pro: technical guide</title>
   <style>
     @page {
       size: A4;
-      margin: 18mm 14mm 16mm 14mm;
+      margin: 14mm 14mm 16mm 14mm;
       @top-right {
-        content: "YouTube CineGlow Pro — Product Specification";
+        content: "YouTube CineGlow Pro | Technical guide";
         font-size: 7.5pt;
-        font-weight: 500;
-        color: #9ca3af;
+        font-weight: 600;
+        color: #475569;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       @bottom-left {
-        content: "Version 2.2.0 Pro · MIT License · Giri Manohar Vemula";
+        content: "Version 2.2.0 Pro · MIT License · Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)";
         font-size: 7.5pt;
-        color: #9ca3af;
+        font-weight: 500;
+        color: #475569;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       @bottom-right {
         content: "Page " counter(page);
         font-size: 7.5pt;
-        font-weight: 600;
-        color: #6b7280;
+        font-weight: 700;
+        color: #1e293b;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
     }
@@ -69,11 +70,12 @@
 
     /* Cover Page */
     .cover-container {
-      min-height: 88vh;
+      height: 250mm;
+      max-height: 252mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 20px 10px;
+      padding: 10px 0;
     }
 
     .cover-top {
@@ -259,53 +261,56 @@
     }
 
     th {
-      background: #f3f4f6;
-      color: #111827;
+      background: #f1f5f9;
+      color: #0f172a;
       font-weight: 700;
       text-align: left;
-      padding: 6px 8px;
-      border: 1px solid #d1d5db;
+      padding: 5px 7px;
+      border: 1px solid #94a3b8;
     }
 
     td {
-      padding: 5px 8px;
-      border: 1px solid #e5e7eb;
+      padding: 4px 7px;
+      border: 1px solid #cbd5e1;
       vertical-align: top;
       line-height: 1.4;
     }
 
     tr:nth-child(even) td {
-      background: #f9fafb;
+      background: #f8fafc;
     }
 
     code {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 7.5pt;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
       padding: 1px 4px;
       border-radius: 4px;
-      color: #7c3aed;
+      color: #581c87;
+      font-weight: 600;
     }
 
     pre {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 7.5pt;
-      background: #111827;
-      color: #f3f4f6;
+      background: #0f172a;
+      color: #f8fafc;
       padding: 10px 12px;
       border-radius: 6px;
       overflow-x: auto;
       line-height: 1.4;
       margin: 10px 0;
+      border: 1px solid #334155;
+      font-weight: 500;
       page-break-inside: avoid;
     }
 
     /* Callout Card */
     .callout {
-      background: #f5f3ff;
-      border: 1px solid #ddd6fe;
-      border-left: 4px solid #7c3aed;
+      background: #f8fafc;
+      border: 1px solid #94a3b8;
+      border-left: 5px solid #6b21a8;
       border-radius: 6px;
       padding: 10px 12px;
       margin: 12px 0;
@@ -315,7 +320,7 @@
 
     .callout-title {
       font-weight: 700;
-      color: #5b21b6;
+      color: #581c87;
       margin-bottom: 4px;
       display: flex;
       align-items: center;
@@ -332,8 +337,8 @@
     }
 
     .feature-card {
-      border: 1px solid #e5e7eb;
-      background: #fafafa;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
       border-radius: 6px;
       padding: 9px 11px;
     }
@@ -365,18 +370,30 @@
       line-height: 1.35;
       white-space: pre;
       margin: 10px 0;
-      border: 1px solid #1e293b;
+      border: 1px solid #334155;
+      font-weight: 500;
       page-break-inside: avoid;
     }
   </style>
-</head>
+<style>
+ pre code { background:transparent;border:0;padding:0;border-radius:0;color:inherit;font-weight:inherit;font-size:inherit; }
+ pre { white-space:pre-wrap;overflow-wrap:normal; }
+ a { color:#6d28d9;text-decoration:none; }
+ p,li { orphans:3;widows:3; }
+ .section-break { break-before:page; }
+ table code { overflow-wrap:anywhere; }
+ .settings-table th:nth-child(1) { width:25%; }
+ .settings-table th:nth-child(2) { width:12%; }
+ .settings-table th:nth-child(3) { width:12%; }
+ .settings-table th:nth-child(4) { width:51%; }
+ @media screen { body { max-width:1000px;margin:24px auto;padding:0 28px; } .cover-container {height:auto;max-height:none;gap:32px;margin-bottom:40px;} }
+ </style></head>
 <body>
-
   <!-- COVER PAGE -->
   <div class="cover-container page-break">
     <div class="cover-top">
       <div class="cover-badge-row">
-        <span class="badge-pill">Production Specification</span>
+        <span class="badge-pill">Technical guide</span>
         <span class="badge-secondary">Manifest V3 Chrome Extension</span>
       </div>
 
@@ -386,7 +403,7 @@
       </div>
 
       <p class="cover-subtitle">
-        High-Performance Ambient Lighting, Web Audio Studio DSP, Intelligent Display Enhancements, and Advanced Player Tooling for YouTube.
+        Ambient lighting, audio controls, and playback tools for YouTube. How the extension works and where to change its settings.
       </p>
 
       <img src="store_assets/marquee_promo_1400x560.jpg" alt="CineGlow Showcase" class="cover-hero-image">
@@ -395,496 +412,472 @@
         <div class="cover-grid">
           <div class="cover-grid-item">
             <span class="cover-grid-label">Application Version</span>
-            <span class="cover-grid-val">2.2.0 Pro (Manifest V3 Architecture)</span>
+            <span class="cover-grid-val">2.2.0 Pro</span>
           </div>
           <div class="cover-grid-item">
             <span class="cover-grid-label">Core Pipeline</span>
-            <span class="cover-grid-val">GPU Canvas + Web Audio DSP + Dual-VM Runtime</span>
+            <span class="cover-grid-val">Canvas sampling + Web Audio + extension scripts</span>
           </div>
           <div class="cover-grid-item">
-            <span class="cover-grid-label">Lead Architect</span>
+            <span class="cover-grid-label">Author</span>
             <span class="cover-grid-val">Giri Manohar Vemula</span>
           </div>
           <div class="cover-grid-item">
             <span class="cover-grid-label">Target Runtime</span>
-            <span class="cover-grid-val">Google Chrome (v105+) & Chromium Browsers</span>
+            <span class="cover-grid-val">Chrome extension; declared minimum v105</span>
           </div>
           <div class="cover-grid-item">
             <span class="cover-grid-label">License</span>
             <span class="cover-grid-val">MIT Open Source</span>
           </div>
           <div class="cover-grid-item">
-            <span class="cover-grid-label">Release Date</span>
-            <span class="cover-grid-val">October 2026</span>
+            <span class="cover-grid-label">Documentation updated</span>
+            <span class="cover-grid-val">October 20, 2026</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="cover-footer">
-      <span>YouTube CineGlow Pro · Technical & Architectural Specification</span>
+      <span>YouTube CineGlow Pro · Technical guide</span>
       <span>Document ID: CGP-DOC-2026-V220</span>
     </div>
   </div>
 
-  <!-- SECTION 1 -->
-  <h1>1. Executive Summary & Product Overview</h1>
-  <p>
-    <strong>YouTube CineGlow Pro</strong> is an advanced, privacy-first desktop browser extension engineered to elevate the YouTube video viewing experience. Standard desktop displays present a stark, high-contrast boundary between vivid video scenes and surrounding dark room environments, inducing optical fatigue and breaking visual immersion.
-  </p>
-  <p>
-    CineGlow Pro solves this by real-time sampling the boundary colors of active video frames and projecting an organically diffused, color-matched glow onto the webpage behind the player—emulating high-end Ambilight television setups with zero external hardware or camera latency.
-  </p>
+<main>
+<h1>1. Overview</h1>
+<p>CineGlow places a blurred, colour-matched glow behind the YouTube player. It samples the video into a small canvas, blends successive frames, and uses CSS to spread the result around the image. The effect runs in the browser and needs no external lighting hardware.</p>
+<p>The extension also includes audio controls, video filters, black-border cropping, a theatre layout, playback statistics, and player tools for screenshots, recording, picture-in-picture, and speed changes. Optional tools restore community dislike counts and archived annotations, hide Shorts and end cards, skip ads, or change codec preferences.</p>
+<h1>2. How the extension fits together</h1>
+<pre><code class="language-text">Popup controls --&gt; chrome.storage.sync --&gt; Content-script settings
+                                              |
+Background service worker                     v
+  |                                  window.CineGlowPlayer
+  +-- Downloads                       (PlayerManager / EventTarget)
+  +-- Request rules                            |
+  +-- Codec-script registration       +--------+---------+
+  +-- Optional API/archive lookups     |        |         |
+                                   Glow     Audio    Player tools
 
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-card-header">🌟 Dynamic Ambient Glow</div>
-      <p class="feature-card-desc">Offscreen 128×72 GPU canvas sampling with Exponential Moving Average (EMA) temporal smoothing and directional edge clipping.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-card-header">🔊 Studio DSP Audio Suite</div>
-      <p class="feature-card-desc">Hardware-accelerated Web Audio pipeline: uniform loudness normalizer, 5-band biquad EQ, bass shelf, and vocal clarity boost.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-card-header">🎬 Display & Aspect Ratios</div>
-      <p class="feature-card-desc">Automated letterbox black-bar cropping, 21:9 ultrawide scaling, hardware eye-care filters, and clean cinema theater centering.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-card-header">🛠️ Floating Productivity HUD</div>
-      <p class="feature-card-desc">Uncompressed PNG frame capture, in-browser video recording (WebM/MKV/MP4), native PiP, and speed dial (0.1× to 10×).</p>
-    </div>
-  </div>
-
-  <div class="callout">
-    <div class="callout-title">Core Engineering Values</div>
-    Strict Manifest V3 compliance with zero external dependencies, zero analytics/tracking, deterministic lifecycle cleanup, and absolute zero idle background CPU consumption.
-  </div>
-
-  <!-- SECTION 2 -->
-  <h1>2. System Architecture & Lifecycle Design</h1>
-  <p>
-    YouTube operates as a persistent Single Page Application (SPA). During navigation between videos, the video container and media element are continuously reused rather than re-instantiated. Traditional extensions rely on periodic <code>setInterval</code> polling loops, which cause event listener leaks, race conditions, and heavy memory fragmentation. CineGlow Pro employs a unified, event-driven architecture:
-  </p>
-
-  <div class="diagram-box">
-+-----------------------------------------------------------------------------------------+
-|                                    CHROME BROWSER ENGINE                                |
-|                                                                                         |
-|  +-----------------------------+               +-------------------------------------+  |
-|  |   Background Service Worker |  sync.storage |          Popup Control Center       |  |
-|  |  (background/background.js) | <-----------> |    (Glow / Video / Audio / Tools)   |  |
-|  +-----------------------------+               +-------------------------------------+  |
-|                 |                                                 |                     |
-|  chrome.scripting / declarativeNetRequest                         | chrome.storage.sync |
-|                 v                                                 v                     |
-|  +-----------------------------------------------------------------------------------+  |
-|  |                              YOUTUBE ACTIVE TAB RUNTIME                           |  |
-|  |                                                                                   |  |
-|  |  +-------------------------+                     +-----------------------------+  |  |
-|  |  |    MAIN-World Script    |                     |   Central Player Manager    |  |  |
-|  |  |   (content/main-world)  |                     |        (EventTarget)        |  |  |
-|  |  |  MediaSource overrides  |                     |  (content/player-manager)   |  |  |
-|  |  +-------------------------+                     +-----------------------------+  |  |
-|  |                                                                 |                 |  |
-|  |         +-----------------------+-------------------------------+                 |  |
-|  |         |                       |                               |                 |  |
-|  |         v                       v                               v                 |  |
-|  |  +---------------+     +--------------------+          +--------------------+     |  |
-|  |  |  Canvas Glow  |     |  Studio Web Audio  |          |  Floating Toolbar  |     |  |
-|  |  |  GPU Sampling |     |  Normalizer & EQ   |          |  Snap, Record, PiP |     |  |
-|  |  +---------------+     +--------------------+          +--------------------+     |  |
-|  +-----------------------------------------------------------------------------------+  |
-+-----------------------------------------------------------------------------------------+</div>
-
-  <h2>2.1 Centralized Player Manager (`player-manager.js`)</h2>
-  <ul>
-    <li><strong>URL & Video Change Detection:</strong> Subscribes directly to YouTube's SPA navigation hooks (<code>yt-navigate-finish</code>, <code>yt-page-data-updated</code>) and tracks URL query parameters (<code>v=</code> parameter changes).</li>
-    <li><strong>Observer Management:</strong> Deploys targeted <code>MutationObserver</code> instances scoped to <code>#movie_player</code>, <code>ytd-app</code>, and <code>ytd-watch-flexy</code> to track player state, theater mode, ad-interrupting states, and miniplayer transitions.</li>
-    <li><strong>Cold-Load Fallback:</strong> If YouTube's player elements have not yet mounted when a watch page loads, a 500ms safety interval polls until the nodes are acquired, disconnecting immediately once secured.</li>
-    <li><strong>Consolidated <code>state-change</code> Event:</strong> Emits a single <code>state-change</code> event (<code>CustomEvent('state-change', { detail: this })</code>) broadcasting active player references and playback flags (<code>isWatchPage</code>, <code>isPlaying</code>, <code>isPiP</code>, <code>isTheater</code>, <code>isFullscreen</code>, <code>isAdShowing</code>). Subsystems synchronize deterministically in response to this single source of truth.</li>
-  </ul>
-
-  <h2>2.2 Dual-World Scripting Architecture</h2>
-  <ul>
-    <li><strong>ISOLATED World:</strong> Content scripts execute in isolated VM contexts, with protected access to extension storage and messaging APIs.</li>
-    <li><strong>MAIN World (`main-world.js`):</strong> Injected at <code>document_start</code> via <code>chrome.scripting.registerContentScripts</code> directly into the page context. This grants CineGlow the ability to intercept <code>HTMLMediaElement.prototype.canPlayType</code> and <code>MediaSource.isTypeSupported</code> before YouTube can initialize unaccelerated AV1 or VP9 video streams.</li>
-  </ul>
-
-  <!-- SECTION 3 -->
-  <h1>3. Deep-Dive Subsystem Specifications</h1>
-
-  <h2>3.1 Ambient Lighting Engine (`content.js`, `content.css`)</h2>
-  <p>
-    The ambient lighting engine samples the active video frame onto an internal <code>128×72</code> offscreen canvas using <code>CanvasRenderingContext2D.drawImage()</code>. The pixel buffer is processed through an Exponential Moving Average (EMA) smoothing algorithm:
-  </p>
-  <pre>Pixel_current = (alpha * Pixel_new) + ((1 - alpha) * Pixel_prev)</pre>
-  <p>
-    Where <code>alpha</code> is directly calibrated by the <strong>Smoothness</strong> slider. The canvas is positioned behind the player (<code>z-index: -1</code>), amplified using CSS <code>blur()</code>, <code>saturate()</code>, <code>contrast()</code>, and <code>brightness()</code> filters, and masked by a soft radial falloff gradient:
-  </p>
-  <pre>mask-image: radial-gradient(ellipse farthest-side, #000 50%, transparent 100%);</pre>
-  <ul>
-    <li><strong>Directional Clipping:</strong> Independent Top, Right, Bottom, and Left toggles allow selective clipping of any glow perimeter.</li>
-    <li><strong>Audio-Reactive Pulsing:</strong> Connects to an FFT <code>AnalyserNode</code>; bass energy spikes (40–180 Hz) dynamically scale and brighten the glow in sync with musical beats.</li>
-    <li><strong>Idle Suspension:</strong> The <code>requestAnimationFrame</code> and <code>requestVideoFrameCallback</code> loops halt when playback pauses, ends, or buffers, suspending canvas redraws and conserving CPU and GPU cycles.</li>
-  </ul>
-
-  <h2>3.2 Studio Audio DSP Pipeline (`audio-processor.js`)</h2>
-  <p>
-    YouTube's audio stream is routed through a dedicated Web Audio graph via <code>AudioContext.createMediaElementSource(video)</code>:
-  </p>
-
-  <div class="diagram-box">
-[Video Audio] --+--> [Normalizer Gain (Dry)] ------------------------------+--> [Bass Filter (80Hz)] --> [Vocal Filter (2.5kHz)]
-                |                                                          |
-                +--> [Compressor (-24dB)] --> [Compressed Gain (Wet)] -----+
-                                                                               |
-[Speakers] &lt;--- [Limiter (-1dB)] &lt;--- [Gain (100-300%)] &lt;--- [5-Band Equalizer (60Hz - 12kHz)]
-     |
-     +---> [AnalyserNode (FFT)] ---> [Beat Pulse to Glow Engine]</div>
-
-  <h3>Audio Normalization Architecture</h3>
-  <ul>
-    <li><strong>DynamicsCompressorNode Staging:</strong> Implemented via a Web Audio <code>DynamicsCompressorNode</code> (threshold: -24 dB, knee: 30 dB, ratio: 12:1, attack: 3ms, release: 250ms) paired with smooth dry/wet gain crossfading (<code>normalizerGain</code> and <code>compressedGain</code>). When enabled, loud audio peaks exceeding -24 dB are compressed with a soft knee while boosting lower-level dialogue, followed by a brickwall limiter (<code>threshold: -1 dB</code>, <code>ratio: 20:1</code>) to prevent clipping.</li>
-    <li><strong>5-Band Biquad Equalizer:</strong> ±12 dB studio-grade filtering across 60 Hz (Sub-Bass), 250 Hz (Warmth), 1 kHz (Midrange), 4 kHz (Presence), and 12 kHz (Air).</li>
-    <li><strong>One-Click Presets:</strong> Instant acoustic profiles: <em>Flat</em>, <em>Bass Boost</em>, <em>Vocal Clarity</em>, <em>Rock</em>, <em>Pop</em>, and <em>Electro</em>.</li>
-  </ul>
-
-  <h2>3.3 Intelligent Video & Display Control</h2>
-  <ul>
-    <li><strong>Auto-Crop Black Bars (`blackbar.js`):</strong> Samples video aspect ratios on an offscreen analysis canvas, automatically detecting cinematic letterboxing (2.39:1, 21:9) and scaling the video smoothly to fill the monitor.</li>
-    <li><strong>Ultrawide Zoom-to-Fit:</strong> Eliminates pillarboxing on 21:9 displays.</li>
-    <li><strong>Force High-Definition (`youtube-quality.js`):</strong> Bypasses YouTube's initial bitrate throttling, locking playback immediately to 1080p, 1440p, or 4K.</li>
-    <li><strong>Eye-Care Hardware Filters:</strong> Real-time hardware CSS filters for Brightness (50%–150%), Contrast (50%–150%), and Blue-Light Warmth Sepia (0%–100%).</li>
-    <li><strong>Clean Cinema Theater Mode:</strong> Centers the player across the full viewport while collapsing the masthead header and recommendations feed.</li>
-  </ul>
-
-  <h2>3.4 Floating Player Toolbar & Productivity Tools</h2>
-  <ul>
-    <li><strong>Lossless Frame Snapshot:</strong> Captures the uncompressed native frame directly to PNG in the user's Downloads folder.</li>
-    <li><strong>In-Browser Video Recorder:</strong> Captures tab and audio streams directly to WebM/MKV/MP4 files at 30 or 60 fps with zero external servers.</li>
-    <li><strong>Native Picture-in-Picture Button:</strong> Injected directly into YouTube's player control bar next to theater mode.</li>
-    <li><strong>Precision Speed Dial:</strong> 0.1× to 10× continuous speed scaling with quick presets (0.25×, 0.5×, 1×, 1.5×, 2×, 5×).</li>
-    <li><strong>Quality Stats Overlay (`stats-overlay.js`):</strong> Real-time draggable HUD displaying VSync FPS, dropped frame counters, render draw timing, stream resolution, codec strings, and HDR color depth badges.</li>
-  </ul>
-
-  <!-- SECTION 4 -->
-  <h1>4. Complete Settings & Configuration Dictionary</h1>
-  <p>
-    All user preferences are persistently synchronized across devices via <code>chrome.storage.sync</code>. The table below documents the full schema:
-  </p>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 25%;">Key Name</th>
-        <th style="width: 10%;">Type</th>
-        <th style="width: 11%;">Default</th>
-        <th style="width: 11%;">Domain</th>
-        <th style="width: 43%;">Functional Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>enabled</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Master</td>
-        <td>Master enable/disable switch for ambient lighting</td>
-      </tr>
-      <tr>
-        <td><code>opacity</code></td>
-        <td>number</td>
-        <td><code>75</code></td>
-        <td>Glow</td>
-        <td>Glow opacity intensity (0% to 100%)</td>
-      </tr>
-      <tr>
-        <td><code>spread</code></td>
-        <td>number</td>
-        <td><code>150</code></td>
-        <td>Glow</td>
-        <td>Scale expansion factor of the ambient light field (100% to 400%)</td>
-      </tr>
-      <tr>
-        <td><code>smoothness</code></td>
-        <td>number</td>
-        <td><code>60</code></td>
-        <td>Glow</td>
-        <td>Exponential Moving Average (EMA) temporal smoothing factor</td>
-      </tr>
-      <tr>
-        <td><code>blur</code></td>
-        <td>number</td>
-        <td><code>40</code></td>
-        <td>Glow</td>
-        <td>Gaussian blur radius (5px to 100px)</td>
-      </tr>
-      <tr>
-        <td><code>saturation</code></td>
-        <td>number</td>
-        <td><code>110</code></td>
-        <td>Glow</td>
-        <td>Color saturation multiplier (50% to 250%)</td>
-      </tr>
-      <tr>
-        <td><code>contrast</code></td>
-        <td>number</td>
-        <td><code>100</code></td>
-        <td>Glow</td>
-        <td>Contrast enhancement curve (50% to 200%)</td>
-      </tr>
-      <tr>
-        <td><code>brightness</code></td>
-        <td>number</td>
-        <td><code>100</code></td>
-        <td>Glow</td>
-        <td>Luminosity brightness multiplier (50% to 200%)</td>
-      </tr>
-      <tr>
-        <td><code>fadeInDuration</code></td>
-        <td>number</td>
-        <td><code>1</code></td>
-        <td>Glow</td>
-        <td>Video transition fade-in duration in seconds (0s to 2s)</td>
-      </tr>
-      <tr>
-        <td><code>glowTop/Right/Bottom/Left</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Glow</td>
-        <td>Independent edge emission toggles for all four cardinal directions</td>
-      </tr>
-      <tr>
-        <td><code>audioReactive</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Glow/Audio</td>
-        <td>Enables real-time Web Audio FFT bass beat pulse synchronization</td>
-      </tr>
-      <tr>
-        <td><code>enableInPiP</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Glow</td>
-        <td>Permits glow rendering on background page while in Picture-in-Picture</td>
-      </tr>
-      <tr>
-        <td><code>fps</code></td>
-        <td>number</td>
-        <td><code>30</code></td>
-        <td>Glow</td>
-        <td>Ambient rendering loop refresh cap (15, 30, or 60 fps)</td>
-      </tr>
-      <tr>
-        <td><code>qualityEnabled</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Video</td>
-        <td>Forces preferred high-definition resolution on video initialization</td>
-      </tr>
-      <tr>
-        <td><code>preferredQuality</code></td>
-        <td>string</td>
-        <td><code>'hd1080'</code></td>
-        <td>Video</td>
-        <td>Target resolution: hd1080 (1080p), hd1440 (1440p), or hd2160 (4K)</td>
-      </tr>
-      <tr>
-        <td><code>preferredSpeed</code></td>
-        <td>number</td>
-        <td><code>1.0</code></td>
-        <td>Video</td>
-        <td>Persistent playback speed applied to newly loaded videos (0.1× to 2.0×)</td>
-      </tr>
-      <tr>
-        <td><code>videoBrightness/Contrast</code></td>
-        <td>number</td>
-        <td><code>100</code></td>
-        <td>Video</td>
-        <td>Direct video CSS hardware filter adjustment (50% to 150%)</td>
-      </tr>
-      <tr>
-        <td><code>videoSepia</code></td>
-        <td>number</td>
-        <td><code>0</code></td>
-        <td>Video</td>
-        <td>Eye-care blue-light reduction warm filter (0% to 100%)</td>
-      </tr>
-      <tr>
-        <td><code>removeBlackBars</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Video</td>
-        <td>Automatic letterbox and pillarbox black-bar detection and crop</td>
-      </tr>
-      <tr>
-        <td><code>ultrawideZoom</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Video</td>
-        <td>Enables 21:9 ultrawide monitor zoom-to-fit transformation</td>
-      </tr>
-      <tr>
-        <td><code>lightsOut</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Video</td>
-        <td>Dims the webpage surface around the player during playback</td>
-      </tr>
-      <tr>
-        <td><code>audioNormalizer</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Audio</td>
-        <td>Perceived loudness normalization via DynamicsCompressorNode</td>
-      </tr>
-      <tr>
-        <td><code>audioBoost</code></td>
-        <td>number</td>
-        <td><code>100</code></td>
-        <td>Audio</td>
-        <td>Master digital audio volume multiplier (100% to 300%)</td>
-      </tr>
-      <tr>
-        <td><code>bassBoost / vocalBoost</code></td>
-        <td>number</td>
-        <td><code>0</code></td>
-        <td>Audio</td>
-        <td>Low-shelf sub-bass boost (0–15 dB) / Peaking vocal clarity (0–12 dB)</td>
-      </tr>
-      <tr>
-        <td><code>eq60 / 250 / 1000 / 4000 / 12000</code></td>
-        <td>number</td>
-        <td><code>0</code></td>
-        <td>Audio</td>
-        <td>5-Band Biquad Filter gains in decibels (-12 dB to +12 dB)</td>
-      </tr>
-      <tr>
-        <td><code>eqPreset</code></td>
-        <td>string</td>
-        <td><code>'flat'</code></td>
-        <td>Audio</td>
-        <td>Equalizer preset profile ('flat', 'bass', 'vocal', 'rock', 'pop', 'electro')</td>
-      </tr>
-      <tr>
-        <td><code>adblockEnabled</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Tools</td>
-        <td>Enables automated skip and network-level adblocking rules</td>
-      </tr>
-      <tr>
-        <td><code>statsEnabled</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Tools</td>
-        <td>Display draggable quality HUD telemetry overlay</td>
-      </tr>
-      <tr>
-        <td><code>returnDislikes</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Tools</td>
-        <td>Restores public YouTube dislike counter via Return YouTube Dislike API</td>
-      </tr>
-      <tr>
-        <td><code>restoreAnnotations</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Tools</td>
-        <td>Restores legacy interactive notes, speech bubbles, and spotlights</td>
-      </tr>
-      <tr>
-        <td><code>hideShorts</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Tools</td>
-        <td>Removes Shorts shelves and recommendation feeds</td>
-      </tr>
-      <tr>
-        <td><code>hideEndCards</code></td>
-        <td>boolean</td>
-        <td><code>true</code></td>
-        <td>Tools</td>
-        <td>Suppresses post-roll end-screen cards and subscription popups</td>
-      </tr>
-      <tr>
-        <td><code>blockAV1 / blockVP9</code></td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Tools</td>
-        <td>Blocks AV1 or VP9 codec negotiation via MAIN-world MediaSource hooks</td>
-      </tr>
-      <tr>
-        <td><code>autoPauseMode</code></td>
-        <td>string</td>
-        <td><code>'off'</code></td>
-        <td>Tools</td>
-        <td>Smart auto-pause mode ('off', 'tab', or 'app')</td>
-      </tr>
-      <tr>
-        <td><code>recordFormat</code></td>
-        <td>string</td>
-        <td><code>'mkv'</code></td>
-        <td>Tools</td>
-        <td>Preferred recording container format ('mkv', 'webm', or 'mp4')</td>
-      </tr>
-      <tr>
-        <td><code>recordFps</code></td>
-        <td>number</td>
-        <td><code>30</code></td>
-        <td>Tools</td>
-        <td>Video recording framerate target (30 or 60 fps)</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <!-- SECTION 5 -->
-  <h1>5. Security, Privacy & Resource Architecture</h1>
-
-  <h2>5.1 Privacy & Permission Model</h2>
-  <ul>
-    <li><strong>Local Storage by Default:</strong> All user configurations reside strictly within the browser's local sandbox via <code>chrome.storage.sync</code>.</li>
-    <li><strong>Declarative Network Rules:</strong> Ad blocking is performed natively by Chromium's network stack via <code>declarativeNetRequest</code> without inspecting request payloads or browsing history.</li>
-    <li><strong>External Endpoint Transparency:</strong>
-      <ul>
-        <li><code>returnyoutubedislikeapi.com</code>: Contacted only when <code>returnDislikes</code> is explicitly enabled. Transmits only the public 11-character video ID to fetch vote statistics. No cookies, auth tokens, or browsing history are sent.</li>
-        <li><code>storage.googleapis.com</code>: Contacted only when <code>restoreAnnotations</code> is enabled. Fetches archived XML annotation files by video ID from a public storage bucket. No user identification is transmitted.</li>
-      </ul>
-    </li>
-    <li><strong>Zero Behavioral Tracking:</strong> The extension contains no analytics SDKs, advertising libraries, or external telemetry of any kind.</li>
-  </ul>
-
-  <h2>5.2 Resource Conservation & Runtime Optimization</h2>
-  <p>Rather than continuous polling loops or unthrottled render cycles, CineGlow utilizes an event-driven resource management design:</p>
-  <ul>
-    <li><strong>Render Loop Cessation:</strong> When video playback is paused, ended, or buffering, both <code>requestAnimationFrame</code> and <code>requestVideoFrameCallback</code> render chains halt completely. Canvas redraws cease until the player fires <code>playing</code>.</li>
-    <li><strong>Constrained Canvas Resolution:</strong> The ambient sampling pipeline utilizes an internal <code>128×72</code> offscreen canvas. By sampling at a compact aspect ratio, pixel read/write operations remain minimal on the CPU/GPU, delegating blurring and scaling to hardware-accelerated CSS layers.</li>
-    <li><strong>Scoped Mutation Observers:</strong> Mutation observers are strictly targeted to specific YouTube containers (<code>#movie_player</code>, <code>ytd-app</code>, <code>ytd-watch-flexy</code>) and filter by attribute names. Broad document-wide mutation observers are avoided to prevent CPU overhead during dynamic page scrolling.</li>
-    <li><strong>Decoupled Audio Graph:</strong> Audio processing nodes use native Web Audio API biquad filters and compressors implemented in browser C++ internals, avoiding JavaScript-level audio sample processing.</li>
-  </ul>
-
-  <!-- SECTION 6 -->
-  <div class="no-break">
-    <h1>6. Developer Installation & Verification</h1>
-    <ol>
-      <li>Clone the repository: <code>git clone https://github.com/ManoharVit/YouTube-CineGlow.git</code></li>
-      <li>Open Google Chrome and navigate to <code>chrome://extensions</code>.</li>
-      <li>Enable <strong>Developer mode</strong> in the top-right corner.</li>
-      <li>Click <strong>Load unpacked</strong> and select the extension directory.</li>
-      <li>Validate JavaScript syntax:
-        <pre>node --check popup/popup.js content/*.js background/*.js shared/*.js</pre>
-      </li>
-      <li>Run the automated test suite:
-        <pre>npm test</pre>
-      </li>
-    </ol>
-
-    <div class="callout" style="margin-top: 18px;">
-      <strong>Author & Lead Architect:</strong> Giri Manohar Vemula · <a href="https://github.com/ManoharVit">GitHub: @ManoharVit</a> · <a href="https://www.linkedin.com/in/manoharv511/">LinkedIn: manoharv511</a><br>
-      <strong>Project Repository:</strong> <a href="https://github.com/ManoharVit/YouTube-CineGlow">https://github.com/ManoharVit/YouTube-CineGlow</a>
-    </div>
-  </div>
-
+MAIN-world scripts: player/codec hooks in the page&#39;s JavaScript context
+Other content scripts: settings, rendering, and controls in an isolated context
+</code></pre>
+<h2>2.1 Player state and navigation</h2>
+<p>YouTube changes videos without always loading a new page. <code>content/player-manager.js</code> tracks those transitions and exposes the current player through <code>window.CineGlowPlayer</code>.</p>
+<p>The manager listens for <code>yt-navigate-finish</code> and <code>yt-page-data-updated</code>, checks changes to the URL&#39;s <code>v</code> parameter, and watches player containers with mutation observers. A 500 ms fallback interval looks for the player when the page has loaded before the relevant elements are available. The interval stops once they are found.</p>
+<p>The manager emits <code>state-change</code> events with the player, video, and flags such as <code>isWatchPage</code>, <code>isPlaying</code>, <code>isPiP</code>, <code>isTheater</code>, <code>isFullscreen</code>, and <code>isAdShowing</code>. Features use this state to attach controls, update their layout, or release listeners when the video changes.</p>
+<h2>2.2 Page scripts and extension scripts</h2>
+<p>Most content scripts run in Chrome&#39;s isolated extension context. They can use extension storage and messaging without sharing their JavaScript globals with YouTube&#39;s own scripts.</p>
+<p><code>content/main-world.js</code> runs in the page context at <code>document_start</code>. The background worker also registers the selected AV1, VP9, and 60 fps blocking scripts in that context. The codec scripts override media-capability checks so YouTube can choose a different stream. Codec availability and YouTube&#39;s selection logic still determine the result.</p>
+<h1>3. Features and implementation</h1>
+<h2>3.1 Ambient lighting</h2>
+<p><code>content/content.js</code> draws video frames onto a 128×72 canvas. Rather than replacing the image abruptly, it blends new frames with the previous canvas image. In simplified form:</p>
+<pre><code class="language-text">blended = alpha * new_frame + (1 - alpha) * previous_frame
+</code></pre>
+<p>The smoothness setting controls the blend. CSS scales and blurs the canvas behind the player, with a radial mask that fades the outer edge. Users can adjust opacity, spread, blur, saturation, contrast, brightness, and fade-in time, or switch individual edges on and off.</p>
+<p>Audio-reactive mode reads low-frequency energy from the audio analyser and adjusts the glow&#39;s size and opacity. The PiP option keeps the glow on the original page while the video is in picture-in-picture; it does not add a glow inside the separate PiP window.</p>
+<p>The glow&#39;s update rate is capped at 15, 30, or 60 fps. Playback state, watch-page state, and visibility determine when it runs. Other enabled features have their own timers and callbacks, described in section 5.2.</p>
+<h2>3.2 Audio processing</h2>
+<p><code>content/audio-processor.js</code> connects the video&#39;s audio to a Web Audio graph:</p>
+<pre><code class="language-text">Video source
+  +-- Dry gain ---------------------+
+  +-- Compressor --&gt; Compressed gain+
+                                    |
+                                    v
+  Bass --&gt; Vocal --&gt; Five-band EQ --&gt; Volume --&gt; Limiter --&gt; Analyser --&gt; Speakers
+</code></pre>
+<p>The <strong>Audio Normaliser</strong> switches between the dry path and the compressed path using a short gain crossfade. The compressor has a -24 dB threshold, 30 dB knee, 12:1 ratio, 3 ms attack, and 250 ms release. Switching it on changes the audio dynamics. There is no per-video loudness measurement.</p>
+<p>The bass filter is an 80 Hz low shelf with 0 to 15 dB gain. The vocal filter is a peaking filter at 2.5 kHz with Q 1.2 and 0 to 12 dB gain. The five EQ bands are 60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz, each adjustable by ±12 dB. The outer EQ bands use shelf filters; the three middle bands use peaking filters.</p>
+<p>Volume gain ranges from 100% to 300%. A limiter follows it, configured with a -1 dB threshold, zero knee, 20:1 ratio, 1 ms attack, and 50 ms release. The analyser then supplies frequency data to the glow feature. The browser&#39;s audio nodes perform the signal processing; JavaScript updates the parameters.</p>
+<p>The popup provides Flat, Bass, Vocal, Rock, Pop, and EDM presets. EDM is stored as <code>electro</code>; manual EQ changes use <code>custom</code>.</p>
+<h2>3.3 Video and layout</h2>
+<p><code>content/blackbar.js</code> scans a downscaled video image for dark borders and exposes crop offsets. The display code uses those offsets to adjust the visible image. A separate ultrawide setting provides a zoom option for 21:9 displays. Either crop mode can remove picture content along with the borders.</p>
+<p><code>content/youtube-quality.js</code> requests the preferred quality when a video loads. The popup offers 720p, 1080p, 1440p, 4K, or the maximum available quality. It cannot create a resolution that the video does not provide or guarantee a particular bitrate.</p>
+<p>Brightness, contrast, and sepia are CSS filters on the video. Cinema theatre mode centres the player and hides surrounding header and recommendation elements. Lights Out dims the rest of the page, and a separate setting hides the scrollbar on watch pages.</p>
+<h2>3.4 Player tools and statistics</h2>
+<p>The player toolbar provides:</p>
+<ul>
+<li><strong>Screenshot:</strong> draw the current video frame to a canvas and download it as a lossless PNG at the source dimensions.</li>
+<li><strong>Recording:</strong> draw the video into a canvas scaled to fit within 1920×1080, then capture that canvas at a requested 30 or 60 fps. Audio comes from the video&#39;s captured stream or the available Web Audio connection. This records the video content, not the whole browser tab, page controls, microphone, or desktop.</li>
+<li><strong>Format selection:</strong> try the selected MKV, WebM, or MP4 MIME types with <code>MediaRecorder.isTypeSupported()</code>, then use a supported fallback. The selected format is a preference, not a guarantee that every browser can encode it.</li>
+<li><strong>Picture-in-picture:</strong> toggle the browser&#39;s native PiP window.</li>
+<li><strong>Speed menu:</strong> set 0.1× to 10× playback, with quick presets at 0.25×, 0.5×, 1×, 1.5×, 2×, and 5×. The popup&#39;s default-speed slider covers 0.1× to 2×.</li>
+</ul>
+<p>The draggable stats panel uses playback callbacks and available player information to show frame rates, dropped frames, glow timing, video dimensions, codecs, and a frame-timing graph. Its colour-space, depth, and SDR/HDR badges are derived from available metadata and codec strings. These labels describe the stream; the panel does not measure the monitor&#39;s output.</p>
+<h2>3.5 Optional playback changes</h2>
+<p>Smart AdBlock combines player-element checks and skip actions with the bundled <code>declarativeNetRequest</code> rules. The rules match selected ad and tracker requests. Which ads get skipped also depends on the player elements that YouTube exposes.</p>
+<p>Dislike restoration and archived annotations make optional network requests, described in section 5. Other switches hide Shorts, end screens, and cards; avoid selected codecs or 60 fps streams; or pause playback when the tab or Chrome window loses focus. These features depend on YouTube&#39;s current page structure and player behaviour.</p>
+<h1 class="section-break">4. Settings reference</h1>
+<p>Default values come from <code>shared/defaults.js</code>. Preferences use <code>chrome.storage.sync</code>; Chrome can sync them across signed-in devices when sync is enabled. The ranges below describe the current popup controls, rather than a validation guarantee for values written directly to storage.</p>
+<table class="settings-table">
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>enabled</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Turn ambient lighting on or off.</td>
+</tr>
+<tr>
+<td><code>adblockEnabled</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Enable ad-skip checks and the bundled request-blocking rules.</td>
+</tr>
+<tr>
+<td><code>adblockCount</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>Stored ad-skip counter, initially zero.</td>
+</tr>
+<tr>
+<td><code>qualityEnabled</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Request the preferred video resolution on load.</td>
+</tr>
+<tr>
+<td><code>statsEnabled</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Show the draggable playback statistics panel.</td>
+</tr>
+<tr>
+<td><code>preferredQuality</code></td>
+<td>string</td>
+<td><code>&quot;hd1080&quot;</code></td>
+<td>YouTube quality: hd720, hd1080, hd1440, hd2160, or highres (maximum available).</td>
+</tr>
+<tr>
+<td><code>preferredSpeed</code></td>
+<td>number</td>
+<td><code>1</code></td>
+<td>Popup slider: 0.1× to 2×; the floating speed menu reaches 10×.</td>
+</tr>
+<tr>
+<td><code>blockAV1</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Ask YouTube to avoid AV1 streams.</td>
+</tr>
+<tr>
+<td><code>blockVP9</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Ask YouTube to avoid VP9 streams.</td>
+</tr>
+<tr>
+<td><code>block60fps</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Ask YouTube to avoid 60 fps streams.</td>
+</tr>
+<tr>
+<td><code>hideInTheater</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Use the cleaner, centred theatre layout.</td>
+</tr>
+<tr>
+<td><code>hideScrollbar</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Hide the scrollbar on watch pages.</td>
+</tr>
+<tr>
+<td><code>enableInPiP</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Keep page glow running while the video is in PiP.</td>
+</tr>
+<tr>
+<td><code>glowTop</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Show glow along the top edge.</td>
+</tr>
+<tr>
+<td><code>glowRight</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Show glow along the right edge.</td>
+</tr>
+<tr>
+<td><code>glowBottom</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Show glow along the bottom edge.</td>
+</tr>
+<tr>
+<td><code>glowLeft</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Show glow along the left edge.</td>
+</tr>
+<tr>
+<td><code>opacity</code></td>
+<td>number</td>
+<td><code>75</code></td>
+<td>Glow opacity, 0% to 100%.</td>
+</tr>
+<tr>
+<td><code>fadeInDuration</code></td>
+<td>number</td>
+<td><code>1</code></td>
+<td>Fade-in time, 0 to 10 seconds.</td>
+</tr>
+<tr>
+<td><code>blur</code></td>
+<td>number</td>
+<td><code>40</code></td>
+<td>Glow blur radius, 0 to 150 px.</td>
+</tr>
+<tr>
+<td><code>spread</code></td>
+<td>number</td>
+<td><code>150</code></td>
+<td>Glow spread, 100% to 500%.</td>
+</tr>
+<tr>
+<td><code>saturation</code></td>
+<td>number</td>
+<td><code>110</code></td>
+<td>Glow saturation, 0% to 150%.</td>
+</tr>
+<tr>
+<td><code>contrast</code></td>
+<td>number</td>
+<td><code>100</code></td>
+<td>Glow contrast, 0% to 200%.</td>
+</tr>
+<tr>
+<td><code>brightness</code></td>
+<td>number</td>
+<td><code>100</code></td>
+<td>Glow brightness, 20% to 200%.</td>
+</tr>
+<tr>
+<td><code>smoothness</code></td>
+<td>number</td>
+<td><code>60</code></td>
+<td>Blend between successive frames, 0% to 100%.</td>
+</tr>
+<tr>
+<td><code>removeBlackBars</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Detect and crop dark borders around the video.</td>
+</tr>
+<tr>
+<td><code>fps</code></td>
+<td>number</td>
+<td><code>30</code></td>
+<td>Glow update cap: 15, 30, or 60 fps.</td>
+</tr>
+<tr>
+<td><code>audioNormalizer</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Use the compressed audio path.</td>
+</tr>
+<tr>
+<td><code>audioBoost</code></td>
+<td>number</td>
+<td><code>100</code></td>
+<td>Volume gain, 100% to 300%.</td>
+</tr>
+<tr>
+<td><code>bassBoost</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>80 Hz low-shelf gain, 0 to 15 dB.</td>
+</tr>
+<tr>
+<td><code>vocalBoost</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>2.5 kHz presence gain, 0 to 12 dB.</td>
+</tr>
+<tr>
+<td><code>eq60</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>60 Hz low-shelf gain, -12 to +12 dB.</td>
+</tr>
+<tr>
+<td><code>eq250</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>250 Hz peaking-filter gain, -12 to +12 dB.</td>
+</tr>
+<tr>
+<td><code>eq1000</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>1 kHz peaking-filter gain, -12 to +12 dB.</td>
+</tr>
+<tr>
+<td><code>eq4000</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>4 kHz peaking-filter gain, -12 to +12 dB.</td>
+</tr>
+<tr>
+<td><code>eq12000</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>12 kHz high-shelf gain, -12 to +12 dB.</td>
+</tr>
+<tr>
+<td><code>eqPreset</code></td>
+<td>string</td>
+<td><code>&quot;flat&quot;</code></td>
+<td>flat, bass, vocal, rock, pop, electro, or custom.</td>
+</tr>
+<tr>
+<td><code>audioReactive</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Change glow size and brightness with bass energy.</td>
+</tr>
+<tr>
+<td><code>lightsOut</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Dim the page around the video.</td>
+</tr>
+<tr>
+<td><code>ultrawideZoom</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Enable the separate 21:9 zoom option.</td>
+</tr>
+<tr>
+<td><code>videoBrightness</code></td>
+<td>number</td>
+<td><code>100</code></td>
+<td>Video brightness filter, 20% to 200%.</td>
+</tr>
+<tr>
+<td><code>videoContrast</code></td>
+<td>number</td>
+<td><code>100</code></td>
+<td>Video contrast filter, 20% to 200%.</td>
+</tr>
+<tr>
+<td><code>videoSepia</code></td>
+<td>number</td>
+<td><code>0</code></td>
+<td>Video sepia warmth, 0% to 100%.</td>
+</tr>
+<tr>
+<td><code>autoPauseMode</code></td>
+<td>string</td>
+<td><code>&quot;off&quot;</code></td>
+<td>off, tab, or app (Chrome-window focus).</td>
+</tr>
+<tr>
+<td><code>recordFormat</code></td>
+<td>string</td>
+<td><code>&quot;mkv&quot;</code></td>
+<td>Preferred recording format: mkv, webm, or mp4.</td>
+</tr>
+<tr>
+<td><code>recordFps</code></td>
+<td>number</td>
+<td><code>30</code></td>
+<td>Requested recording frame rate: 30 or 60 fps.</td>
+</tr>
+<tr>
+<td><code>returnDislikes</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Fetch and display community dislike counts.</td>
+</tr>
+<tr>
+<td><code>hideShorts</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Hide Shorts shelves and feed entries.</td>
+</tr>
+<tr>
+<td><code>restoreAnnotations</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Fetch and show archived annotations when available.</td>
+</tr>
+<tr>
+<td><code>hideEndCards</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Hide end screens and information cards.</td>
+</tr>
+</tbody></table>
+<h1>5. Storage, requests, and resource use</h1>
+<h2>5.1 Storage and optional requests</h2>
+<p>Settings and the skipped-ad counter use <code>chrome.storage.sync</code>. Archived annotation XML uses <code>chrome.storage.local</code>, under keys that include the video ID. The quality controller also writes the selected quality to YouTube&#39;s <code>yt-player-quality</code> local-storage entry. Screenshots and recordings are downloaded to the user&#39;s computer.</p>
+<p>The optional <strong>Return YouTube Dislike</strong> feature sends the public video ID to <code>returnyoutubedislikeapi.com</code> to retrieve community vote statistics. <strong>Restore Classic Annotations</strong> requests an archive file from <code>storage.googleapis.com</code> using the video ID in its path, then reuses a local cache when available. Both features are off by default.</p>
+<p>The requests do not add user-account credentials or a user profile. Receiving services can still see ordinary connection information, including the source IP address and requested video ID. The repository does not include a developer-run analytics or telemetry service. <a href="PRIVACY.md">PRIVACY.md</a> explains these behaviours for users.</p>
+<h2>5.2 Resource use</h2>
+<p>The small glow canvas keeps frame-sampling work limited. Its update loop responds to playback and visibility state, and the player manager releases listeners as videos change. Browser-native Web Audio nodes handle compression and filtering.</p>
+<p>Other features have separate timers and callbacks. Examples include black-border scanning, the stats panel, annotation timing, ad checks, and recording. Resource use therefore depends on which features are active, the video, and the browser. These checks can still use resources after the glow has stopped drawing.</p>
+<h1 class="section-break">6. Development and compatibility</h1>
+<h2>6.1 Load the extension</h2>
+<ol>
+<li><p>Clone the repository:</p>
+<pre><code class="language-bash">git clone https://github.com/ManoharVit/YouTube-CineGlow.git
+</code></pre>
+</li>
+<li><p>Open <code>chrome://extensions</code> and enable <strong>Developer mode</strong>.</p>
+</li>
+<li><p>Click <strong>Load unpacked</strong> and select the extension folder.</p>
+</li>
+<li><p>After editing extension code, reload the extension and refresh the YouTube tab.</p>
+</li>
+</ol>
+<p>To check JavaScript syntax, run this from the project folder:</p>
+<pre><code class="language-bash">for file in popup/*.js content/*.js background/*.js shared/*.js; do
+  node --check &quot;$file&quot; || exit
+done
+</code></pre>
+<p>Run the existing tests with <code>npm test</code>. The tests use Node&#39;s built-in test runner and local mocks; the project also has Puppeteer as a development tool in its dependency list.</p>
+<h2>6.2 Test files</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it checks</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>audio-processor.test.js</code></td>
+<td>Audio-graph construction, compression, gain crossfades, EQ parameters, and audio-context resume behaviour</td>
+</tr>
+<tr>
+<td><code>player-lifecycle.test.js</code></td>
+<td>Player discovery, navigation, playback state, PiP changes, listener cleanup, and fallback discovery</td>
+</tr>
+<tr>
+<td><code>defaults-and-settings.test.js</code></td>
+<td>Default values, setting types, and glow/EQ preset definitions</td>
+</tr>
+<tr>
+<td><code>recording-and-media.test.js</code></td>
+<td>Recording format definitions, MIME-type selection, fallback handling, and filenames</td>
+</tr>
+</tbody></table>
+<p>Run the tests against the current checkout. They cover mocked behaviour; changes to YouTube&#39;s player and layout also need testing in the browser.</p>
+<h2>6.3 Browser and device limits</h2>
+<p>Chrome is the target browser, and the manifest sets a minimum version of 105. Media formats and individual APIs depend on the browser build.</p>
+<p>The project also lists Edge, Brave, Opera, Vivaldi, Windows, macOS, Linux, and ChromeOS as targets. The existing unit tests do not include a browser-and-device test matrix. Recording formats, codec selection, colour metadata, high-refresh displays, and the 21:9 layout are the main areas to check on each setup.</p>
+<hr>
+<p>Giri Manohar Vemula · <a href="https://github.com/ManoharVit">GitHub</a> · <a href="https://www.linkedin.com/in/manoharv511">LinkedIn</a><br>Repository: <a href="https://github.com/ManoharVit/YouTube-CineGlow">YouTube-CineGlow</a></p>
+</main>
 </body>
 </html>

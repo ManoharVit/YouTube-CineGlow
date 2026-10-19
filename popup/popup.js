@@ -390,6 +390,25 @@ async function init() {
     });
   }
 
+  const reloadTabBtn = document.getElementById('reloadTabBtn');
+  if (reloadTabBtn) {
+    reloadTabBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0]?.id) {
+            chrome.tabs.reload(tabs[0].id);
+            const origText = reloadTabBtn.textContent;
+            reloadTabBtn.textContent = 'Reloaded!';
+            setTimeout(() => {
+              reloadTabBtn.textContent = origText;
+            }, 1500);
+          }
+        });
+      }
+    });
+  }
+
   audioNormalizerEl.addEventListener('change', async () => {
     await save({ audioNormalizer: audioNormalizerEl.checked });
   });

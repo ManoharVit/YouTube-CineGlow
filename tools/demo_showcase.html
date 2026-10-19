@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube CineGlow Pro — Product Showcase</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #07080c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #f8fafc;
+      position: relative;
+    }
+
+    /* Ambient background canvas */
+    #ambient-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 1080px;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.6;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Top persistent bar */
+    .header-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      padding: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 50;
+      background: linear-gradient(180deg, rgba(7, 8, 12, 0.95) 0%, rgba(7, 8, 12, 0) 100%);
+      backdrop-filter: blur(8px);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+    }
+    .header-title-wrap {
+      display: flex;
+      flex-direction: column;
+    }
+    .header-title {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #ffffff;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .header-subtitle {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 6px;
+      border-radius: 30px;
+    }
+    .nav-step {
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 20px;
+      color: #94a3b8;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .nav-step.active {
+      background: rgba(99, 102, 241, 0.25);
+      color: #ffffff;
+      border: 1px solid rgba(129, 140, 248, 0.4);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cws-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 6px;
+    }
+    .cws-pill svg {
+      color: #10b981;
+    }
+
+    /* Bottom progress ticker */
+    .footer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      padding: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 50;
+      background: linear-gradient(0deg, rgba(7, 8, 12, 0.95) 0%, rgba(7, 8, 12, 0) 100%);
+    }
+    .progress-track {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      box-shadow: 0 0 10px #6366f1;
+      transition: width 0.05s linear;
+    }
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .scene-counter {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .scene-title-badge {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .scene-desc-badge {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11.5px;
+      color: #94a3b8;
+    }
+    .footer-author {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    /* Main Scene Container */
+    #main-stage {
+      position: absolute;
+      top: 72px;
+      left: 0;
+      width: 1920px;
+      height: 944px;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    .scene {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 944px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .scene.active {
+      display: flex;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ========================================================
+       SCENE 1: Ambient Lighting Hero
+       ======================================================== */
+    .s1-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 20px 60px;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .hero-h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      color: #ffffff;
+      text-align: center;
+      line-height: 1.15;
+    }
+    .hero-h1 span {
+      background: linear-gradient(135deg, #818cf8 0%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: 15px;
+      color: #94a3b8;
+      margin-top: 8px;
+      margin-bottom: 28px;
+      text-align: center;
+      max-width: 800px;
+    }
+    .display-rig {
+      position: relative;
+      width: 1100px;
+      height: 618px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .glow-aura {
+      position: absolute;
+      top: -30px;
+      left: -30px;
+      right: -30px;
+      bottom: -30px;
+      border-radius: 24px;
+      background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.45) 0%, rgba(56, 189, 248, 0.35) 40%, rgba(244, 63, 94, 0.25) 75%, transparent 100%);
+      filter: blur(45px);
+      z-index: 1;
+      opacity: 0.85;
+      transition: all 0.3s ease;
+    }
+    .monitor-frame {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+      background: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      z-index: 2;
+    }
+    .monitor-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .split-badge {
+      position: absolute;
+      bottom: 24px;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 700;
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .split-badge.active-glow {
+      right: 32px;
+      background: rgba(99, 102, 241, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+    }
+    .feature-chips {
+      position: absolute;
+      bottom: -18px;
+      display: flex;
+      gap: 12px;
+      z-index: 20;
+    }
+    .chip {
+      background: #13151f;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+    .chip svg {
+      color: #38bdf8;
+    }
+
+    /* ========================================================
+       SCENE 2: Popup Controls Showcase
+       ======================================================== */
+    .s2-grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 60px;
+      align-items: center;
+      width: 100%;
+      max-width: 1600px;
+      padding: 0 40px;
+    }
+    .s2-left {
+      display: flex;
+      flex-direction: column;
+    }
+    .s2-preview-frame {
+      position: relative;
+      width: 100%;
+      height: 580px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    }
+    .s2-preview-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .s2-preview-glow {
+      position: absolute;
+      top: -20px;
+      left: -20px;
+      right: -20px;
+      bottom: -20px;
+      border-radius: 20px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.5) 0%, rgba(244, 63, 94, 0.3) 60%, transparent 100%);
+      filter: blur(35px);
+      z-index: -1;
+      transition: all 0.25s ease;
+    }
+    .s2-right {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .popup-wrapper-card {
+      width: 380px;
+      background: #0f111a;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+      overflow: hidden;
+      padding: 16px;
+    }
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .card-title-row h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-badge-active {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .ui-demo-section {
+      background: #141724;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .ui-sec-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .ui-sec-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .preset-pill-group {
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+      margin-bottom: 14px;
+    }
+    .preset-btn {
+      flex: 1;
+      padding: 6px 0;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      border-radius: 6px;
+      color: #94a3b8;
+      transition: all 0.2s ease;
+    }
+    .preset-btn.active {
+      background: #6366f1;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+    }
+    .demo-slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .demo-slider-hdr {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+    .demo-slider-val {
+      color: #818cf8;
+      font-weight: 700;
+    }
+    .demo-track {
+      height: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+    }
+    .demo-fill {
+      height: 100%;
+      background: #6366f1;
+      border-radius: 3px;
+      width: 75%;
+    }
+    .active-edges-visual {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .edge-box {
+      width: 64px;
+      height: 36px;
+      border-radius: 4px;
+      border: 2px solid #818cf8;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.8), inset 0 0 6px rgba(99, 102, 241, 0.4);
+      background: #0b0c12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .edge-box-screen {
+      width: 14px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+    }
+
+    /* ========================================================
+       SCENE 3: Audio DSP Suite
+       ======================================================== */
+    .s3-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1500px;
+      padding: 0 40px;
+    }
+    .dsp-card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .dsp-card {
+      background: #0f111a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.6);
+      position: relative;
+      overflow: hidden;
+    }
+    .dsp-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+    .dsp-card.blue::before {
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+    }
+    .dsp-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .dsp-hdr-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .dsp-hdr-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(245, 158, 11, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f59e0b;
+    }
+    .dsp-card.blue .dsp-hdr-icon {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+    }
+    .eq-bars-container {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      height: 180px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 16px 20px;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .eq-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .eq-slider-pillar {
+      width: 14px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 7px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .eq-slider-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, #38bdf8, #6366f1);
+      border-radius: 7px;
+      transition: height 0.3s ease;
+    }
+    .eq-col-freq {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .eq-col-val {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 2px;
+    }
+    .dsp-feature-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .dsp-feat-info h4 {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .dsp-feat-info p {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .dsp-metric-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 3px 9px;
+      border-radius: 6px;
+    }
+
+    /* ========================================================
+       SCENE 4: Cinema Mastery & Display Tools
+       ======================================================== */
+    .s4-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      width: 100%;
+      max-width: 1560px;
+      padding: 0 40px;
+      margin-top: 20px;
+    }
+    .cinema-tool-card {
+      background: #0f111a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    }
+    .tool-thumb {
+      width: 100%;
+      height: 180px;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .tool-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .tool-h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .tool-p {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.4;
+      flex: 1;
+    }
+    .tool-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #10b981;
+      margin-top: 14px;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      align-self: flex-start;
+    }
+
+    /* ========================================================
+       SCENE 5: Telemetry & In-Player Tools
+       ======================================================== */
+    .s5-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      width: 100%;
+      max-width: 1560px;
+      padding: 0 40px;
+      align-items: center;
+    }
+    .hud-showcase-frame {
+      position: relative;
+      width: 100%;
+      height: 520px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+    }
+    .hud-showcase-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .tools-list-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .tool-item-box {
+      background: #0f111a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .tool-icon-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .tool-icon-circle.emerald {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+    .tool-icon-circle.amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+    .tool-icon-circle.rose {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+    }
+    .tool-text h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+    .tool-text p {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* ========================================================
+       SCENE 6: Outro & Architecture Sign-Off
+       ======================================================== */
+    .s6-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+      max-width: 1100px;
+    }
+    .outro-logo-halo {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .outro-glow {
+      position: absolute;
+      top: -40px;
+      left: -40px;
+      right: -40px;
+      bottom: -40px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.6) 0%, rgba(56, 189, 248, 0.4) 60%, transparent 100%);
+      filter: blur(40px);
+      z-index: 1;
+    }
+    .outro-logo-img {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      z-index: 2;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .outro-h1 {
+      font-size: 46px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+    .outro-p {
+      font-size: 17px;
+      color: #cbd5e1;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+    .spec-badges-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .spec-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spec-badge svg {
+      color: #38bdf8;
+    }
+    .author-card {
+      background: #0f111a;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 16px 28px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+    .author-meta {
+      text-align: left;
+    }
+    .author-meta .lead {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #818cf8;
+      font-weight: 700;
+    }
+    .author-meta .name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .author-socials {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .social-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      text-decoration: none;
+    }
+    .social-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Light Canvas Simulation -->
+  <canvas id="ambient-bg" width="1920" height="1080"></canvas>
+
+  <!-- Persistent Top Header -->
+  <header class="header-bar">
+    <div class="header-left">
+      <img src="../icons/icon-128.png" class="header-logo" alt="Logo">
+      <div class="header-title-wrap">
+        <div class="header-title">
+          YouTube CineGlow <span class="header-badge">v2.2.0 Pro</span>
+        </div>
+        <div class="header-subtitle">Advanced Ambient Lighting &amp; Video Suite for Chrome</div>
+      </div>
+    </div>
+
+    <nav class="header-nav">
+      <div class="nav-step" id="nav-1">1. Ambient Lighting</div>
+      <div class="nav-step" id="nav-2">2. Controls &amp; Presets</div>
+      <div class="nav-step" id="nav-3">3. Audio DSP Suite</div>
+      <div class="nav-step" id="nav-4">4. Cinema Mastery</div>
+      <div class="nav-step" id="nav-5">5. Telemetry &amp; Tools</div>
+      <div class="nav-step" id="nav-6">6. Architecture</div>
+    </nav>
+
+    <div class="header-right">
+      <div class="cws-pill">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+        <span>Chrome Web Store Verified</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Stage with 6 Dynamic Scenes -->
+  <main id="main-stage">
+
+    <!-- SCENE 1: Ambient Lighting -->
+    <section class="scene" id="scene-1">
+      <div class="s1-wrap">
+        <div class="hero-tag">Real-Time Canvas 2D Ambient Light Engine</div>
+        <h1 class="hero-h1">Next-Generation <span>Ambient Glow</span> for YouTube</h1>
+        <p class="hero-sub">Immersive real-time edge color sampling that seamlessly diffuses video illumination onto your screen.</p>
+        
+        <div class="display-rig">
+          <div class="glow-aura" id="s1-glow-aura"></div>
+          <div class="monitor-frame">
+            <img src="../store_assets/screenshot_1_ambient_lighting.png" alt="Ambient Glow Demo">
+            <div class="split-badge active-glow">✨ Ambient Glow Active (60 FPS)</div>
+          </div>
+          <div class="feature-chips">
+            <div class="chip">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              Zero-Lag Hardware Accelerated
+            </div>
+            <div class="chip">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+              Multi-Edge Directional Control
+            </div>
+            <div class="chip">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              Adaptive Smooth Transitions
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 2: Popup Controls & Presets -->
+    <section class="scene" id="scene-2">
+      <div class="s2-grid">
+        <div class="s2-left">
+          <div class="hero-tag">Minimalist High-Contrast UI</div>
+          <h1 class="hero-h1" style="text-align: left; font-size: 34px; margin-bottom: 8px;">
+            Quiet, Compact <span>Live Controls</span>
+          </h1>
+          <p class="hero-sub" style="text-align: left; margin-bottom: 20px;">
+            Fine-tune intensity, spread, smoothness, and independent edge projection without leaving your video.
+          </p>
+
+          <div class="s2-preview-frame">
+            <div class="s2-preview-glow" id="s2-glow-bg"></div>
+            <img src="../store_assets/screenshot_2_playback_settings.png" alt="Playback Settings In Action">
+          </div>
+        </div>
+
+        <div class="s2-right">
+          <div class="popup-wrapper-card">
+            <div class="card-title-row">
+              <h3>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Glow
+              </h3>
+              <div class="card-badge-active">ACTIVE</div>
+            </div>
+
+            <div class="ui-demo-section">
+              <div class="ui-sec-hdr">
+                <span class="ui-sec-title">Preset Lighting Profile</span>
+              </div>
+              <div class="preset-pill-group">
+                <div class="preset-btn" id="demo-subtle">Subtle</div>
+                <div class="preset-btn active" id="demo-balanced">Balanced</div>
+                <div class="preset-btn" id="demo-vivid">Vivid</div>
+              </div>
+
+              <div class="demo-slider-row">
+                <div class="demo-slider-hdr">
+                  <span>Intensity</span>
+                  <span class="demo-slider-val" id="demo-int-val">75%</span>
+                </div>
+                <div class="demo-track">
+                  <div class="demo-fill" id="demo-int-fill" style="width: 75%;"></div>
+                </div>
+              </div>
+
+              <div class="demo-slider-row">
+                <div class="demo-slider-hdr">
+                  <span>Spread Distance</span>
+                  <span class="demo-slider-val" id="demo-spr-val">150%</span>
+                </div>
+                <div class="demo-track">
+                  <div class="demo-fill" id="demo-spr-fill" style="width: 75%; background:#38bdf8;"></div>
+                </div>
+              </div>
+
+              <div class="demo-slider-row">
+                <div class="demo-slider-hdr">
+                  <span>Smoothness &amp; Blur</span>
+                  <span class="demo-slider-val" id="demo-smo-val">60%</span>
+                </div>
+                <div class="demo-track">
+                  <div class="demo-fill" id="demo-smo-fill" style="width: 60%; background:#818cf8;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="active-edges-visual">
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:12px; font-weight:600; color:#f1f5f9;">Active Edges</span>
+                <span style="font-size:10.5px; color:#94a3b8;">Top · Right · Bottom · Left</span>
+              </div>
+              <div class="edge-box">
+                <div class="edge-box-screen"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 3: Audiophile DSP & 5-Band EQ -->
+    <section class="scene" id="scene-3">
+      <div class="s3-wrap">
+        <div class="hero-tag" style="color:#f59e0b; background:rgba(245, 158, 11, 0.12); border-color:rgba(245, 158, 11, 0.3);">
+          Studio Web Audio DSP Pipeline
+        </div>
+        <h1 class="hero-h1">Built-in <span>Audiophile Sound Suite</span></h1>
+        <p class="hero-sub">Eliminate volume jumps with real-time compression, boost quiet dialogue, and sculpt your sound with a 5-band studio equalizer.</p>
+
+        <div class="dsp-card-grid">
+          <!-- 5-Band EQ Card -->
+          <div class="dsp-card blue">
+            <div class="dsp-hdr">
+              <div class="dsp-hdr-title">
+                <div class="dsp-hdr-icon">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                </div>
+                5-Band Precision Equalizer
+              </div>
+              <div class="dsp-metric-badge" style="color:#38bdf8; background:rgba(56, 189, 248, 0.12); border-color:rgba(56, 189, 248, 0.3);" id="eq-preset-name">
+                Rock Profile (+4 dB)
+              </div>
+            </div>
+
+            <div class="eq-bars-container">
+              <div class="eq-column">
+                <div class="eq-slider-pillar"><div class="eq-slider-fill" id="eq-bar-1" style="height: 75%;"></div></div>
+                <div class="eq-col-freq">60Hz</div>
+                <div class="eq-col-val" id="eq-val-1">+4 dB</div>
+              </div>
+              <div class="eq-column">
+                <div class="eq-slider-pillar"><div class="eq-slider-fill" id="eq-bar-2" style="height: 60%;"></div></div>
+                <div class="eq-col-freq">250Hz</div>
+                <div class="eq-col-val" id="eq-val-2">+2 dB</div>
+              </div>
+              <div class="eq-column">
+                <div class="eq-slider-pillar"><div class="eq-slider-fill" id="eq-bar-3" style="height: 45%;"></div></div>
+                <div class="eq-col-freq">1kHz</div>
+                <div class="eq-col-val" id="eq-val-3">-1 dB</div>
+              </div>
+              <div class="eq-column">
+                <div class="eq-slider-pillar"><div class="eq-slider-fill" id="eq-bar-4" style="height: 70%;"></div></div>
+                <div class="eq-col-freq">4kHz</div>
+                <div class="eq-col-val" id="eq-val-4">+3 dB</div>
+              </div>
+              <div class="eq-column">
+                <div class="eq-slider-pillar"><div class="eq-slider-fill" id="eq-bar-5" style="height: 80%;"></div></div>
+                <div class="eq-col-freq">12kHz</div>
+                <div class="eq-col-val" id="eq-val-5">+4 dB</div>
+              </div>
+            </div>
+            <p style="font-size:12px; color:#94a3b8; text-align:center;">Real-time biquad filtering with zero latency and true gain staging.</p>
+          </div>
+
+          <!-- Normalizer & Clarity Card -->
+          <div class="dsp-card">
+            <div class="dsp-hdr">
+              <div class="dsp-hdr-title">
+                <div class="dsp-hdr-icon">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                </div>
+                Dynamics &amp; Clarity Engine
+              </div>
+              <div class="dsp-metric-badge">ACTIVE DSP</div>
+            </div>
+
+            <div class="dsp-feature-row">
+              <div class="dsp-feat-info">
+                <h4>Dynamic Range Normalizer</h4>
+                <p>Smooths jarring volume jumps between scenes and videos.</p>
+              </div>
+              <div class="dsp-metric-badge" style="color:#10b981; background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.3);">
+                ENABLED
+              </div>
+            </div>
+
+            <div class="dsp-feature-row">
+              <div class="dsp-feat-info">
+                <h4>Extra Volume Boost</h4>
+                <p>Amplify low-volume uploads up to 200% safely.</p>
+              </div>
+              <div class="dsp-metric-badge" id="vol-boost-val">150% BOOST</div>
+            </div>
+
+            <div class="dsp-feature-row">
+              <div class="dsp-feat-info">
+                <h4>Sub-Bass Booster &amp; Vocal Clarity</h4>
+                <p>Dedicated high-pass and peaking filters for crisp dialogue.</p>
+              </div>
+              <div class="dsp-metric-badge" style="color:#38bdf8; background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.3);">
+                +6 dB / +4 dB
+              </div>
+            </div>
+
+            <div class="dsp-feature-row" style="border-bottom:none;">
+              <div class="dsp-feat-info">
+                <h4>Audio-Reactive Beat Sync</h4>
+                <p>Pulses ambient lighting in rhythm with bass frequencies.</p>
+              </div>
+              <div class="dsp-metric-badge" style="color:#c084fc; background:rgba(192,132,252,0.12); border-color:rgba(192,132,252,0.3);">
+                SYNCHRONIZED
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 4: Cinema Mastery & Display Tools -->
+    <section class="scene" id="scene-4">
+      <div class="s1-wrap">
+        <div class="hero-tag" style="color:#10b981; background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.3);">
+          Display &amp; Cinema Optimization
+        </div>
+        <h1 class="hero-h1">Maximize <span>Every Pixel</span> of Your Screen</h1>
+        <p class="hero-sub">Auto-detect black bars, fill ultrawide displays, and eliminate YouTube clutter with clean cinema theater mode.</p>
+
+        <div class="s4-grid">
+          <!-- Tool 1 -->
+          <div class="cinema-tool-card">
+            <div class="tool-thumb">
+              <img src="../store_assets/screenshot_autocrop_blackbars.png" alt="Auto-Crop">
+            </div>
+            <h3 class="tool-h3">Auto-Crop Black Bars</h3>
+            <p class="tool-p">Automatically detects cinematic letterboxing and zooms video to eliminate wasted black bars.</p>
+            <div class="tool-status">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Auto-Crop Active
+            </div>
+          </div>
+
+          <!-- Tool 2 -->
+          <div class="cinema-tool-card">
+            <div class="tool-thumb">
+              <img src="../store_assets/screenshot_1_ambient_lighting.png" alt="Ultrawide">
+            </div>
+            <h3 class="tool-h3">21:9 Ultrawide Zoom</h3>
+            <p class="tool-p">Expands standard 16:9 content to seamlessly fill 21:9 and 32:9 curved ultrawide monitors.</p>
+            <div class="tool-status">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Zoom-to-Fit Ready
+            </div>
+          </div>
+
+          <!-- Tool 3 -->
+          <div class="cinema-tool-card">
+            <div class="tool-thumb">
+              <img src="../store_assets/screenshot_4_theatre_mode.png" alt="Clean Theater">
+            </div>
+            <h3 class="tool-h3">Clean Theater Mode</h3>
+            <p class="tool-p">Dims YouTube masthead, sidebars, and comments to center the video in a distraction-free theater.</p>
+            <div class="tool-status">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Cinema Frame
+            </div>
+          </div>
+
+          <!-- Tool 4 -->
+          <div class="cinema-tool-card">
+            <div class="tool-thumb">
+              <img src="../store_assets/screenshot_5_frame_snap.png" alt="Eye Care">
+            </div>
+            <h3 class="tool-h3">Eye-Care &amp; Night Mode</h3>
+            <p class="tool-p">Blue-light filter warmth adjustments, custom brightness, and contrast controls for late-night viewing.</p>
+            <div class="tool-status">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Warmth Filter
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 5: Telemetry & In-Player Tools -->
+    <section class="scene" id="scene-5">
+      <div class="s5-wrap">
+        <div class="hud-showcase-frame">
+          <img src="../store_assets/screenshot_3_stats_overlay.png" alt="HUD Overlay">
+        </div>
+
+        <div class="tools-list-card">
+          <div class="hero-tag" style="align-self: flex-start;">Telemetry &amp; Creator Utilities</div>
+          <h2 style="font-size: 28px; font-weight: 800; color: #ffffff; line-height: 1.2;">
+            Real-Time HUD &amp; <span>Floating Tools</span>
+          </h2>
+          <p style="font-size: 14px; color: #94a3b8; margin-bottom: 8px;">
+            Draggable telemetry overlay with true VSync frametimes, plus an integrated in-player floating toolbar.
+          </p>
+
+          <div class="tool-item-box">
+            <div class="tool-icon-circle">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div class="tool-text">
+              <h4>Quality Stats HUD</h4>
+              <p>Live playback FPS, dropped frame counters, and scrolling 2D canvas frame-timing chart.</p>
+            </div>
+          </div>
+
+          <div class="tool-item-box">
+            <div class="tool-icon-circle emerald">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div class="tool-text">
+              <h4>4K Frame Screenshot Grabber</h4>
+              <p>Captures uncompressed video frames at raw resolution, bypassing all YouTube controls and subtitles.</p>
+            </div>
+          </div>
+
+          <div class="tool-item-box">
+            <div class="tool-icon-circle amber">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+            </div>
+            <div class="tool-text">
+              <h4>Dedicated Picture-in-Picture &amp; Recorder</h4>
+              <p>One-click floating window toggle and native client-side stream video recording.</p>
+            </div>
+          </div>
+
+          <div class="tool-item-box">
+            <div class="tool-icon-circle rose">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="tool-text">
+              <h4>Smart AdBlock &amp; Return YouTube Dislike</h4>
+              <p>Clean ad-skipping pipeline with restored public rating and dislike counters.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 6: Outro & Attribution -->
+    <section class="scene" id="scene-6">
+      <div class="s6-wrap">
+        <div class="outro-logo-halo">
+          <div class="outro-glow"></div>
+          <img src="../icons/icon-128.png" class="outro-logo-img" alt="CineGlow Pro">
+        </div>
+
+        <h1 class="outro-h1">YouTube CineGlow Pro</h1>
+        <p class="outro-p">
+          The ultimate ambient lighting, audio DSP, and cinema toolkit for YouTube. Engineered with zero-polling architecture and strict WCAG 2.1 AAA accessibility.
+        </p>
+
+        <div class="spec-badges-row">
+          <div class="spec-badge">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Manifest V3 Compliant
+          </div>
+          <div class="spec-badge">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Zero Memory Leaks (EventTarget Lifecycle)
+          </div>
+          <div class="spec-badge">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            100% WCAG AAA Contrast
+          </div>
+        </div>
+
+        <div class="author-card">
+          <div class="author-meta">
+            <div class="lead">Developer &amp; Lead Architect</div>
+            <div class="name">Giri Manohar Vemula</div>
+          </div>
+          <div class="author-socials">
+            <a href="https://github.com/ManoharVit" class="social-btn" target="_blank">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+              github.com/ManoharVit
+            </a>
+            <a href="https://www.linkedin.com/in/manoharv511" class="social-btn" target="_blank">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.45a1.65 1.65 0 0 0-1.66 1.66 1.66 1.66 0 0 0 1.66 1.66 1.66 1.66 0 0 0 1.66-1.66c0-.92-.74-1.66-1.66-1.66Z"/></svg>
+              linkedin.com/in/manoharv511
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Persistent Bottom Progress Bar -->
+  <footer class="footer-bar">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-bar"></div>
+    </div>
+    <div class="footer-left">
+      <div class="scene-counter" id="timer-display">00:00 / 00:48</div>
+      <div class="scene-title-badge" id="scene-title-badge">1. Ambient Lighting Engine</div>
+      <div class="scene-desc-badge" id="scene-desc-badge">— Immersive multi-edge dynamic color projection</div>
+    </div>
+    <div class="footer-right">
+      <span>Architect: <strong class="footer-author">Giri Manohar Vemula</strong></span>
+      <span>•</span>
+      <span>Chrome Web Store &amp; Open Source</span>
+    </div>
+  </footer>
+
+  <script>
+    // Total Duration: 48 seconds
+    const TOTAL_DURATION = 48.0;
+
+    const SCENES = [
+      { id: 'scene-1', nav: 'nav-1', start: 0.0, end: 8.0, title: '1. Ambient Lighting Engine', desc: '— Immersive multi-edge dynamic color projection' },
+      { id: 'scene-2', nav: 'nav-2', start: 8.0, end: 16.0, title: '2. Live Controls & Presets', desc: '— Compact, non-template popup with live fine-tuning' },
+      { id: 'scene-3', nav: 'nav-3', start: 16.0, end: 24.0, title: '3. Audio DSP Suite', desc: '— Studio dynamic normalizer, volume boost & 5-band EQ' },
+      { id: 'scene-4', nav: 'nav-4', start: 24.0, end: 32.0, title: '4. Cinema & Display Mastery', desc: '— Auto-crop black bars, ultrawide 21:9 & clean theater mode' },
+      { id: 'scene-5', nav: 'nav-5', start: 32.0, end: 40.0, title: '5. Telemetry & In-Player Tools', desc: '— Quality Stats HUD, 4K snapshot grabber & PiP window' },
+      { id: 'scene-6', nav: 'nav-6', start: 40.0, end: 48.0, title: '6. Architecture & Attribution', desc: '— Manifest V3, zero-polling lifecycle & developer sign-off' }
+    ];
+
+    const canvas = document.getElementById('ambient-bg');
+    const ctx = canvas.getContext('2d');
+
+    // Deterministic seek function called by render engine
+    window.seekToTime = function(t) {
+      t = Math.max(0, Math.min(TOTAL_DURATION, t));
+
+      // 1. Progress Bar
+      const pct = (t / TOTAL_DURATION) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // 2. Timer format
+      const curM = String(Math.floor(t / 60)).padStart(2, '0');
+      const curS = String(Math.floor(t % 60)).padStart(2, '0');
+      document.getElementById('timer-display').textContent = `${curM}:${curS} / 00:48`;
+
+      // 3. Find active scene
+      let activeSceneIndex = 0;
+      for (let i = 0; i < SCENES.length; i++) {
+        if (t >= SCENES[i].start && (t < SCENES[i].end || i === SCENES.length - 1)) {
+          activeSceneIndex = i;
+          break;
+        }
+      }
+
+      // Update scenes and nav
+      SCENES.forEach((s, idx) => {
+        const el = document.getElementById(s.id);
+        const navEl = document.getElementById(s.nav);
+        if (idx === activeSceneIndex) {
+          el.classList.add('active');
+          navEl.classList.add('active');
+          document.getElementById('scene-title-badge').textContent = s.title;
+          document.getElementById('scene-desc-badge').textContent = s.desc;
+        } else {
+          el.classList.remove('active');
+          navEl.classList.remove('active');
+        }
+      });
+
+      // 4. Ambient Background Canvas Pulse
+      ctx.clearRect(0, 0, 1920, 1080);
+      const grad = ctx.createRadialGradient(
+        960 + Math.sin(t * 1.5) * 80,
+        540 + Math.cos(t * 1.5) * 60,
+        100,
+        960,
+        540,
+        800
+      );
+      if (activeSceneIndex === 0) {
+        grad.addColorStop(0, 'rgba(99, 102, 241, 0.45)');
+        grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.2)');
+        grad.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      } else if (activeSceneIndex === 1) {
+        grad.addColorStop(0, 'rgba(129, 140, 248, 0.4)');
+        grad.addColorStop(0.5, 'rgba(168, 85, 247, 0.2)');
+        grad.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      } else if (activeSceneIndex === 2) {
+        grad.addColorStop(0, 'rgba(245, 158, 11, 0.35)');
+        grad.addColorStop(0.5, 'rgba(239, 68, 68, 0.2)');
+        grad.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      } else if (activeSceneIndex === 3) {
+        grad.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+        grad.addColorStop(0.5, 'rgba(6, 182, 212, 0.2)');
+        grad.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      } else if (activeSceneIndex === 4) {
+        grad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+        grad.addColorStop(0.5, 'rgba(99, 102, 241, 0.2)');
+        grad.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      } else {
+        grad.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+        grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.25)');
+        grad.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      // 5. Scene-Specific Dynamic Micro-Animations
+      // Scene 1: Pulse Glow
+      if (activeSceneIndex === 0) {
+        const s1Local = t - SCENES[0].start;
+        const scale = 1 + Math.sin(s1Local * 2) * 0.05;
+        const aura = document.getElementById('s1-glow-aura');
+        if (aura) aura.style.transform = `scale(${scale})`;
+      }
+
+      // Scene 2: Interactive Popup Presets & Sliders
+      if (activeSceneIndex === 1) {
+        const s2Local = t - SCENES[1].start;
+        const sub = document.getElementById('demo-subtle');
+        const bal = document.getElementById('demo-balanced');
+        const viv = document.getElementById('demo-vivid');
+        const intVal = document.getElementById('demo-int-val');
+        const intFill = document.getElementById('demo-int-fill');
+        const s2Glow = document.getElementById('s2-glow-bg');
+
+        if (s2Local < 3.0) {
+          sub.classList.remove('active');
+          bal.classList.add('active');
+          viv.classList.remove('active');
+          intVal.textContent = '75%';
+          intFill.style.width = '75%';
+          if (s2Glow) s2Glow.style.opacity = '0.7';
+        } else if (s2Local < 5.5) {
+          sub.classList.remove('active');
+          bal.classList.remove('active');
+          viv.classList.add('active');
+          intVal.textContent = '95%';
+          intFill.style.width = '95%';
+          if (s2Glow) s2Glow.style.opacity = '1.0';
+        } else {
+          sub.classList.add('active');
+          bal.classList.remove('active');
+          viv.classList.remove('active');
+          intVal.textContent = '50%';
+          intFill.style.width = '50%';
+          if (s2Glow) s2Glow.style.opacity = '0.45';
+        }
+      }
+
+      // Scene 3: EQ Bars Dancing
+      if (activeSceneIndex === 2) {
+        const s3Local = t - SCENES[2].start;
+        for (let b = 1; b <= 5; b++) {
+          const bar = document.getElementById(`eq-bar-${b}`);
+          if (bar) {
+            const h = 40 + Math.sin(s3Local * 4 + b) * 35;
+            bar.style.height = `${h}%`;
+          }
+        }
+        const volVal = document.getElementById('vol-boost-val');
+        if (volVal) {
+          const boost = Math.round(100 + ((s3Local / 8) * 50));
+          volVal.textContent = `${boost}% BOOST`;
+        }
+      }
+    };
+
+    // Initial seek to 0
+    window.seekToTime(0);
+  </script>
+</body>
+</html>
