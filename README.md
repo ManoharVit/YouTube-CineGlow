@@ -14,9 +14,17 @@ There are playback tools too: an equaliser, volume and speech controls, a speed 
 |:---:|:---:|
 | Frame rate, resolution, and codec details | A centred player with fewer distractions |
 
-| ![Floating player toolbar](store_assets/screenshot_5_frame_snap.png) |
-|:---:|
-| Picture-in-picture, speed, screenshot, and recording controls |
+| ![Letterbox auto-crop](store_assets/screenshot_autocrop_blackbars.png) | ![Floating player toolbar](store_assets/screenshot_5_frame_snap.png) |
+|:---:|:---:|
+| Auto-detect and crop black bars | Picture-in-picture, speed, screenshot, and recording controls |
+
+## What's new in version 2.2.0
+
+- **Calm, uncluttered popup:** Settings are now grouped into clean, compact cards with clearer toggles, making it much easier to find what you want without scrolling through a long list of sliders.
+- **One-click reload button:** Added a refresh button right in the popup header to instantly sync the active YouTube tab when changing major settings.
+- **Smarter black bar auto-crop:** Cinematic movies and trailers with black letterbox borders now crop cleanly, using your entire display without awkward stutter.
+- **Tuned audio boosters:** Bass boost and vocal clarity filters have smoother headroom protection, avoiding distortion on laptop speakers or headphones.
+- **High-res visual gallery & video walkthrough:** Refreshed all store screenshots to full clarity and added a narrated 1080p demo video.
 
 ## What you can change
 

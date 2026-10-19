@@ -5,7 +5,7 @@
   "version": "2.2.0",
   "version_name": "2.2.0 Pro",
   "minimum_chrome_version": "105",
-  "description": "Ambient lighting, audio EQ & booster, playback speed, cinema tools, screenshots, and live stats — built into YouTube.",
+  "description": "Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.",
   "permissions": [
     "storage",
     "declarativeNetRequest",

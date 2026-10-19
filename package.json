@@ -1,7 +1,7 @@
 {
   "name": "youtube-cineglow-pro",
   "version": "2.2.0",
-  "description": "YouTube CineGlow Pro: Ambient lighting, audio EQ & booster, playback speed, cinema tools, screenshots, and live stats for YouTube.",
+  "description": "YouTube CineGlow Pro: Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.",
   "scripts": {
     "test": "node --test test/**/*.test.js",
     "package": "zip -r YouTube-CineGlow-v2.2.0.zip manifest.json README.md LICENSE background content popup shared icons rules -x '*.DS_Store*'"

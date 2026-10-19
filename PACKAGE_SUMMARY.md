@@ -3,9 +3,9 @@
 **Release Version:** `2.2.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
 **Package Archive:** [`YouTube-CineGlow-v2.2.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.2.0.zip)  
-**Package Size:** `108 KB`  
+**Package Size:** `112 KB`  
 **File Count:** 41 files  
-**SHA-256 Checksum:** `708782dc4cc837fa178d0e4fa1ee7b5d66489f0e2f05bba75dbec006340512e9`  
+**SHA-256 Checksum:** `91aff85aea8e725de0f88ce950faf045d918b0368ee9f11406da44b3192f1f1e`  
 **Last Updated:** October 20, 2026  
 
 ---
@@ -21,14 +21,14 @@
 | **Category** | `Photos` / `Accessibility` | Single primary category |
 | **Primary Language** | `English` | |
 
-### Short Description / Summary (104 characters, limit 132)
+### Short Description / Summary (125 characters, limit 132)
 ```text
-Add ambient lighting to YouTube, adjust audio and playback speed, and keep useful player tools close by.
+Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.
 ```
 
-### Manifest Description (117 characters, limit 132)
+### Manifest Description (125 characters, limit 132)
 ```text
-Ambient lighting, audio EQ & booster, playback speed, cinema tools, screenshots, and live stats — built into YouTube.
+Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.
 ```
 
 ### Single Purpose Declaration
@@ -41,14 +41,12 @@ Customise YouTube viewing with ambient lighting and related playback, audio, dis
 ## 2. Release Notes / "What's New in v2.2.0" (for Reviewers & Users)
 
 ```text
-Version 2.2.0 Major Update:
-• Redesigned Quiet Popup Interface: Streamlined compact card layout, clean Glow controls, and active toggle indicators.
-• Quick Tab Reload Button: One-click refresh button in the popup header for instant runtime synchronization.
-• Letterbox Auto-Crop Engine: Automatic cinematic black bar detection with smooth 21:9 scaling.
-• Studio Audio Suite: 5-band graphic equalizer, dedicated bass and vocal presence boosters, and dynamics audio normalization.
-• Real-time Telemetry HUD: Draggable canvas frame-timing graph, dropped frame tracking, and codec diagnostics.
-• Player Toolbar: Dedicated vertical controls for Picture-in-Picture, high-res frame capture (PNG), and native recording.
-• Store Assets & Media: Full-resolution store screenshots (1.5 MB – 2.5 MB) and 1080p narrated demonstration video.
+Version 2.2.0:
+• Redesigned the settings popup with a clean, quiet card layout, making it much easier to adjust controls on the fly.
+• Added a one-click tab reload button in the popup header to quickly sync the active video tab after changing settings.
+• Improved cinematic letterbox black bar auto-crop to expand widescreen movies and trailers without stutter.
+• Fine-tuned bass and vocal audio boosters with smoother headroom protection to prevent distortion.
+• Refreshed all store visual screenshots to full clarity and added an in-depth 1080p narrated video demonstration.
 ```
 
 ---

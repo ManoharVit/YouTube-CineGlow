@@ -8,68 +8,65 @@ Updated: October 20, 2026
 YouTube CineGlow Pro
 
 **Short description**  
-Add ambient lighting to YouTube, adjust audio and playback speed, and keep useful player tools close by.
+Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.
 
 **Detailed description**
 
-CineGlow adds a soft glow around the YouTube player that follows the colours in the video. Keep it faint for a little background light, or increase the spread and saturation for a more noticeable effect.
+Turn your YouTube sessions into a comfortable, theater-like experience. 
 
-It also brings together playback controls that would otherwise need separate tools: an equaliser, volume and vocal controls, a speed menu, screenshots, video recording, and a cleaner theatre layout. Adjust them from the extension popup or use the floating toolbar while watching.
+CineGlow wraps your video player in a soft, responsive ambient glow that matches the colors on screen in real time. It softens the harsh contrast between your bright monitor and a dark room, cutting down on eye fatigue while making movies, music videos, and gaming streams feel much more immersive. Keep the glow faint and gentle for casual watching, or crank up the spread and saturation for a full living-room atmosphere.
 
-AMBIENT LIGHTING
+Beyond lighting, CineGlow brings together the everyday controls you usually have to hunt down in three different extensions: an audio leveler that saves your ears from sudden volume spikes, a graphic equalizer, a clean floating speed dial, one-click screenshot capture, and a distraction-free theater mode.
 
-- Adjust opacity, spread, blur, saturation, contrast, brightness, and smoothness.
-- Turn the glow on or off for each edge of the player.
-- Let bass energy change the glow's size and brightness with audio-reactive mode.
-- Optionally keep the glow on the original page while the video is in picture-in-picture.
+---
 
-VIDEO AND LAYOUT
+AMBIENT LIGHTING THAT FITS YOUR ROOM
 
-- Centre the player and hide the surrounding header and recommendations in cinema theatre mode.
-- Dim the page around the player with Lights Out.
-- Detect and crop black borders, or use the separate zoom option for 21:9 displays. Cropping can remove part of the image.
-- Adjust video brightness, contrast, and sepia warmth.
-- Choose 720p, 1080p, 1440p, 4K, or the maximum available quality for each video.
-- Hide the watch-page scrollbar.
+• Smooth Color Matching: The glow updates fluidly with on-screen action, gently blending colors behind the player.
+• Independent Edge Controls: Turn lighting on or off for the top, bottom, left, or right sides. (Great if you want light on the wall, but not reflecting off your desk.)
+• Customizable Look: Dial in exactly how much blur, spread, brightness, saturation, and contrast you want.
+• Audio-Reactive Mode: Watch the lighting subtly pulse and expand with the rhythm of the bass in music videos and concerts.
+• Picture-in-Picture Friendly: Keep the ambient mood on your main tab even when popping the video out into a floating window.
 
-AUDIO CONTROLS
+SOUND CONTROLS THAT ACTUALLY WORK
 
-- Use the Audio Normaliser's compression to reduce differences between quieter and louder passages.
-- Raise volume from 100% to 300% of the normal level.
-- Add bass with up to 15 dB of boost, or bring vocals forward with up to 12 dB of presence boost.
-- Adjust five EQ bands: 60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz, each with a ±12 dB range.
-- Start with Flat, Bass, Vocal, Rock, Pop, or EDM presets, then make your own adjustments.
+• Audio Normalizer: Say goodbye to quiet whispers followed by deafening explosions or loud ads. The normalizer evens out volume peaks so you can set your volume once and relax.
+• Volume Boost: Running on quiet laptop speakers? Safely boost audio up to 300% without nasty distortion.
+• Bass & Vocal Boosters: Add warmth and punch to music with dedicated bass boost, or bring vocals forward for crisp speech on podcasts, audiobooks, and tutorials.
+• 5-Band Graphic Equalizer: Fine-tune 60 Hz, 250 Hz, 1 kHz, 4 kHz, and 12 kHz with ±12 dB sliders, or jump straight to curated presets (Rock, Pop, EDM, Bass, Vocal, or Flat).
 
-PLAYBACK AND PLAYER TOOLS
+CLEANER VIDEO & CINEMA LAYOUTS
 
-- Set playback speed from 0.1× to 10× in the floating speed menu.
-- Jump to 0.25×, 0.5×, 1×, 1.5×, 2×, or 5× with the quick presets.
-- Open picture-in-picture from the player toolbar.
-- Save the current video frame as a PNG at its source resolution.
-- Record the video image and available video audio, with MKV, WebM, and MP4 format preferences at 30 or 60 fps. Recordings fit within 1080p; available formats depend on browser support. The recorder captures the video, not the whole tab or desktop.
-- Pause playback when you leave the tab or Chrome window, according to your auto-pause setting.
+• Centered Cinema Theater Mode: Gives your video the spotlight by centering the player and hiding the cluttered sidebar, recommendations, and header.
+• Lights Out: Dims the surrounding web page so your focus stays right on the content.
+• Auto-Crop Black Bars: Automatically detects cinematic letterboxing on movies and widescreen trailers, expanding the picture to use your whole display.
+• Ultrawide Zoom-to-Fit: Fills 21:9 ultrawide screens smoothly with one toggle.
+• Video Filter Sliders: Tweak brightness, contrast, or warm up the color temperature with a soothing sepia night filter to help you wind down before sleep.
+• Quality Memory: Automatically defaults each video to your preferred resolution (720p, 1080p, 1440p, or 4K) whenever available.
 
-STATS AND OPTIONAL TWEAKS
+HANDY PLAYER TOOLS RIGHT WHERE YOU NEED THEM
 
-The draggable stats panel shows frame rates, dropped frames, glow update rate, video dimensions, codec details, and a frame-timing graph. Colour-depth and SDR/HDR labels use the metadata available from YouTube.
+• Pristine Frame Snap: Save high-resolution PNG screenshots from any video at its native source quality—no paused icons, scrub bars, or subtitles getting in the way.
+• Floating Player Toolbar: Quick, unobtrusive vertical buttons for Picture-in-Picture, speed control, snapshots, and direct video recording.
+• Precision Speed Control: Go from 0.1× slow motion all the way to 10× high-speed scrubbing, with quick one-tap buttons for 0.25×, 0.5×, 1×, 1.5×, 2×, and 5×.
+• Smart Auto-Pause: Automatically pauses when you switch tabs or minimize Chrome, and picks right back up when you return.
 
-You can also hide Shorts, end screens, and cards; request alternatives to AV1, VP9, or 60 fps streams; and enable ad skipping with bundled ad and tracker request rules. Ad skipping and page changes depend on YouTube's current layout and may need updates.
+REAL-TIME PLAYBACK TELEMETRY
 
-Two optional features fetch information from outside YouTube: Return YouTube Dislike retrieves community vote counts, and Restore Classic Annotations loads archived notes and speech bubbles where available. Both are off by default.
+• Curious about performance? Open the draggable stats panel to see real-time frame rates, dropped frame counts, stream resolution, active codecs (AV1, VP9, H.264), and a live visual frame-timing graph.
 
-STORAGE AND PRIVACY
+PRIVACY FIRST & BUILT TO STAY QUIET
 
-Lighting and audio processing run in the browser. Screenshots and recordings save to your computer. Preferences use Chrome Sync, so they can follow your signed-in account when sync is enabled; archived annotations are cached locally.
+• Everything processes locally on your computer.
+• No account required, no remote trackers, and no third-party telemetry.
+• Your preferences sync smoothly across your signed-in Chrome browsers using standard Google sync storage.
+• Clean, lightweight code that rests when the video is paused to save battery and CPU cycles.
 
-The optional dislike and annotation features send the public video ID to the relevant service. CineGlow does not include developer-run analytics or telemetry. Read the privacy policy for the storage and request details.
+HOW TO GET STARTED
 
-GET STARTED
-
-1. Install CineGlow and open a YouTube video.
-2. Click the CineGlow toolbar icon to adjust lighting, audio, and other options.
-3. Try YouTube's dark theme if you want the glow to stand out more.
-
-The manifest declares Chrome 105 as the minimum version. Media formats and individual features depend on the browser's available APIs and codecs.
+1. Install CineGlow and open any YouTube video.
+2. Click the CineGlow icon in your browser toolbar to open your controls.
+3. Switch YouTube to dark mode for the best lighting effect, pick your favorite glow and audio preset, and enjoy the show!
 
 SOURCE CODE
 
@@ -144,8 +141,8 @@ The project's data-use declarations are:
 
 | Version | Date | Changes | Listing status |
 |---|---|---|---|
-| 2.2.0 | 2026-10-20 | Quiet compact UI redesign with Glow controls, quick tab reload button, calibrated high-res store assets (1.5–2.5 MB), letterbox auto-crop screenshot, narrated 1080p demo video, and documentation overhaul | Ready to Submit |
-| 2.1.2 | 2026-10-17 | Smaller popup, store screenshots, and black-border crop fixes | Archived |
-| 2.1.0 | 2026-10-15 | Popup redesign, auto-pause, floating toolbar, audio normaliser, video filters, and MIT licence | Archived |
-| 2.0.0 | 2026-10-09 | Stats overlay and PiP controls | Archived |
-| 1.0.0 | 2026-10-05 | Initial release | Archived |
+| 2.2.0 | 2026-10-20 | Redesigned the settings popup with a clean, quiet card layout; added a one-click tab reload button; improved black bar auto-crop for widescreen movies; refreshed store visuals to high-res; and added a narrated 1080p demo walkthrough | Ready to Submit |
+| 2.1.2 | 2026-10-17 | Tuned popup sizing for small screens, improved black border detection accuracy, and upgraded the store screenshot gallery | Archived |
+| 2.1.0 | 2026-10-15 | Introduced the floating player toolbar, audio normalizer to curb volume spikes, eye-care video night filters, and smart auto-pause on tab switch | Archived |
+| 2.0.0 | 2026-10-09 | Added real-time playback telemetry HUD with a frame-timing graph, plus ambient lighting support in Picture-in-Picture | Archived |
+| 1.0.0 | 2026-10-05 | Initial release with reactive real-time ambient lighting and custom color controls | Archived |
