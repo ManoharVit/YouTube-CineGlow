@@ -5,7 +5,7 @@
   "version": "2.2.0",
   "version_name": "2.2.0 Pro",
   "minimum_chrome_version": "105",
-  "description": "Ambient lighting, full audio suite (EQ, bass, vocal), speed control, annotations, cinema tools, ad blocker, and live stats — all built into YouTube.",
+  "description": "Ambient lighting, audio EQ & booster, playback speed, cinema tools, screenshots, and live stats — built into YouTube.",
   "permissions": [
     "storage",
     "declarativeNetRequest",

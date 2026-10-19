@@ -96,6 +96,7 @@ English
 | Stats screenshot | 1561×846 | `store_assets/screenshot_3_stats_overlay.png` |
 | Theatre screenshot | 1561×846 | `store_assets/screenshot_4_theatre_mode.png` |
 | Toolbar screenshot | 1395×757 | `store_assets/screenshot_5_frame_snap.png` |
+| Letterbox auto-crop screenshot | 1395×757 | `store_assets/screenshot_autocrop_blackbars.png` |
 | Small promo tile | 440×280 | `store_assets/promo_tile_440x280.png` |
 | Marquee promo | 1400×560 | `store_assets/marquee_promo_1400x560.png` |
 
@@ -143,7 +144,7 @@ The project's data-use declarations are:
 
 | Version | Date | Changes | Listing status |
 |---|---|---|---|
-| 2.2.0 | 2026-10-18 | Bass and vocal controls, five-band EQ, 0.1×-10× speed menu, quick presets, annotation and dislike restoration, Shorts and end-card controls, video recording, theatre centring, and colour-depth stats | Ready to Submit |
+| 2.2.0 | 2026-10-20 | Quiet compact UI redesign with Glow controls, quick tab reload button, calibrated high-res store assets (1.5–2.5 MB), letterbox auto-crop screenshot, narrated 1080p demo video, and documentation overhaul | Ready to Submit |
 | 2.1.2 | 2026-10-17 | Smaller popup, store screenshots, and black-border crop fixes | Archived |
 | 2.1.0 | 2026-10-15 | Popup redesign, auto-pause, floating toolbar, audio normaliser, video filters, and MIT licence | Archived |
 | 2.0.0 | 2026-10-09 | Stats overlay and PiP controls | Archived |
