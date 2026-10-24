@@ -68,7 +68,7 @@ function checkMatchingGlowPreset() {
       return;
     }
   }
-  updateActiveGlowPresetPill('');
+  updateActiveGlowPresetPill('custom');
 }
 
 function formatDb(val) {
@@ -325,10 +325,12 @@ async function init() {
     pill.addEventListener('click', () => {
       const targetId = pill.getAttribute('data-target');
       updateNavPillState(targetId);
+      sectionDropdowns.forEach(sec => {
+        sec.open = (sec.id === targetId);
+      });
       const section = document.getElementById(targetId);
       if (section) {
-        section.open = true;
-        section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
   });
@@ -336,6 +338,11 @@ async function init() {
   sectionDropdowns.forEach(sec => {
     sec.addEventListener('toggle', () => {
       if (sec.open) {
+        sectionDropdowns.forEach(other => {
+          if (other !== sec && other.open) {
+            other.open = false;
+          }
+        });
         updateNavPillState(sec.id);
       } else {
         const anyOpen = Array.from(sectionDropdowns).find(s => s.open);

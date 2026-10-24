@@ -4,6 +4,7 @@
    ========================================================================== */
 
 :root {
+  /* Color Roles */
   --bg-canvas: #0b0c10;
   --panel-bg: #13151f;
   --panel-bg-subtle: #181a26;
@@ -17,8 +18,21 @@
   --accent-green: #10b981;
   --accent-red: #ef4444;
   --divider: rgba(255, 255, 255, 0.07);
+
+  /* Systematic Radius Scale */
+  --radius-pill: 9999px;
   --radius-card: 10px;
   --radius-sm: 6px;
+  --radius-xs: 4px;
+
+  /* Systematic Spacing Scale (4px base) */
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 10px;
+  --space-xl: 12px;
+  --space-2xl: 16px;
 }
 
 * {
@@ -47,7 +61,7 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
@@ -71,7 +85,7 @@ body {
 .brand-logo-wrap {
   width: 22px;
   height: 22px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
@@ -80,7 +94,7 @@ body {
 }
 
 .brand-logo {
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .brand-title-row {
@@ -101,7 +115,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.5px;
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-muted);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -158,7 +172,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.4px;
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: rgba(16, 185, 129, 0.12);
   color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.25);
@@ -197,7 +211,7 @@ body {
   font-size: 11px;
   font-weight: 500;
   padding: 5px 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -282,7 +296,7 @@ summary::marker {
 .squircle-icon {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -366,7 +380,7 @@ details[open] .chevron-btn {
   display: inline-flex;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   padding: 2px;
   gap: 2px;
 }
@@ -379,7 +393,7 @@ details[open] .chevron-btn {
   font-size: 10.5px;
   font-weight: 500;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -462,7 +476,7 @@ details[open] .chevron-btn {
   background: rgba(99, 102, 241, 0.18);
   outline: 2px solid var(--accent-indigo-light);
   outline-offset: 1px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .val-badge span {
@@ -482,7 +496,7 @@ input[type="range"] {
   appearance: none;
   width: 100%;
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: rgba(255, 255, 255, 0.1);
   outline: none;
   cursor: pointer;
@@ -512,7 +526,7 @@ input[type="range"]:hover::-webkit-slider-thumb {
 input[type="range"]:focus-visible {
   outline: 2px solid var(--accent-indigo-light);
   outline-offset: 3px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 /* ---------- 7. Directional Edge Selector (Compact) ---------- */
@@ -728,7 +742,7 @@ input[type="range"]:focus-visible {
   display: block;
   width: 32px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.12);
   transition: background 0.15s ease;
 }
@@ -805,7 +819,7 @@ input[type="range"]:focus-visible {
   padding: 5px 24px 5px 8px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-main);
   font: inherit;
   font-size: 11px;
@@ -877,7 +891,7 @@ input[type="range"]:focus-visible {
   font-size: 9.5px;
   font-weight: 500;
   padding: 2.5px 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
@@ -904,7 +918,7 @@ input[type="range"]:focus-visible {
   background: rgba(249, 115, 22, 0.08);
   border: 1px solid rgba(249, 115, 22, 0.18);
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   margin-top: 2px;
 }
 
@@ -929,7 +943,7 @@ input[type="range"]:focus-visible {
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.2);
   padding: 0 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-pill);
 }
 
 .adblock-counter-pill strong {
@@ -948,7 +962,7 @@ input[type="range"]:focus-visible {
 .audio-rack-card {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -988,7 +1002,7 @@ input[type="range"]:focus-visible {
   font-size: 9.5px;
   font-weight: 500;
   padding: 3px 1px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   white-space: nowrap;
   text-align: center;
@@ -1019,7 +1033,7 @@ input[type="range"]:focus-visible {
   font-size: 10px;
   font-weight: 500;
   padding: 2px 7px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -1092,7 +1106,7 @@ input[type="range"]:focus-visible {
   font-size: 10.5px;
   font-weight: 500;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -1159,7 +1173,7 @@ input[type="range"]:focus-visible {
 .creator-name-link:focus-visible {
   outline: 2px solid var(--accent-indigo-light);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .creator-links {
@@ -1175,7 +1189,7 @@ input[type="range"]:focus-visible {
   justify-content: center;
   color: var(--text-muted);
   padding: 3px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: all 0.15s ease;
   text-decoration: none;
 }
@@ -1197,7 +1211,7 @@ input[type="range"]:focus-visible {
   justify-content: center;
   gap: 6px;
   padding: 7px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.16);
   color: #f1f5f9;

@@ -304,20 +304,36 @@ html.aura-ultrawide-zoom video.html5-main-video {
 
 /* Individual button styles inside the vertical toolbar */
 .cineglow-floating-toolbar .ytp-button {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   margin: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   transition: background-color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   background: transparent;
   border: none;
   cursor: pointer;
   outline: none;
   position: relative;
+}
+
+/* Touch target expansion for WCAG 2.2 AA (>= 44x44px hitbox) */
+.cineglow-floating-toolbar .ytp-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 44px;
+  min-height: 44px;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
 }
 
 .cineglow-floating-toolbar .ytp-button:hover {
@@ -327,6 +343,14 @@ html.aura-ultrawide-zoom video.html5-main-video {
 
 .cineglow-floating-toolbar .ytp-button:active {
   transform: scale(0.92);
+}
+
+/* Accessible high-contrast focus ring for WCAG 2.2 AA */
+.cineglow-floating-toolbar .ytp-button:focus-visible {
+  outline: 2px solid #818cf8 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.6) !important;
+  background-color: rgba(99, 102, 241, 0.25) !important;
 }
 
 .cineglow-floating-toolbar .ytp-button svg {
@@ -513,6 +537,15 @@ html.aura-ultrawide-zoom video.html5-main-video {
   pointer-events: auto;
   transform: translateY(-50%) translateX(0);
   transition-delay: 0s !important;
+}
+
+.cineglow-rec-gear-btn:focus-visible {
+  outline: 2px solid #818cf8 !important;
+  outline-offset: 1px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(-50%) translateX(0);
 }
 
 .cineglow-rec-gear-btn:hover {
@@ -753,6 +786,12 @@ html.aura-ultrawide-zoom video.html5-main-video {
   box-shadow: 0 0 8px rgba(62, 166, 255, 0.4);
 }
 
+.cineglow-rec-pill:focus-visible,
+.cineglow-rec-fps-pill:focus-visible {
+  outline: 2px solid #818cf8 !important;
+  outline-offset: 1px !important;
+}
+
 .cineglow-rec-hint {
   font-family: 'Roboto', sans-serif;
   font-size: 10px;
@@ -846,6 +885,11 @@ html.aura-ultrawide-zoom video.html5-main-video {
 .cineglow-speed-reset-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
+}
+
+.cineglow-speed-reset-btn:focus-visible {
+  outline: 2px solid #818cf8 !important;
+  outline-offset: 1px !important;
 }
 
 /* Multi Scale Boxes — strictly equal size and styling */
@@ -1000,6 +1044,12 @@ html.aura-ultrawide-zoom video.html5-main-video {
   color: #000;
   font-weight: 700;
   box-shadow: 0 0 8px rgba(62, 166, 255, 0.5);
+}
+
+.cineglow-preset-pill:focus-visible,
+.cineglow-scale-slider:focus-visible {
+  outline: 2px solid #818cf8 !important;
+  outline-offset: 1px !important;
 }
 
 /* Speed OSD Toast */
