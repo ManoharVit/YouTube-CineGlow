@@ -176,6 +176,25 @@ class MockElement extends EventTarget {
     if (name === 'class') this.classList = new MockClassList();
   }
 
+  appendChild(child) {
+    this.children.push(child);
+    if (child && typeof child === 'object') {
+      child.parentElement = this;
+    }
+    return child;
+  }
+
+  closest(selector) {
+    return this;
+  }
+
+  remove() {
+    if (this.parentElement && Array.isArray(this.parentElement.children)) {
+      const idx = this.parentElement.children.indexOf(this);
+      if (idx !== -1) this.parentElement.children.splice(idx, 1);
+    }
+  }
+
   querySelector(_selector) {
     return null;
   }
@@ -242,8 +261,21 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
   const elements = new Map();
 
   mockDocument.querySelector = (sel) => {
-    return elements.get(sel) || null;
+    if (elements.has(sel)) return elements.get(sel);
+    if (typeof sel === 'string' && sel.includes(',')) {
+      const parts = sel.split(',').map(s => s.trim());
+      for (const part of parts) {
+        if (elements.has(part)) return elements.get(part);
+      }
+    }
+    return null;
   };
+  mockDocument.getElementById = (id) => {
+    return elements.get(`#${id}`) || elements.get(id) || null;
+  };
+  mockDocument.createElement = (tag) => new MockElement(tag);
+  mockDocument.head = new MockElement('head');
+  mockDocument.documentElement = new MockElement('html');
 
   const mockWindow = {
     location: {

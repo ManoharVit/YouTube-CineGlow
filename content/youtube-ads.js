@@ -78,49 +78,62 @@
   }
 
   function isAdActive() {
-    const moviePlayer = document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
-    if (moviePlayer && (moviePlayer.classList.contains('ad-showing') || moviePlayer.classList.contains('ad-interrupting'))) {
+    const moviePlayer = document.querySelector('#movie_player, #shorts-player, .html5-video-player');
+    if (!moviePlayer) return false;
+
+    // 1. YouTube adds 'ad-showing' or 'ad-interrupting' exclusively when in-stream ad video is active
+    if (moviePlayer.classList.contains('ad-showing') || moviePlayer.classList.contains('ad-interrupting')) {
       return true;
     }
-    const adModule = document.querySelector('.video-ads.ytp-ad-module') || document.querySelector('.video-ads');
-    if (adModule && adModule.childElementCount > 0) {
+
+    // 2. Fallback: check if an ad text or preview element is explicitly rendered with visible content
+    const adText = moviePlayer.querySelector('.ytp-ad-text, .ytp-ad-preview-text');
+    if (adText && (adText.offsetParent !== null || adText.offsetWidth > 0) && adText.textContent.trim().length > 0) {
       return true;
     }
-    if (document.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-text, .ytp-ad-preview-text, .ytp-ad-skip-button-slot')) {
-      return true;
-    }
+
     return false;
+  }
+
+  function dismissEnforcementModal() {
+    const enforcementModal = document.querySelector('ytd-enforcement-message-view-model');
+    if (enforcementModal) {
+      const dialog = enforcementModal.closest('tp-yt-paper-dialog') || enforcementModal;
+      dialog.remove();
+      const moviePlayer = document.querySelector('#movie_player, .html5-video-player');
+      if (moviePlayer && typeof moviePlayer.playVideo === 'function') {
+        moviePlayer.playVideo();
+      }
+      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+      if (video && video.paused) {
+        video.play().catch(() => {});
+      }
+    }
   }
 
   function skipVideoAds() {
     if (!settings.adblockEnabled) return;
 
     // Dismiss YouTube Anti-Adblock popup if it ever appears
-    const enforcementModal = document.querySelector('ytd-enforcement-message-view-model');
-    if (enforcementModal) {
-      const dialog = enforcementModal.closest('tp-yt-paper-dialog') || enforcementModal;
-      dialog.remove();
-      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-      if (video && video.paused) {
-        video.play().catch(() => {});
-      }
-    }
+    dismissEnforcementModal();
 
     const isAd = isAdActive();
 
-    // 1. Click skip buttons if available
+    // 1. Click skip buttons if available and visible
     const skipBtn = document.querySelector(
-      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot button, [id^="skip-button:"], .ytp-ad-overlay-close-button'
+      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], .ytp-ad-overlay-close-button'
     );
-    if (skipBtn) {
-      skipBtn.click();
+    if (skipBtn && (skipBtn.offsetParent !== null || skipBtn.offsetWidth > 0)) {
+      try {
+        skipBtn.click();
+      } catch (_) {}
     }
 
-    // 2. Fast-forward video ad
+    // 2. Fast-forward video ad ONLY if an ad is actively confirmed
     const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
     if (isAd && video) {
       if (!adMutedByUs) {
-        if (video.playbackRate > 0 && video.playbackRate <= 10) {
+        if (video.playbackRate > 0 && video.playbackRate <= 4) {
           preAdSpeed = video.playbackRate;
         }
         if (!video.muted) {
@@ -154,11 +167,19 @@
       return;
     }
 
+    const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+    if (video && !activeVideo) {
+      attachVideoListener(video);
+    }
+
     const isAd = isAdActive();
     if (isAd) {
       skipVideoAds();
       if (!adSkipTimer) {
         adSkipTimer = setInterval(skipVideoAds, 250);
+        if (adSkipTimer && typeof adSkipTimer === 'object' && typeof adSkipTimer.unref === 'function') {
+          adSkipTimer.unref();
+        }
       }
     } else {
       if (adSkipTimer) {
@@ -166,7 +187,6 @@
         adSkipTimer = 0;
       }
       if (adMutedByUs) {
-        const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
         if (video) {
           video.muted = false;
           video.playbackRate = preAdSpeed || 1.0;
@@ -201,6 +221,26 @@
 
   document.addEventListener('yt-page-data-updated', checkAdState);
   document.addEventListener('yt-navigate-finish', checkAdState);
+
+  function cleanup() {
+    if (adSkipTimer) {
+      clearInterval(adSkipTimer);
+      adSkipTimer = 0;
+    }
+    if (activeVideo) {
+      activeVideo.removeEventListener('timeupdate', checkAdState);
+      activeVideo = null;
+    }
+  }
+
+  // Expose for testing and external diagnostics if needed
+  window.CineGlowAdBlock = {
+    isAdActive,
+    skipVideoAds,
+    checkAdState,
+    dismissEnforcementModal,
+    cleanup
+  };
 
   loadSettings();
 })();

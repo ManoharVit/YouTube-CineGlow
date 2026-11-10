@@ -101,7 +101,8 @@ async function setupDownloadHeadersRule() {
           ]
         },
         condition: {
-          urlFilter: '||googlevideo.com'
+          urlFilter: '||googlevideo.com',
+          resourceTypes: ['other', 'main_frame']
         }
       }]
     });
@@ -109,7 +110,6 @@ async function setupDownloadHeadersRule() {
     console.debug('[Aura] Could not set DNR download headers rule:', err);
   }
 }
-setupDownloadHeadersRule();
 
 // Increment counter when content scripts report blocked/skipped ads.
 // (DNR network block counts require 'declarativeNetRequestFeedback' which is dev-only,
@@ -209,5 +209,4 @@ chrome.runtime.onInstalled.addListener(async () => {
     });
   }
   updateCodecBlockers();
-  setupDownloadHeadersRule();
 });

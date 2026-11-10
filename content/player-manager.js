@@ -70,9 +70,7 @@
       const watchFlexy = document.querySelector('ytd-watch-flexy');
       const isTheater = watchFlexy ? (watchFlexy.hasAttribute('theater') || watchFlexy.hasAttribute('theater-requested_')) : false;
       const isAdShowing = !!(
-        (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) ||
-        document.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-skip-button-slot') ||
-        (document.querySelector('.video-ads.ytp-ad-module')?.childElementCount > 0)
+        player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))
       );
       const isPiP = video ? document.pictureInPictureElement === video : false;
       const isPlaying = video ? (!video.paused && !video.ended && video.readyState > 1) : false;

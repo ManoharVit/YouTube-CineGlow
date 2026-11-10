@@ -191,4 +191,28 @@ describe('PlayerManager Lifecycle & State Tracking', () => {
     pm.checkState();
     assert.strictEqual(pm.searchInterval, null, 'searchInterval should be cleared once all elements exist');
   });
+
+  test('accurately identifies ad-showing state and ignores static player containers', () => {
+    const pm = loadPlayerManager();
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    player.querySelector = (sel) => (sel === 'video.html5-main-video' ? video : null);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+
+    // Initial normal playback without ad classes
+    pm.checkState();
+    assert.strictEqual(pm.isAdShowing, false, 'Should be false when no ad classes are on movie_player');
+
+    // Simulate ad starting
+    player.classList.add('ad-showing');
+    pm.checkState();
+    assert.strictEqual(pm.isAdShowing, true, 'Should be true when ad-showing class is present');
+
+    // Simulate ad ending
+    player.classList.remove('ad-showing');
+    pm.checkState();
+    assert.strictEqual(pm.isAdShowing, false, 'Should revert to false once ad finishes');
+  });
 });
