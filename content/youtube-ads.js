@@ -4,6 +4,7 @@
 
   let settings = { adblockEnabled: true };
   let adMutedByUs = false;
+  let userWasMuted = false;
   let preAdSpeed = 1.0;
   let lastAdSkipTime = 0;
   let adSkipTimer = 0;
@@ -133,13 +134,17 @@
     const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
     if (isAd && video) {
       if (!adMutedByUs) {
-        if (video.playbackRate > 0 && video.playbackRate <= 4) {
+        if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
           preAdSpeed = video.playbackRate;
         }
+        userWasMuted = video.muted;
         if (!video.muted) {
           video.muted = true;
+          adMutedByUs = true;
         }
-        adMutedByUs = true;
+      } else if (!userWasMuted && !video.muted) {
+        // Handle video element swap mid-ad
+        video.muted = true;
       }
       video.playbackRate = 16.0;
       if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
@@ -150,11 +155,18 @@
         safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
         lastAdSkipTime = Date.now();
       }
-    } else if (!isAd && adMutedByUs && video) {
+    } else if (!isAd && video) {
       // Ad finished — restore audio and user's playback speed
-      video.muted = false;
-      video.playbackRate = preAdSpeed || 1.0;
-      adMutedByUs = false;
+      if (adMutedByUs) {
+        if (!userWasMuted) {
+          video.muted = false;
+        }
+        adMutedByUs = false;
+      }
+      userWasMuted = false;
+      if (video.playbackRate === 16.0) {
+        video.playbackRate = preAdSpeed || 1.0;
+      }
     }
   }
 
@@ -168,7 +180,7 @@
     }
 
     const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-    if (video && !activeVideo) {
+    if (video && activeVideo !== video) {
       attachVideoListener(video);
     }
 
@@ -187,11 +199,14 @@
         adSkipTimer = 0;
       }
       if (adMutedByUs) {
-        if (video) {
+        if (video && !userWasMuted) {
           video.muted = false;
-          video.playbackRate = preAdSpeed || 1.0;
         }
         adMutedByUs = false;
+      }
+      userWasMuted = false;
+      if (video && video.playbackRate === 16.0) {
+        video.playbackRate = preAdSpeed || 1.0;
       }
     }
   }
@@ -231,6 +246,8 @@
       activeVideo.removeEventListener('timeupdate', checkAdState);
       activeVideo = null;
     }
+    adMutedByUs = false;
+    userWasMuted = false;
   }
 
   // Expose for testing and external diagnostics if needed

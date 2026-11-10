@@ -2,3 +2,4 @@
 .DS_Store
 *.log
 edit_notes.md
+node_modules/

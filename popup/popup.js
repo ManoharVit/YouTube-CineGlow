@@ -269,18 +269,29 @@ async function save(partial) {
   }
 }
 
-// Throttle slider writes: storage.sync has a write quota (~120 writes/min).
+// Throttle slider writes: storage.sync has a write quota (MAX_WRITE_OPERATIONS_PER_MINUTE = 120).
+// A 550ms interval guarantees maximum 109 writes/min under continuous dragging.
 const pending = {};
 let flushTimer = 0;
+let lastFlushTime = 0;
+const SYNC_THROTTLE_MS = 550;
+
 function queueSave(key, value) {
   pending[key] = value;
-  if (flushTimer) return;
+  if (flushTimer) clearTimeout(flushTimer);
+
+  const elapsed = Date.now() - lastFlushTime;
+  const delay = elapsed >= SYNC_THROTTLE_MS ? 50 : (SYNC_THROTTLE_MS - elapsed);
+
   flushTimer = setTimeout(async () => {
     flushTimer = 0;
+    lastFlushTime = Date.now();
     const batch = { ...pending };
     for (const k of Object.keys(pending)) delete pending[k];
-    await save(batch);
-  }, 120);
+    if (Object.keys(batch).length > 0) {
+      await save(batch);
+    }
+  }, delay);
 }
 
 async function init() {

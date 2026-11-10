@@ -128,7 +128,7 @@
 
         // 5. Volume Boost Gain Node
         gainNode = audioCtx.createGain();
-        gainNode.gain.value = Math.max(1, Number(settings.audioBoost) || 100) / 100;
+        gainNode.gain.value = computeEffectiveGain();
 
         // 6. Safety Brickwall Limiter (prevents digital clipping on heavy bass/volume boost)
         limiterNode = audioCtx.createDynamicsCompressor();
@@ -200,6 +200,31 @@
     }
   }
 
+  function computeEffectiveGain() {
+    const boostVal = settings.audioBoost !== undefined && !isNaN(Number(settings.audioBoost)) ? Number(settings.audioBoost) : 100;
+    const rawGain = Math.max(0, boostVal) / 100;
+
+    // Calculate maximum positive EQ/boost gain applied in the filter chain
+    const bass = Math.max(0, Math.min(15, Number(settings.bassBoost) || 0));
+    const vocal = Math.max(0, Math.min(12, Number(settings.vocalBoost) || 0));
+    const eqMax = Math.max(
+      0,
+      Number(settings.eq60) || 0,
+      Number(settings.eq250) || 0,
+      Number(settings.eq1000) || 0,
+      Number(settings.eq4000) || 0,
+      Number(settings.eq12000) || 0
+    );
+    const totalMaxBoostDb = bass + vocal + eqMax;
+    
+    // Provide dynamic headroom scaling when massive EQ boost is combined with volume boost
+    if (totalMaxBoostDb > 6 && rawGain > 1.0) {
+      const headroomFactor = Math.pow(10, -(totalMaxBoostDb - 6) / 40);
+      return Math.max(1.0, rawGain * headroomFactor);
+    }
+    return rawGain;
+  }
+
   function updateAudioParams() {
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
@@ -211,9 +236,9 @@
       compressedGain.gain.setTargetAtTime(normOn ? 1 : 0, t, 0.02);
     }
 
-    // 2. Extra Volume Boost (100% = 1.0, 200% = 2.0, 300% = 3.0)
+    // 2. Extra Volume Boost (with dynamic headroom scaling)
     if (gainNode) {
-      const vol = Math.max(1, Number(settings.audioBoost) || 100) / 100;
+      const vol = computeEffectiveGain();
       gainNode.gain.setTargetAtTime(vol, t, 0.02);
     }
 

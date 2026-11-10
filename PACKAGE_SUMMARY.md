@@ -1,11 +1,11 @@
-# Chrome Web Store Package Summary — YouTube CineGlow Pro v2.2.0
+# Chrome Web Store Package Summary — CineGlow Pro for YouTube v2.2.0
 
 **Release Version:** `2.2.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
 **Package Archive:** [`YouTube-CineGlow-v2.2.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.2.0.zip)  
 **Package Size:** `109 KB`  
 **File Count:** 41 files  
-**SHA-256 Checksum:** `8385d4d846f74fea00d94cfed68e743ad0bbf4f14d9d5032346abb6767a14b52`  
+**SHA-256 Checksum:** `81745c83e62920e0159d03ef1657f4e6ed2ce8ffc55e63324631f284447ea994`  
 **Last Updated:** November 10, 2026  
 
 ---
@@ -15,7 +15,7 @@
 ### Extension Identity
 | Field | Value | Constraints |
 |---|---|---|
-| **Extension Name** | `YouTube CineGlow Pro` | Max 45 chars (Current: 20 chars) |
+| **Extension Name** | `CineGlow Pro for YouTube` | Max 45 chars (Current: 24 chars) |
 | **Short Name** | `CineGlow Pro` | Max 12 chars (Current: 12 chars) |
 | **Version** | `2.2.0` | Matches `manifest.json` & `package.json` |
 | **Category** | `Photos` / `Accessibility` | Single primary category |

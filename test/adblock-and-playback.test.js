@@ -201,4 +201,69 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.strictEqual(playVideoCalled, true, 'moviePlayer.playVideo must be called');
     assert.strictEqual(videoPlayCalled, true, 'video.play must be called');
   });
+
+  test('preserves user muted state when video was muted before ad started (BUG-1 fix)', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    video.currentTime = 5.0;
+    video.duration = 15.0;
+    video.playbackRate = 1.0;
+    video.muted = true; // User intentionally muted video
+
+    player.appendChild(video);
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const fn = new Function(code);
+    fn();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Simulate ad starting
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+    assert.strictEqual(video.muted, true, 'Video must remain muted during ad');
+
+    // Simulate ad finishing
+    player.classList.remove('ad-showing');
+    adBlock.checkAdState();
+
+    // Crucial check: Video must STILL be muted because user muted it initially!
+    assert.strictEqual(video.muted, true, 'Initially muted video must not be forcibly unmuted after ad');
+  });
+
+  test('re-attaches listener and mutes new video element if replaced during ad (BUG-2 fix)', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video1 = new MockVideoElement();
+    video1.muted = false;
+    player.appendChild(video1);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video1);
+    env.elements.set('video', video1);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const fn = new Function(code);
+    fn();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Ad starts on video1
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+    assert.strictEqual(video1.muted, true);
+
+    // Swap to video2 mid-ad (YouTube player element recreation)
+    const video2 = new MockVideoElement();
+    video2.muted = false;
+    env.elements.set('video.html5-main-video', video2);
+    env.elements.set('video', video2);
+
+    adBlock.checkAdState();
+    assert.strictEqual(video2.muted, true, 'Replacement video element must be muted while ad is showing');
+  });
 });

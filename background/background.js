@@ -84,33 +84,6 @@ async function updateCodecBlockers() {
 }
 
 
-const DOWNLOAD_DNR_RULE_ID = 8888;
-
-async function setupDownloadHeadersRule() {
-  try {
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [DOWNLOAD_DNR_RULE_ID],
-      addRules: [{
-        id: DOWNLOAD_DNR_RULE_ID,
-        priority: 2,
-        action: {
-          type: 'modifyHeaders',
-          requestHeaders: [
-            { header: 'Referer', operation: 'set', value: 'https://www.youtube.com/' },
-            { header: 'Origin', operation: 'set', value: 'https://www.youtube.com' }
-          ]
-        },
-        condition: {
-          urlFilter: '||googlevideo.com',
-          resourceTypes: ['other', 'main_frame']
-        }
-      }]
-    });
-  } catch (err) {
-    console.debug('[Aura] Could not set DNR download headers rule:', err);
-  }
-}
-
 // Increment counter when content scripts report blocked/skipped ads.
 // (DNR network block counts require 'declarativeNetRequestFeedback' which is dev-only,
 // so we rely on content scripts for counts).
@@ -122,19 +95,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await chrome.storage.sync.set({ adblockCount: adblockCount + (message.count || 1) });
       } catch (err) {
         console.error('[Aura] Failed to update adblock count:', err);
-      }
-    })();
-  }
-  if (message.type === 'DOWNLOAD_VIDEO') {
-    (async () => {
-      try {
-        await setupDownloadHeadersRule();
-        await chrome.downloads.download({
-          url: message.url,
-          filename: message.filename
-        });
-      } catch (err) {
-        console.error('[Aura] Download failed:', err);
       }
     })();
   }

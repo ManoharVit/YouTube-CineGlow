@@ -1,11 +1,11 @@
-# Chrome Web Store listing: YouTube CineGlow Pro
+# Chrome Web Store listing: CineGlow Pro for YouTube
 
-Updated: October 20, 2026
+Updated: November 10, 2026
 
 ## Listing copy
 
 **Extension name**  
-YouTube CineGlow Pro
+CineGlow Pro for YouTube
 
 **Short description**  
 Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.
@@ -88,12 +88,11 @@ English
 | Store icon | 128×128 | `icons/icon-128.png` |
 | Small icon | 48×48 | `icons/icon-48.png` |
 | Toolbar icon | 16×16 | `icons/icon-16.png` |
-| Ambient lighting screenshot | 1894×1141 | `store_assets/screenshot_1_ambient_lighting.png` |
-| Playback settings screenshot | 1395×756 | `store_assets/screenshot_2_playback_settings.png` |
-| Stats screenshot | 1561×846 | `store_assets/screenshot_3_stats_overlay.png` |
-| Theatre screenshot | 1561×846 | `store_assets/screenshot_4_theatre_mode.png` |
-| Toolbar screenshot | 1395×757 | `store_assets/screenshot_5_frame_snap.png` |
-| Letterbox auto-crop screenshot | 1395×757 | `store_assets/screenshot_autocrop_blackbars.png` |
+| Ambient lighting screenshot | 1280×800 | `store_assets/screenshot_1_ambient_lighting.png` |
+| Playback settings screenshot | 1280×800 | `store_assets/screenshot_2_playback_settings.png` |
+| Stats screenshot | 1280×800 | `store_assets/screenshot_3_stats_overlay.png` |
+| Theatre screenshot | 1280×800 | `store_assets/screenshot_4_theatre_mode.png` |
+| Toolbar screenshot | 1280×800 | `store_assets/screenshot_5_frame_snap.png` |
 | Small promo tile | 440×280 | `store_assets/promo_tile_440x280.png` |
 | Marquee promo | 1400×560 | `store_assets/marquee_promo_1400x560.png` |
 
@@ -104,15 +103,13 @@ This table follows the permissions in the current `manifest.json`.
 | Permission or host | Type | Use |
 |---|---|---|
 | `storage` | Permission | Save preferences and the ad-skip counter through Chrome Sync; cache annotation XML locally. |
-| `declarativeNetRequest` | Permission | Apply bundled ad/tracker rules and the download-header rule without logging request bodies. |
+| `declarativeNetRequest` | Permission | Apply bundled ad/tracker rules without logging request bodies. |
 | `scripting` | Permission | Register page-context scripts for the selected codec and frame-rate blocking options. |
-| `downloads` | Permission | Save screenshots and recordings, and handle download requests. |
 | `*://*.youtube.com/*` | Host permission | Run the player, glow, audio, and control scripts on YouTube pages. |
-| `*://*.googlevideo.com/*` | Host permission | Apply the network-rule and download-header handling for YouTube's video CDN. |
 | `https://returnyoutubedislikeapi.com/*` | Host permission | Retrieve community vote counts when dislike restoration is enabled. |
 | `https://storage.googleapis.com/*` | Host permission | Retrieve archived annotation XML when annotation restoration is enabled. |
 
-The current manifest does not request `tabCapture`. Recording uses the video element and a canvas stream.
+The current manifest does not request `tabCapture`. Recording uses the video element and an in-memory canvas stream, saving clips locally directly via standard browser download triggers.
 
 ## Data use
 

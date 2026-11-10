@@ -1,4 +1,4 @@
-# YouTube CineGlow Pro
+# CineGlow Pro for YouTube
 
 CineGlow adds a soft glow around the YouTube player, using colours from the video as it plays. You can keep it subtle or turn up the spread and saturation for a stronger effect. It runs in Chrome without extra hardware.
 
