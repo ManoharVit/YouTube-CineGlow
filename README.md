@@ -18,6 +18,13 @@ There are playback tools too: an equaliser, volume and speech controls, a speed 
 |:---:|:---:|
 | Auto-detect and crop black bars | Picture-in-picture, speed, screenshot, and recording controls |
 
+## What's new in version 2.3.0
+
+- **Store policy compliance:** Renamed to "CineGlow Pro for YouTube" and removed unused permissions and legacy downloader methods.
+- **Refined ad playback controller:** Preserves user-initiated mute settings and binds unmuting strictly to modified video elements during SPA transitions.
+- **Dynamic audio headroom protection:** Scales input gain smoothly under heavy EQ and bass boost across all volume levels to prevent digital distortion.
+- **Sync storage write throttling:** Implemented a 550ms throttle to prevent quota exhaustion when rapidly dragging sliders.
+
 ## What's new in version 2.2.0
 
 - **Calm, uncluttered popup:** Settings are now grouped into clean, compact cards with clearer toggles, making it much easier to find what you want without scrolling through a long list of sliders.

@@ -138,7 +138,8 @@ The project's data-use declarations are:
 
 | Version | Date | Changes | Listing status |
 |---|---|---|---|
-| 2.2.0 | 2026-10-20 | Redesigned the settings popup with a clean, quiet card layout; added a one-click tab reload button; improved black bar auto-crop for widescreen movies; refreshed store visuals to high-res; and added a narrated 1080p demo walkthrough | Ready to Submit |
+| 2.3.0 | 2026-11-11 | Chrome Web Store compliance patch: trademark name alignment to "CineGlow Pro for YouTube", dead downloader code and permissions purged, mute state preservation and replacement element tracking fixes, audio dynamic headroom scaling, and 550ms sync storage throttle | Ready to Submit |
+| 2.2.0 | 2026-10-20 | Redesigned the settings popup with a clean, quiet card layout; added a one-click tab reload button; improved black bar auto-crop for widescreen movies; refreshed store visuals to high-res; and added a narrated 1080p demo walkthrough | Archived |
 | 2.1.2 | 2026-10-17 | Tuned popup sizing for small screens, improved black border detection accuracy, and upgraded the store screenshot gallery | Archived |
 | 2.1.0 | 2026-10-15 | Introduced the floating player toolbar, audio normalizer to curb volume spikes, eye-care video night filters, and smart auto-pause on tab switch | Archived |
 | 2.0.0 | 2026-10-09 | Added real-time playback telemetry HUD with a frame-timing graph, plus ambient lighting support in Picture-in-Picture | Archived |

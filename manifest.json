@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "CineGlow Pro for YouTube",
   "short_name": "CineGlow Pro",
-  "version": "2.2.0",
-  "version_name": "2.2.0 Pro",
+  "version": "2.3.0",
+  "version_name": "2.3.0 Pro",
   "minimum_chrome_version": "111",
   "description": "Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.",
   "permissions": [

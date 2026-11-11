@@ -1,12 +1,12 @@
-# Chrome Web Store Package Summary — CineGlow Pro for YouTube v2.2.0
+# Chrome Web Store Package Summary — CineGlow Pro for YouTube v2.3.0
 
-**Release Version:** `2.2.0`  
+**Release Version:** `2.3.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
-**Package Archive:** [`YouTube-CineGlow-v2.2.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.2.0.zip)  
+**Package Archive:** [`YouTube-CineGlow-v2.3.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.3.0.zip)  
 **Package Size:** `109 KB`  
 **File Count:** 41 files  
-**SHA-256 Checksum:** `8d42494d04ddbfa50fa49b62c91d867c39e4a5c84da3dfa6713f1d80aaf63b4c`  
-**Last Updated:** November 10, 2026  
+**SHA-256 Checksum:** `1713da86696fbb2d9d99ad061ecd1762a5c8cf2e761d0ff5087a3b670cdbe65b`  
+**Last Updated:** November 11, 2026  
 
 ---
 
@@ -17,7 +17,7 @@
 |---|---|---|
 | **Extension Name** | `CineGlow Pro for YouTube` | Max 45 chars (Current: 24 chars) |
 | **Short Name** | `CineGlow Pro` | Max 12 chars (Current: 12 chars) |
-| **Version** | `2.2.0` | Matches `manifest.json` & `package.json` |
+| **Version** | `2.3.0` | Matches `manifest.json` & `package.json` |
 | **Category** | `Photos` / `Accessibility` | Single primary category |
 | **Primary Language** | `English` | |
 
@@ -38,15 +38,16 @@ Customise YouTube viewing with ambient lighting and related playback, audio, dis
 
 ---
 
-## 2. Release Notes / "What's New in v2.2.0" (for Reviewers & Users)
+## 2. Release Notes / "What's New in v2.3.0" (for Reviewers & Users)
 
 ```text
-Version 2.2.0:
-• Redesigned the settings popup with a clean, quiet card layout, making it much easier to adjust controls on the fly.
-• Added a one-click tab reload button in the popup header to quickly sync the active video tab after changing settings.
-• Improved cinematic letterbox black bar auto-crop to expand widescreen movies and trailers without stutter.
-• Fine-tuned bass and vocal audio boosters with smoother headroom protection to prevent distortion.
-• Refreshed all store visual screenshots to full clarity and added an in-depth 1080p narrated video demonstration.
+Version 2.3.0:
+• Updated extension name to "CineGlow Pro for YouTube" to comply strictly with Chrome Web Store trademark policies.
+• Removed unused downloads permission and internal video streaming host permissions to adhere to minimum privilege.
+• Refined video ad controller to preserve user-muted video preferences and bound unmuting strictly to modified video elements.
+• Added dynamic audio headroom scaling across all volume levels when heavy EQ or bass boost is applied to prevent distortion.
+• Added a 550ms trailing-edge throttle to popup settings sync, eliminating storage write quota errors during rapid slider adjustment.
+• Corrected accessibility label attributes across settings toggles for seamless screen reader navigation.
 ```
 
 ---

@@ -1,6 +1,6 @@
-# YouTube CineGlow Pro: technical guide
+# CineGlow Pro for YouTube: technical guide
 
-**Version:** 2.2.0 Pro  
+**Version:** 2.3.0 Pro  
 **Platform:** Chrome extension, Manifest V3  
 **Author:** Giri Manohar Vemula ([GitHub](https://github.com/ManoharVit) · [LinkedIn](https://www.linkedin.com/in/manoharv511))  
 **Updated:** October 20, 2026  

@@ -5,9 +5,9 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
-## [2.2.0] — 2026-11-10
+## [2.3.0] — 2026-11-11
 
-### Targeted Release Patch (Post-Review Remediation)
+### Chrome Web Store Compliance & Targeted Release Patch
 - **Store Policy & Trademark Compliance**: Renamed extension from `YouTube CineGlow Pro` to `CineGlow Pro for YouTube` across `manifest.json`, `package.json`, `CHROMEWEBSTORE.md`, `README.md`, and `PACKAGE_SUMMARY.md`. Short name set to `CineGlow Pro`. Action default title updated to `CineGlow Pro`.
 - **Downloader Dead Code & Permission Shedding**: Purged dead downloader code (`setupDownloadHeadersRule` and `DOWNLOAD_VIDEO` from `background/background.js`, `CINEGLOW_GET_DOWNLOAD_FORMAT` from `content/main-world.js`). Removed `downloads` and `*://*.googlevideo.com/*` permissions from `manifest.json`.
 - **Minimum Chrome Version**: Raised `minimum_chrome_version` in `manifest.json` from `105` to `111` for declarative `world: "MAIN"` content scripts.
@@ -19,7 +19,9 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 - **Repository Cleanliness**: Untracked 2,268 committed `node_modules/` files from Git and added `node_modules/` to `.gitignore`. Removed scratch test files.
 - **Regression Test Suite**: Added regression unit tests for user mute preservation, mid-ad video element replacement, and headroom gain scaling under high EQ boost (34 / 34 tests passing).
 
-### Baseline v2.2.0 Features (Commit `c7f0856`)
+---
+
+## [2.2.0] — 2026-10-20
 - **Settings Popup Redesign**: Quiet card layout with segmented controls and reduced visual clutter.
 - **Active Tab Sync**: Added one-click tab reload button in popup header allowing users to immediately reload the active YouTube watch tab after modifying settings.
 - **Demonstration Video**: Created 1080p narrated walkthrough video in `store_assets/YouTube_CineGlow_Pro_Demo.mp4`.
