@@ -56,11 +56,9 @@ Version 2.2.0:
 | Permission / Host | Type | Justification to Enter in Developer Dashboard |
 |---|---|---|
 | `storage` | Permission | Required to save user display settings, audio equalizer presets, and ad-skip counters via `chrome.storage.sync` and cache annotation XML locally. |
-| `declarativeNetRequest` | Permission | Required to apply high-efficiency bundled network rules for tracker blocking and video CDN download header handling without inspecting request payloads. |
+| `declarativeNetRequest` | Permission | Required to apply high-efficiency bundled network rules for tracker blocking without inspecting request payloads. |
 | `scripting` | Permission | Required to register dynamic MAIN-world scripts for user-selected video codec preferences (AV1, VP9) and 60 FPS stream limits. |
-| `downloads` | Permission | Required to save high-resolution lossless PNG frame snapshots and video recordings directly to the user's Downloads folder upon request. |
 | `*://*.youtube.com/*` | Host Permission | Required to inject the ambient glow rendering canvas, audio processor graph, and player control toolbar into YouTube watch pages. |
-| `*://*.googlevideo.com/*` | Host Permission | Required for declarative net request rule evaluation and CORS header adjustment during direct media downloads. |
 | `https://returnyoutubedislikeapi.com/*` | Host Permission | Optional feature: fetches public community dislike counts from the official Return YouTube Dislike API when enabled by the user. |
 | `https://storage.googleapis.com/*` | Host Permission | Optional feature: fetches archived community annotation XML files when the Classic Annotations toggle is enabled by the user. |
 
@@ -73,13 +71,13 @@ Version 2.2.0:
 | **Store Icon** | 128 × 128 px (PNG) | < 50 KB | [`icons/icon-128.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/icons/icon-128.png) |
 | **Small Promo Tile** | 440 × 280 px (PNG) | < 500 KB | [`store_assets/promo_tile_440x280.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/promo_tile_440x280.png) |
 | **Marquee Promo Tile** | 1400 × 560 px (PNG) | 1.5 – 2.5 MB | [`store_assets/marquee_promo_1400x560.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/marquee_promo_1400x560.png) (2.24 MB) |
-| **Screenshot 1: Ambient Lighting** | 1894 × 1141 px (PNG) | 1.5 – 2.5 MB | [`store_assets/screenshot_1_ambient_lighting.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_1_ambient_lighting.png) (2.12 MB) |
-| **Screenshot 2: Playback Settings** | 1395 × 756 px (PNG) | 1.5 – 2.5 MB | [`store_assets/screenshot_2_playback_settings.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_2_playback_settings.png) (1.99 MB) |
-| **Screenshot 3: Quality Stats HUD** | 1561 × 846 px (PNG) | 1.5 – 2.5 MB | [`store_assets/screenshot_3_stats_overlay.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_3_stats_overlay.png) (2.17 MB) |
-| **Screenshot 4: Clean Theater Mode** | 1561 × 846 px (PNG) | 1.5 – 2.5 MB | [`store_assets/screenshot_4_theatre_mode.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_4_theatre_mode.png) (1.77 MB) |
-| **Screenshot 5: Frame Snap & Tools** | 1395 × 757 px (PNG) | 1.5 – 2.5 MB | [`store_assets/screenshot_5_frame_snap.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_5_frame_snap.png) (1.96 MB) |
-| **Screenshot 6: Auto-Crop Black Bars** | 1395 × 757 px (PNG) | 1.5 – 2.5 MB | [`store_assets/screenshot_autocrop_blackbars.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_autocrop_blackbars.png) (1.94 MB) |
-| **Demonstration Video** | 1920 × 1080 px (MP4, 4.2+ Mbps) | < 100 MB | [`YouTube_CineGlow_Pro_Demo.mp4`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube_CineGlow_Pro_Demo.mp4) (25.59 MB) |
+| **Screenshot 1: Ambient Lighting** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_1_ambient_lighting.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_1_ambient_lighting.png) (985 KB) |
+| **Screenshot 2: Playback Settings** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_2_playback_settings.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_2_playback_settings.png) (1.4 MB) |
+| **Screenshot 3: Quality Stats HUD** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_3_stats_overlay.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_3_stats_overlay.png) (1.3 MB) |
+| **Screenshot 4: Clean Theater Mode** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_4_theatre_mode.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_4_theatre_mode.png) (1.1 MB) |
+| **Screenshot 5: Frame Snap & Tools** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_5_frame_snap.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_5_frame_snap.png) (1.4 MB) |
+| **Alternate / Crop Black Bars** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_autocrop_blackbars.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_autocrop_blackbars.png) (1.2 MB) |
+| **Demonstration Video** | 1920 × 1080 px (MP4, 4.2+ Mbps) | < 100 MB | [`store_assets/YouTube_CineGlow_Pro_Demo.mp4`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/YouTube_CineGlow_Pro_Demo.mp4) (26.8 MB) |
 
 ---
 
