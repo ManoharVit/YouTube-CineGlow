@@ -3,3 +3,4 @@
 *.log
 edit_notes.md
 node_modules/
+test-results/
