@@ -1,10 +1,13 @@
 (() => {
   'use strict';
 
-  let enabled = true;
+  let enabled = false;
+  let settingsLoaded = false;
   let currentVideoId = null;
   let currentVideo = null;
+  let attachedVideo = null;
   let currentPlayer = null;
+  let activeVideoId = null;
   let overlayContainer = null;
   let annotationsList = [];
   let updateIntervalId = null;
@@ -16,16 +19,26 @@
     try {
       if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
         const stored = await chrome.storage.sync.get('restoreAnnotations');
-        if (stored.restoreAnnotations !== undefined) {
+        if (stored && stored.restoreAnnotations !== undefined) {
           enabled = !!stored.restoreAnnotations;
+        } else if (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.restoreAnnotations !== undefined) {
+          enabled = !!AURA_DEFAULTS.restoreAnnotations;
+        } else {
+          enabled = false;
         }
+      } else if (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.restoreAnnotations !== undefined) {
+        enabled = !!AURA_DEFAULTS.restoreAnnotations;
+      } else {
+        enabled = false;
       }
+      settingsLoaded = true;
       if (!enabled) {
         teardown();
-      } else if (currentVideoId && !overlayContainer) {
+      } else if (currentVideoId && currentPlayer && !overlayContainer) {
         initForVideo(currentVideoId, currentVideo, currentPlayer);
       }
     } catch (err) {
+      settingsLoaded = true;
       console.warn('[CineGlow Annotations] Could not load settings:', err);
     }
   }
@@ -36,7 +49,7 @@
         enabled = !!changes.restoreAnnotations.newValue;
         if (!enabled) {
           teardown();
-        } else if (currentVideoId) {
+        } else if (currentVideoId && currentPlayer) {
           initForVideo(currentVideoId, currentVideo, currentPlayer);
         }
       }
@@ -334,8 +347,10 @@
     teardown();
     if (!enabled || !videoId || !player) return;
 
+    activeVideoId = videoId;
     currentVideoId = videoId;
     currentVideo = video;
+    attachedVideo = video;
     currentPlayer = player;
 
     // Check if ads are currently playing
@@ -355,35 +370,37 @@
     if (video) resizeObserver.observe(video);
 
     // Fetch archived annotations from background service worker
-    try {
-      chrome.runtime.sendMessage({ type: 'FETCH_ANNOTATIONS', videoId }, (response) => {
-        if (!response || !response.success || !response.xml) {
-          console.debug('[CineGlow Annotations] No archived annotations available for:', videoId);
-          return;
-        }
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      try {
+        chrome.runtime.sendMessage({ type: 'FETCH_ANNOTATIONS', videoId }, (response) => {
+          if (!response || !response.success || !response.xml) {
+            console.debug('[CineGlow Annotations] No archived annotations available for:', videoId);
+            return;
+          }
 
-        if (currentVideoId !== videoId || !overlayContainer) return;
+          if (currentVideoId !== videoId || !overlayContainer || !enabled) return;
 
-        annotationsList = parseAnnotationsXml(response.xml, videoId);
-        console.info(`[CineGlow Annotations] Restored ${annotationsList.length} classic annotations for ${videoId}`);
+          annotationsList = parseAnnotationsXml(response.xml, videoId);
+          console.info(`[CineGlow Annotations] Restored ${annotationsList.length} classic annotations for ${videoId}`);
 
-        const fragment = document.createDocumentFragment();
-        for (const item of annotationsList) {
-          const el = createAnnotationElement(item);
-          fragment.appendChild(el);
-        }
-        overlayContainer.appendChild(fragment);
+          const fragment = document.createDocumentFragment();
+          for (const item of annotationsList) {
+            const el = createAnnotationElement(item);
+            fragment.appendChild(el);
+          }
+          overlayContainer.appendChild(fragment);
 
-        updateLayout();
-        onTimeTick();
+          updateLayout();
+          onTimeTick();
 
-        // Start sync timers
-        if (!updateIntervalId) {
-          updateIntervalId = setInterval(onTimeTick, 150);
-        }
-      });
-    } catch (err) {
-      console.warn('[CineGlow Annotations] Failed to request annotations:', err);
+          // Start sync timers
+          if (!updateIntervalId) {
+            updateIntervalId = setInterval(onTimeTick, 150);
+          }
+        });
+      } catch (err) {
+        console.warn('[CineGlow Annotations] Failed to request annotations:', err);
+      }
     }
 
     if (video) {
@@ -392,6 +409,7 @@
   }
 
   function teardown() {
+    activeVideoId = null;
     if (updateIntervalId) {
       clearInterval(updateIntervalId);
       updateIntervalId = null;
@@ -403,6 +421,10 @@
     if (currentVideo) {
       currentVideo.removeEventListener('timeupdate', onTimeTick);
     }
+    if (attachedVideo && attachedVideo !== currentVideo) {
+      attachedVideo.removeEventListener('timeupdate', onTimeTick);
+    }
+    attachedVideo = null;
     if (overlayContainer) {
       overlayContainer.remove();
       overlayContainer = null;
@@ -418,15 +440,26 @@
     if (!pm.isWatchPage || !pm.videoId) {
       teardown();
       currentVideoId = null;
+      currentVideo = null;
+      attachedVideo = null;
+      currentPlayer = null;
       return;
     }
+
+    currentVideoId = pm.videoId;
+    currentVideo = pm.video;
+    currentPlayer = pm.player;
 
     isAdPlaying = !!pm.isAdShowing;
     if (overlayContainer) {
       overlayContainer.style.display = isAdPlaying ? 'none' : 'block';
     }
 
-    if (pm.videoId !== currentVideoId || !overlayContainer) {
+    if (!settingsLoaded || !enabled) {
+      return;
+    }
+
+    if (pm.videoId !== activeVideoId || !overlayContainer || (pm.video && pm.video !== attachedVideo)) {
       initForVideo(pm.videoId, pm.video, pm.player);
     }
   }
@@ -446,6 +479,15 @@
       }
     });
   }
+
+  window.CineGlowAnnotations = {
+    loadSettings,
+    initForVideo,
+    teardown,
+    onPlayerState,
+    isEnabled: () => enabled,
+    isSettingsLoaded: () => settingsLoaded
+  };
 
   loadSettings();
 })();

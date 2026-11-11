@@ -242,4 +242,61 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
     const compensatedAt300 = computeGain();
     assert.ok(compensatedAt300 < 1.5, `Effective gain at 300% volume with +27 dB boost must scale below uncompressed 3.0, got ${compensatedAt300}`);
   });
+
+  test('retains and reconnects existing source node when switching video A -> B -> A', () => {
+    const videoA = new MockVideoElement();
+    const videoB = new MockVideoElement();
+    loadAudioProcessor();
+
+    // 1. Attach Video A
+    globalThis.window.CineGlowPlayer.video = videoA;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const sourceA = globalThis.window.CineGlowAudioGetActiveSource();
+    assert.ok(sourceA, 'Source for Video A should be active');
+    assert.strictEqual(videoA.cineGlowAudioAttached, true);
+    assert.strictEqual(sourceA.mediaElement, videoA);
+    assert.ok(sourceA.connections.length > 0, 'Source A must be connected');
+
+    // 2. Switch to Video B
+    globalThis.window.CineGlowPlayer.video = videoB;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const sourceB = globalThis.window.CineGlowAudioGetActiveSource();
+    assert.ok(sourceB, 'Source for Video B should be active');
+    assert.notStrictEqual(sourceB, sourceA, 'Video B should have a distinct source node');
+    assert.strictEqual(videoB.cineGlowAudioAttached, true);
+    assert.strictEqual(sourceB.mediaElement, videoB);
+    assert.strictEqual(sourceA.connections.length, 0, 'Source A must be disconnected when Video B is active');
+
+    // 3. Return to Video A (previously skipped reconnection because videoA.cineGlowAudioAttached was true)
+    globalThis.window.CineGlowPlayer.video = videoA;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const activeSource = globalThis.window.CineGlowAudioGetActiveSource();
+    assert.strictEqual(activeSource, sourceA, 'Must reuse Video A existing source node');
+    assert.strictEqual(sourceB.connections.length, 0, 'Source B must be disconnected');
+    assert.ok(sourceA.connections.length > 0, 'Source A must be reconnected to the DSP graph');
+  });
+
+  test('disconnects active audio source when video element is unmounted (player video becomes null)', () => {
+    const video = new MockVideoElement();
+    loadAudioProcessor();
+
+    // Attach video
+    globalThis.window.CineGlowPlayer.video = video;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const source = globalThis.window.CineGlowAudioGetActiveSource();
+    assert.ok(source, 'Source should be active');
+    assert.ok(source.connections.length > 0, 'Source must be connected');
+
+    // Video unmounted (e.g. user navigated to YouTube home page)
+    globalThis.window.CineGlowPlayer.video = null;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const activeSourceAfter = globalThis.window.CineGlowAudioGetActiveSource();
+    assert.strictEqual(activeSourceAfter, null, 'Active source must be cleared');
+    assert.strictEqual(source.connections.length, 0, 'Source must be disconnected when video is unmounted');
+  });
 });

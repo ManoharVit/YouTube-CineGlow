@@ -31,6 +31,7 @@
   let analyser = null;
   let dataArray = null;
   let currentVideo = null;
+  const videoSources = new WeakMap();
 
   async function loadSettings() {
     try {
@@ -62,7 +63,8 @@
   });
 
   function initAudio(video) {
-    if (!video || video.cineGlowAudioAttached) return;
+    if (!video) return;
+    if (currentVideo === video && source) return;
     
     try {
       if (!audioCtx) {
@@ -170,29 +172,55 @@
         gainNode.connect(limiterNode);
         limiterNode.connect(analyser);
         analyser.connect(audioCtx.destination);
+
+        // Auto-resume AudioContext on user interaction to comply with autoplay policy
+        const tryResume = () => {
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+        };
+        window.addEventListener('click', tryResume, { passive: true });
+        window.addEventListener('keydown', tryResume, { passive: true });
       }
 
       if (source) {
-        source.disconnect();
+        try {
+          source.disconnect();
+        } catch (_) {}
+        source = null;
       }
       
-      source = audioCtx.createMediaElementSource(video);
-      source.connect(normalizerGain);
-      source.connect(compressor);
+      // Retain and reuse each video's existing MediaElementAudioSourceNode
+      let videoSource = videoSources.get(video);
+      if (!videoSource) {
+        videoSource = audioCtx.createMediaElementSource(video);
+        videoSources.set(video, videoSource);
+      } else {
+        try {
+          videoSource.disconnect();
+        } catch (_) {}
+      }
+
+      videoSource.connect(normalizerGain);
+      videoSource.connect(compressor);
       
+      source = videoSource;
       currentVideo = video;
       video.cineGlowAudioAttached = true;
       
       // Auto-resume AudioContext on playback to comply with autoplay policy
-      const tryResume = () => {
-        if (audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume();
-        }
-      };
-      video.addEventListener('play', tryResume);
-      window.addEventListener('click', tryResume, { passive: true });
-      window.addEventListener('keydown', tryResume, { passive: true });
-      if (!video.paused) tryResume();
+      if (!video._cineGlowResumeAttached) {
+        const tryResume = () => {
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+        };
+        video.addEventListener('play', tryResume);
+        video._cineGlowResumeAttached = true;
+      }
+      if (!video.paused && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
       
       updateAudioParams();
     } catch (err) {
@@ -264,8 +292,16 @@
 
   // Hook into the central player manager to find the video element
   function attachToPlayer() {
-    if (window.CineGlowPlayer && window.CineGlowPlayer.video) {
-      initAudio(window.CineGlowPlayer.video);
+    if (window.CineGlowPlayer) {
+      if (window.CineGlowPlayer.video) {
+        initAudio(window.CineGlowPlayer.video);
+      } else if (source) {
+        try {
+          source.disconnect();
+        } catch (_) {}
+        source = null;
+        currentVideo = null;
+      }
     }
   }
 
@@ -279,6 +315,9 @@
   }
 
   window.CineGlowAudioComputeEffectiveGain = computeEffectiveGain;
+  window.CineGlowAudioInit = initAudio;
+  window.CineGlowAudioGetActiveSource = () => source;
+  window.CineGlowAudioGetVideoSource = (v) => videoSources.get(v);
 
   loadSettings();
 })();

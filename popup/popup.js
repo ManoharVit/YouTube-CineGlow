@@ -149,8 +149,63 @@ const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'vid
 const AUDIO_KEYS = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset'];
 const TOOLS_KEYS = ['adblockEnabled', 'statsEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
 
+async function save(partial) {
+  try {
+    await chrome.storage.sync.set(partial);
+  } catch (err) {
+    console.error('[Aura] Failed to save settings:', err);
+  }
+}
+
+// Throttle slider writes: storage.sync has a write quota (MAX_WRITE_OPERATIONS_PER_MINUTE = 120).
+// A 550ms interval guarantees maximum 109 writes/min under continuous dragging.
+const pending = {};
+let flushTimer = 0;
+let lastFlushTime = 0;
+const SYNC_THROTTLE_MS = 550;
+
+function queueSave(key, value) {
+  pending[key] = value;
+  if (flushTimer) clearTimeout(flushTimer);
+
+  const elapsed = Date.now() - lastFlushTime;
+  const delay = elapsed >= SYNC_THROTTLE_MS ? 50 : (SYNC_THROTTLE_MS - elapsed);
+
+  flushTimer = setTimeout(async () => {
+    flushTimer = 0;
+    lastFlushTime = Date.now();
+    const batch = { ...pending };
+    for (const k of Object.keys(pending)) delete pending[k];
+    if (Object.keys(batch).length > 0) {
+      await save(batch);
+    }
+  }, delay);
+}
+
+function cancelPendingWrites(keys) {
+  if (!keys) {
+    for (const k of Object.keys(pending)) {
+      delete pending[k];
+    }
+  } else {
+    for (const k of keys) {
+      delete pending[k];
+    }
+  }
+  if (Object.keys(pending).length === 0 && flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = 0;
+  }
+}
+
 async function resetSectionKeys(keys) {
-  const current = await chrome.storage.sync.get(AURA_DEFAULTS);
+  cancelPendingWrites(keys);
+  let current = { ...AURA_DEFAULTS };
+  try {
+    current = { ...AURA_DEFAULTS, ...(await chrome.storage.sync.get(AURA_DEFAULTS)) };
+  } catch (err) {
+    console.warn('[CineGlow Popup] Error reading current storage during reset:', err);
+  }
   const partial = {};
   for (const k of keys) {
     partial[k] = AURA_DEFAULTS[k];
@@ -261,39 +316,6 @@ function render(settings) {
   checkMatchingGlowPreset();
 }
 
-async function save(partial) {
-  try {
-    await chrome.storage.sync.set(partial);
-  } catch (err) {
-    console.error('[Aura] Failed to save settings:', err);
-  }
-}
-
-// Throttle slider writes: storage.sync has a write quota (MAX_WRITE_OPERATIONS_PER_MINUTE = 120).
-// A 550ms interval guarantees maximum 109 writes/min under continuous dragging.
-const pending = {};
-let flushTimer = 0;
-let lastFlushTime = 0;
-const SYNC_THROTTLE_MS = 550;
-
-function queueSave(key, value) {
-  pending[key] = value;
-  if (flushTimer) clearTimeout(flushTimer);
-
-  const elapsed = Date.now() - lastFlushTime;
-  const delay = elapsed >= SYNC_THROTTLE_MS ? 50 : (SYNC_THROTTLE_MS - elapsed);
-
-  flushTimer = setTimeout(async () => {
-    flushTimer = 0;
-    lastFlushTime = Date.now();
-    const batch = { ...pending };
-    for (const k of Object.keys(pending)) delete pending[k];
-    if (Object.keys(batch).length > 0) {
-      await save(batch);
-    }
-  }, delay);
-}
-
 async function init() {
   let settings = { ...AURA_DEFAULTS };
   try {
@@ -369,6 +391,7 @@ async function init() {
       const preset = GLOW_PRESETS[presetKey];
       if (!preset) return;
 
+      cancelPendingWrites(Object.keys(preset));
       for (const [k, v] of Object.entries(preset)) {
         const slider = document.getElementById(k);
         if (slider) slider.value = v;
@@ -445,6 +468,7 @@ async function init() {
       queueSave('bassBoost', parseInt(bassBoostEl.value, 10));
     });
     bassBoostEl.addEventListener('change', async () => {
+      cancelPendingWrites(['bassBoost']);
       await save({ bassBoost: parseInt(bassBoostEl.value, 10) });
     });
   }
@@ -455,6 +479,7 @@ async function init() {
       queueSave('vocalBoost', parseInt(vocalBoostEl.value, 10));
     });
     vocalBoostEl.addEventListener('change', async () => {
+      cancelPendingWrites(['vocalBoost']);
       await save({ vocalBoost: parseInt(vocalBoostEl.value, 10) });
     });
   }
@@ -476,6 +501,7 @@ async function init() {
       checkMatchingPreset();
     });
     el.addEventListener('change', async () => {
+      cancelPendingWrites([key]);
       await save({ [key]: parseInt(el.value, 10) });
       checkMatchingPreset();
     });
@@ -488,6 +514,7 @@ async function init() {
       const preset = EQ_PRESETS[presetKey];
       if (!preset) return;
 
+      cancelPendingWrites(['eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset']);
       eqSliders.forEach(({ el, valEl, key }) => {
         if (el && preset[key] !== undefined) {
           el.value = preset[key];
@@ -510,6 +537,7 @@ async function init() {
   // Reset EQ
   if (eqResetEl) {
     eqResetEl.addEventListener('click', async () => {
+      cancelPendingWrites(['eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset']);
       const flat = EQ_PRESETS.flat;
       eqSliders.forEach(({ el, valEl, key }) => {
         if (el) {
@@ -666,6 +694,7 @@ async function init() {
   });
 
   resetEl.addEventListener('click', async () => {
+    cancelPendingWrites();
     // Preserve adblock count when resetting visual settings
     const currentCount = Number(adblockCountEl.textContent);
     const resetSettings = { ...AURA_DEFAULTS, adblockCount: currentCount };
@@ -684,6 +713,15 @@ async function init() {
       }
     });
   });
+}
+
+if (typeof window !== 'undefined') {
+  window.CineGlowPopup = {
+    pending,
+    queueSave,
+    cancelPendingWrites,
+    resetSectionKeys
+  };
 }
 
 init();

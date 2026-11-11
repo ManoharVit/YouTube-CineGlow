@@ -160,17 +160,22 @@
       }
     } else if (!isAd && video) {
       // Ad finished — restore audio and user's playback speed ONLY on the element we modified
-      if (adMutedByUs) {
-        if (mutedVideoElement && mutedVideoElement === video && !userWasMuted) {
-          video.muted = false;
-        }
-        adMutedByUs = false;
-        mutedVideoElement = null;
+      restoreModifiedPlaybackState(video);
+    }
+  }
+
+  function restoreModifiedPlaybackState(video) {
+    const targetVideo = video || mutedVideoElement || activeVideo || document.querySelector('video.html5-main-video') || document.querySelector('video');
+    if (adMutedByUs) {
+      if (mutedVideoElement && targetVideo && mutedVideoElement === targetVideo && !userWasMuted) {
+        targetVideo.muted = false;
       }
-      userWasMuted = false;
-      if (video.playbackRate === 16.0) {
-        video.playbackRate = preAdSpeed || 1.0;
-      }
+      adMutedByUs = false;
+      mutedVideoElement = null;
+    }
+    userWasMuted = false;
+    if (targetVideo && targetVideo.playbackRate === 16.0) {
+      targetVideo.playbackRate = preAdSpeed || 1.0;
     }
   }
 
@@ -180,6 +185,8 @@
         clearInterval(adSkipTimer);
         adSkipTimer = 0;
       }
+      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+      restoreModifiedPlaybackState(video);
       return;
     }
 
@@ -202,17 +209,7 @@
         clearInterval(adSkipTimer);
         adSkipTimer = 0;
       }
-      if (adMutedByUs) {
-        if (mutedVideoElement && mutedVideoElement === video && !userWasMuted) {
-          video.muted = false;
-        }
-        adMutedByUs = false;
-        mutedVideoElement = null;
-      }
-      userWasMuted = false;
-      if (video && video.playbackRate === 16.0) {
-        video.playbackRate = preAdSpeed || 1.0;
-      }
+      restoreModifiedPlaybackState(video);
     }
   }
 
@@ -249,11 +246,9 @@
     }
     if (activeVideo) {
       activeVideo.removeEventListener('timeupdate', checkAdState);
-      activeVideo = null;
     }
-    adMutedByUs = false;
-    userWasMuted = false;
-    mutedVideoElement = null;
+    restoreModifiedPlaybackState(activeVideo);
+    activeVideo = null;
   }
 
   // Expose for testing and external diagnostics if needed
@@ -262,6 +257,7 @@
     skipVideoAds,
     checkAdState,
     dismissEnforcementModal,
+    restoreModifiedPlaybackState,
     cleanup
   };
 

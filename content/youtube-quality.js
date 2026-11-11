@@ -2,32 +2,49 @@
 (() => {
   'use strict';
 
-  let settings = { qualityEnabled: false, preferredQuality: 'hd1080' };
+  const defaultQualityEnabled = (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.qualityEnabled !== undefined)
+    ? AURA_DEFAULTS.qualityEnabled
+    : true;
+  const defaultPreferredQuality = (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.preferredQuality !== undefined)
+    ? AURA_DEFAULTS.preferredQuality
+    : 'hd1080';
+
+  let settings = {
+    qualityEnabled: defaultQualityEnabled,
+    preferredQuality: defaultPreferredQuality
+  };
 
   async function loadSettings() {
     try {
-      const stored = await chrome.storage.sync.get(['qualityEnabled', 'preferredQuality']);
-      if (stored.qualityEnabled !== undefined) {
-        settings.qualityEnabled = stored.qualityEnabled;
-      }
-      if (stored.preferredQuality !== undefined) {
-        settings.preferredQuality = stored.preferredQuality;
+      if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
+        const stored = await chrome.storage.sync.get({
+          qualityEnabled: defaultQualityEnabled,
+          preferredQuality: defaultPreferredQuality
+        });
+        if (stored && stored.qualityEnabled !== undefined) {
+          settings.qualityEnabled = stored.qualityEnabled;
+        }
+        if (stored && stored.preferredQuality !== undefined) {
+          settings.preferredQuality = stored.preferredQuality;
+        }
       }
     } catch (err) {
       console.warn('[Aura Quality] Could not load settings:', err);
     }
   }
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync') {
-      if (changes.qualityEnabled) settings.qualityEnabled = changes.qualityEnabled.newValue;
-      if (changes.preferredQuality) settings.preferredQuality = changes.preferredQuality.newValue;
-      // If either changed and is enabled, apply immediately
-      if (settings.qualityEnabled) {
-        applyQuality();
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'sync') {
+        if (changes.qualityEnabled) settings.qualityEnabled = changes.qualityEnabled.newValue;
+        if (changes.preferredQuality) settings.preferredQuality = changes.preferredQuality.newValue;
+        // If either changed and is enabled, apply immediately
+        if (settings.qualityEnabled) {
+          applyQuality();
+        }
       }
-    }
-  });
+    });
+  }
 
   // The main world script (content/main-world.js) is injected by manifest.json
   // and listens for the 'AURA_SET_QUALITY' message.
@@ -61,16 +78,24 @@
 
   let lastVideo = null;
   let lastVideoId = null;
-  window.CineGlowPlayer.addEventListener('state-change', (e) => {
-    const state = e.detail;
-    if (state.video !== lastVideo || state.videoId !== lastVideoId) {
-      lastVideo = state.video;
-      lastVideoId = state.videoId;
-      if (state.isWatchPage && state.video) {
-        setTimeout(applyQuality, 500);
+  if (window.CineGlowPlayer) {
+    window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      const state = e.detail;
+      if (state.video !== lastVideo || state.videoId !== lastVideoId) {
+        lastVideo = state.video;
+        lastVideoId = state.videoId;
+        if (state.isWatchPage && state.video) {
+          setTimeout(applyQuality, 500);
+        }
       }
-    }
-  });
+    });
+  }
+
+  window.CineGlowQuality = {
+    settings,
+    loadSettings,
+    applyQuality
+  };
 
   // Initial load
   loadSettings().then(() => {

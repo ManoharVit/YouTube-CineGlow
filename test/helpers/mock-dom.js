@@ -105,6 +105,10 @@ class MockAudioContext {
     return new MockAnalyserNode(this);
   }
   createMediaElementSource(element) {
+    if (element && element._hasMediaElementSource) {
+      throw new Error('InvalidStateError: HTMLMediaElement already connected to a MediaElementSourceNode');
+    }
+    if (element) element._hasMediaElementSource = true;
     return new MockMediaElementAudioSourceNode(this, element);
   }
   resume() {
@@ -188,6 +192,10 @@ class MockElement extends EventTarget {
     return this;
   }
 
+  click() {
+    this.dispatchEvent(new Event('click'));
+  }
+
   remove() {
     if (this.parentElement && Array.isArray(this.parentElement.children)) {
       const idx = this.parentElement.children.indexOf(this);
@@ -197,6 +205,24 @@ class MockElement extends EventTarget {
 
   querySelector(_selector) {
     return null;
+  }
+
+  getContext() {
+    return {
+      drawImage: () => {},
+      fillRect: () => {},
+      clearRect: () => {},
+      getImageData: () => ({ data: new Uint8ClampedArray(4) })
+    };
+  }
+
+  captureStream() {
+    return {
+      getVideoTracks: () => [{ stop: () => {} }],
+      getAudioTracks: () => [{ stop: () => {} }],
+      addTrack: () => {},
+      getTracks: () => [{ stop: () => {} }]
+    };
   }
 }
 
@@ -246,11 +272,41 @@ class MockMutationObserver {
     }
   }
 }
+class MockResizeObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+class MockMediaStream {
+  constructor(tracks = []) {
+    this.tracks = [...tracks];
+  }
+  getTracks() { return [...this.tracks]; }
+  getVideoTracks() { return this.tracks.filter(t => t.kind === 'video' || !t.kind); }
+  getAudioTracks() { return this.tracks.filter(t => t.kind === 'audio'); }
+  addTrack(t) { this.tracks.push(t); }
+  removeTrack(t) {
+    const idx = this.tracks.indexOf(t);
+    if (idx !== -1) this.tracks.splice(idx, 1);
+  }
+}
+
 MockMutationObserver.instances = [];
 
 function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ') {
   MockMutationObserver.instances = [];
   const url = new URL(initialUrl);
+
+  if (!globalThis.ResizeObserver) {
+    globalThis.ResizeObserver = MockResizeObserver;
+  }
+  if (!globalThis.MediaStream) {
+    globalThis.MediaStream = MockMediaStream;
+  }
 
   const listeners = new Map();
   const mockDocument = new MockElement('document');
@@ -270,12 +326,42 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
     }
     return null;
   };
+  mockDocument.querySelectorAll = (sel) => {
+    if (elements.has(sel)) return [elements.get(sel)];
+    return [];
+  };
   mockDocument.getElementById = (id) => {
     return elements.get(`#${id}`) || elements.get(id) || null;
   };
   mockDocument.createElement = (tag) => new MockElement(tag);
   mockDocument.head = new MockElement('head');
+  mockDocument.body = new MockElement('body');
   mockDocument.documentElement = new MockElement('html');
+
+  if (!globalThis.URL.createObjectURL) {
+    globalThis.URL.createObjectURL = (blob) => `blob:mock-url-${Math.random().toString(36).slice(2)}`;
+  }
+  if (!globalThis.URL.revokeObjectURL) {
+    globalThis.URL.revokeObjectURL = () => {};
+  }
+  if (!globalThis.requestAnimationFrame) {
+    globalThis.requestAnimationFrame = (cb) => {
+      const t = setTimeout(cb, 16);
+      if (t && typeof t.unref === 'function') t.unref();
+      return t;
+    };
+  }
+  if (!globalThis.cancelAnimationFrame) {
+    globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
+  }
+
+  const mockLocalStorage = {
+    _data: {},
+    getItem(k) { return this._data[k] ?? null; },
+    setItem(k, v) { this._data[k] = String(v); },
+    removeItem(k) { delete this._data[k]; },
+    clear() { this._data = {}; }
+  };
 
   const mockWindow = {
     location: {
@@ -287,9 +373,13 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
       }
     },
     document: mockDocument,
+    localStorage: mockLocalStorage,
+    postMessage: () => {},
     AudioContext: MockAudioContext,
     webkitAudioContext: MockAudioContext,
     MutationObserver: MockMutationObserver,
+    ResizeObserver: MockResizeObserver,
+    MediaStream: MockMediaStream,
     EventTarget: globalThis.EventTarget,
     Event: globalThis.Event,
     CustomEvent: globalThis.CustomEvent,

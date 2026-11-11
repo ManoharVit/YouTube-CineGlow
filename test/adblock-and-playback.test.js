@@ -302,4 +302,94 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     // Verify video2 is NOT unmuted by stale video1 state
     assert.strictEqual(video2.muted, true, 'Replacement video element must not be unmuted by controller using stale element state');
   });
+
+  test('disabling AdBlock mid-ad restores modified playback state (muted and 16x speed)', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    video.muted = false;
+    video.playbackRate = 1.0;
+    player.appendChild(video);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const fn = new Function(code);
+    fn();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Ad starts and fast-forwards/mutes playback
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+    assert.strictEqual(video.muted, true, 'Video must be muted during ad');
+    assert.strictEqual(video.playbackRate, 16.0, 'Video playbackRate must be 16x during ad');
+
+    // User disables AdBlock mid-ad via storage sync toggle
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ adblockEnabled: { newValue: false } }, 'sync');
+    }
+
+    assert.strictEqual(video.muted, false, 'Playback mute must be restored when adblock is disabled mid-ad');
+    assert.strictEqual(video.playbackRate, 1.0, 'Playback rate must be restored from 16x back to 1.0 when adblock is disabled mid-ad');
+  });
+
+  test('disabling AdBlock mid-ad preserves user muted state if video was muted before ad started', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    video.muted = true; // User intentionally muted video prior to ad
+    video.playbackRate = 1.25;
+    player.appendChild(video);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const fn = new Function(code);
+    fn();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Ad starts
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+    assert.strictEqual(video.muted, true);
+    assert.strictEqual(video.playbackRate, 16.0);
+
+    // User disables AdBlock mid-ad
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ adblockEnabled: { newValue: false } }, 'sync');
+    }
+
+    assert.strictEqual(video.muted, true, 'User mute preference must be preserved when adblock is disabled mid-ad');
+    assert.strictEqual(video.playbackRate, 1.25, 'Playback rate must be restored back to pre-ad rate (1.25)');
+  });
+
+  test('disabling AdBlock during normal video playback does not alter playback rate or mute state', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    video.muted = false;
+    video.playbackRate = 1.75; // Custom user speed
+    player.appendChild(video);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    new Function(code)();
+    await new Promise(r => setTimeout(r, 10));
+
+    // User disables AdBlock while watching normal content
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ adblockEnabled: { newValue: false } }, 'sync');
+    }
+
+    assert.strictEqual(video.playbackRate, 1.75, 'Normal playback rate (1.75x) must not be overwritten');
+    assert.strictEqual(video.muted, false, 'Unmuted normal video must not be changed');
+  });
 });

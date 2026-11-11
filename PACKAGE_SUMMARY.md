@@ -3,9 +3,9 @@
 **Release Version:** `2.3.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
 **Package Archive:** [`YouTube-CineGlow-v2.3.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.3.0.zip)  
-**Package Size:** `109 KB`  
-**File Count:** 41 files  
-**SHA-256 Checksum:** `1713da86696fbb2d9d99ad061ecd1762a5c8cf2e761d0ff5087a3b670cdbe65b`  
+**Package Size:** `110 KB`  
+**File Count:** 41 entries (35 files, 6 directories)  
+**SHA-256 Checksum:** `84a8d14ec5fd42a8fea3c1df3444e163f96d1a15732950603c1cf690a2b681f9`  
 **Last Updated:** November 11, 2026  
 
 ---
@@ -44,9 +44,13 @@ Customise YouTube viewing with ambient lighting and related playback, audio, dis
 Version 2.3.0:
 • Updated extension name to "CineGlow Pro for YouTube" to comply strictly with Chrome Web Store trademark policies.
 • Removed unused downloads permission and internal video streaming host permissions to adhere to minimum privilege.
-• Refined video ad controller to preserve user-muted video preferences and bound unmuting strictly to modified video elements.
+• Refined video ad controller to preserve user-muted video preferences, bound unmuting strictly to modified video elements, and restore playback speed/mute when AdBlock is disabled mid-ad.
 • Added dynamic audio headroom scaling across all volume levels when heavy EQ or bass boost is applied to prevent distortion.
-• Added a 550ms trailing-edge throttle to popup settings sync, eliminating storage write quota errors during rapid slider adjustment.
+• Fixed Web Audio node retention so re-navigating to an existing video element seamlessly reconnects its audio source.
+• Fixed classic annotations to default to disabled and load settings prior to initializing or dispatching network requests.
+• Aligned Auto-HD quality defaults with shared configuration so HD resolution is active on fresh installs.
+• Enhanced video recording lifecycle to capture recording format settings at start, derive extensions from actual containers, and prevent mid-recording format mislabeling.
+• Added a 550ms trailing-edge throttle to popup settings sync, and cancelled pending writes on section resets to guarantee default preservation.
 • Corrected accessibility label attributes across settings toggles for seamless screen reader navigation.
 ```
 

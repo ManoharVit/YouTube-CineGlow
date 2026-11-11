@@ -132,4 +132,119 @@ describe('Settings Schema & Configuration Integrity', () => {
       }
     }
   });
+
+  test('popup reset cancels queued pending writes and does not overwrite defaults (Finding 4)', async () => {
+    const { setupMockEnvironment } = require('./helpers/mock-dom');
+    const env = setupMockEnvironment();
+    const origWindow = globalThis.window;
+    const origDoc = globalThis.document;
+    const origChrome = globalThis.chrome;
+
+    globalThis.window = env.window;
+    globalThis.document = env.document;
+    globalThis.chrome = env.chrome;
+
+    // Load defaults into global scope
+    const defaultsCode = fs.readFileSync(path.join(__dirname, '../shared/defaults.js'), 'utf8');
+    new Function('globalThis', `${defaultsCode}; globalThis.AURA_DEFAULTS = AURA_DEFAULTS;`)(globalThis);
+
+    // Create required DOM elements for popup.js initialization
+    const ids = [
+      'enabled', 'adblockEnabled', 'audioNormalizer', 'audioBoost', 'audioBoostVal',
+      'bassBoost', 'bassBoostVal', 'vocalBoost', 'vocalBoostVal',
+      'eq60', 'eq60Val', 'eq250', 'eq250Val', 'eq1000', 'eq1000Val',
+      'eq4000', 'eq4000Val', 'eq12000', 'eq12000Val', 'eqReset',
+      'qualityEnabled', 'statsEnabled', 'adblockCount', 'preferredQuality',
+      'blockAV1', 'blockVP9', 'block60fps', 'hideScrollbar', 'hideInTheater',
+      'enableInPiP', 'removeBlackBars', 'audioReactive', 'lightsOut', 'ultrawideZoom',
+      'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'fps',
+      'preferredSpeed', 'preferredSpeedVal', 'autoPauseMode', 'returnDislikes',
+      'hideShorts', 'restoreAnnotations', 'hideEndCards', 'controls', 'reset',
+      'masterStatusTag', 'glowReset', 'videoReset', 'audioReset', 'toolsReset',
+      'opacity', 'blur', 'spread', 'saturation', 'contrast', 'brightness',
+      'smoothness', 'fadeInDuration', 'videoBrightness', 'videoContrast', 'videoSepia'
+    ];
+    for (const id of ids) {
+      env.elements.set(id, env.document.createElement('div'));
+      env.elements.set(`#${id}`, env.elements.get(id));
+    }
+
+    try {
+      const popupCode = fs.readFileSync(path.join(__dirname, '../popup/popup.js'), 'utf8');
+      new Function(popupCode)();
+
+      const popup = globalThis.window.CineGlowPopup;
+      assert.ok(popup, 'CineGlowPopup must be exposed');
+
+      // 1. User rapidly drags slider, queueing a pending save
+      popup.queueSave('opacity', 20);
+      assert.strictEqual(popup.pending.opacity, 20, 'Opacity change should be queued in pending');
+
+      // 2. User immediately clicks Reset Lighting
+      await popup.resetSectionKeys(['opacity', 'spread', 'blur']);
+
+      // 3. Verify pending write was cancelled
+      assert.strictEqual(popup.pending.opacity, undefined, 'Pending write for opacity must be cancelled by section reset');
+
+      // 4. Wait for throttle window to elapse and verify storage was NOT overwritten with 20
+      await new Promise(r => setTimeout(r, 600));
+      const stored = await env.chrome.storage.sync.get('opacity');
+      assert.strictEqual(stored.opacity, 75, 'Storage must retain reset default (75), not overwritten by queued slider write');
+
+      // 5. Test selective reset: queue glow (opacity) and audio (bassBoost) writes
+      popup.queueSave('opacity', 30);
+      popup.queueSave('bassBoost', 12);
+      assert.strictEqual(popup.pending.opacity, 30);
+      assert.strictEqual(popup.pending.bassBoost, 12);
+
+      // Section reset on glow keys should only cancel glow keys
+      await popup.resetSectionKeys(['opacity', 'spread', 'blur']);
+      assert.strictEqual(popup.pending.opacity, undefined, 'Glow key must be purged');
+      assert.strictEqual(popup.pending.bassBoost, 12, 'Audio key should remain queued');
+
+      // 6. Test master reset (cancelPendingWrites with no args) purges all keys
+      popup.cancelPendingWrites();
+      assert.strictEqual(Object.keys(popup.pending).length, 0, 'Master cancel must purge all pending writes');
+    } finally {
+      globalThis.window = origWindow;
+      globalThis.document = origDoc;
+      globalThis.chrome = origChrome;
+    }
+  });
+
+  test('youtube-quality.js defaults qualityEnabled to true on fresh install (Finding 5)', async () => {
+    const { setupMockEnvironment } = require('./helpers/mock-dom');
+    const env = setupMockEnvironment();
+    const origWindow = globalThis.window;
+    const origDoc = globalThis.document;
+    const origChrome = globalThis.chrome;
+
+    globalThis.window = env.window;
+    globalThis.document = env.document;
+    globalThis.chrome = env.chrome;
+
+    // Load defaults first
+    const defaultsCode = fs.readFileSync(path.join(__dirname, '../shared/defaults.js'), 'utf8');
+    new Function('globalThis', `${defaultsCode}; globalThis.AURA_DEFAULTS = AURA_DEFAULTS;`)(globalThis);
+
+    try {
+      const qualityCode = fs.readFileSync(path.join(__dirname, '../content/youtube-quality.js'), 'utf8');
+      new Function(qualityCode)();
+
+      const quality = globalThis.window.CineGlowQuality;
+      assert.ok(quality, 'CineGlowQuality must be exposed');
+
+      // Initially enabled matching shared default
+      assert.strictEqual(quality.settings.qualityEnabled, true, 'Default qualityEnabled must be true before storage read');
+
+      // After loadSettings with empty storage (fresh install), remains true
+      await quality.loadSettings();
+      assert.strictEqual(quality.settings.qualityEnabled, true, 'qualityEnabled must remain true on fresh install when sync storage is empty');
+      assert.strictEqual(quality.settings.preferredQuality, 'hd1080');
+    } finally {
+      globalThis.window = origWindow;
+      globalThis.document = origDoc;
+      globalThis.chrome = origChrome;
+    }
+  });
 });

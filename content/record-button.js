@@ -38,6 +38,8 @@
   let timerInterval = 0;
   let activeStream = null;
   let activeRecordedMimeType = '';
+  let activeRecordingFormat = null;
+  let activeRecordingFps = null;
   let hudEl = null;
   let activeMenu = null;
   let toastTimeout = 0;
@@ -45,6 +47,100 @@
   // Defaults: Genuine Matroska MKV at 30 FPS
   let currentFormat = 'mkv';
   let currentFps = 30;
+
+  function sanitizeRecordingTitle(rawTitle) {
+    const clean = (rawTitle || 'YouTube')
+      .replace(/ - YouTube$/, '')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .trim();
+    return clean || 'YouTube';
+  }
+
+  function getRecordingFilename(title, durationSec, ext) {
+    const cleanTitle = sanitizeRecordingTitle(title);
+    return `Recording_${cleanTitle}_${durationSec}s.${ext}`;
+  }
+
+  function selectMimeType(targetFormat) {
+    const isSupported = (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function')
+      ? (t) => MediaRecorder.isTypeSupported(t)
+      : () => false;
+
+    let mimeType = '';
+    if (targetFormat === 'mp4') {
+      const mp4Candidates = [
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4;codecs=avc1',
+        'video/mp4'
+      ];
+      for (const t of mp4Candidates) {
+        if (isSupported(t)) {
+          mimeType = t;
+          break;
+        }
+      }
+    } else if (targetFormat === 'mkv') {
+      const mkvCandidates = [
+        'video/x-matroska;codecs=avc1',
+        'video/x-matroska;codecs=vp9,opus',
+        'video/x-matroska',
+        'video/webm;codecs=vp9,opus'
+      ];
+      for (const t of mkvCandidates) {
+        if (isSupported(t)) {
+          mimeType = t;
+          break;
+        }
+      }
+    } else {
+      const webmCandidates = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=h264,opus',
+        'video/webm'
+      ];
+      for (const t of webmCandidates) {
+        if (isSupported(t)) {
+          mimeType = t;
+          break;
+        }
+      }
+    }
+
+    if (!mimeType) {
+      const fallbacks = [
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/webm;codecs=vp9,opus',
+        'video/webm'
+      ];
+      for (const t of fallbacks) {
+        if (isSupported(t)) {
+          mimeType = t;
+          break;
+        }
+      }
+    }
+
+    if (!mimeType) {
+      mimeType = 'video/webm';
+    }
+
+    return mimeType;
+  }
+
+  function deriveContainerExtension(mimeType, requestedFormat) {
+    const mime = (mimeType || '').toLowerCase();
+    if (mime.includes('mp4')) {
+      return 'mp4';
+    }
+    if (mime.includes('matroska') || requestedFormat === 'mkv') {
+      return 'mkv';
+    }
+    if (mime.includes('webm')) {
+      return 'webm';
+    }
+    return requestedFormat || 'webm';
+  }
 
   async function loadSettings() {
     try {
@@ -111,7 +207,9 @@
     if (isRecording) {
       if (svgPath) svgPath.style.display = 'none';
       if (rectIcon) rectIcon.style.display = 'block';
-      currentButton.title = `Recording ${currentFormat.toUpperCase()} (${currentFps} FPS)... Click to stop & save`;
+      const activeFmt = (activeRecordingFormat || currentFormat).toUpperCase();
+      const activeFps = activeRecordingFps || currentFps;
+      currentButton.title = `Recording ${activeFmt} (${activeFps} FPS)... Click to stop & save`;
     } else {
       if (svgPath) svgPath.style.display = 'block';
       if (rectIcon) rectIcon.style.display = 'none';
@@ -134,11 +232,12 @@
       }
     }
     if (hudEl) {
-      const fmt = currentFormat.toUpperCase();
+      const fmt = (activeRecordingFormat || currentFormat).toUpperCase();
+      const fps = activeRecordingFps || currentFps;
       hudEl.innerHTML = `
         <span class="cineglow-rec-dot"></span>
         <span class="cineglow-rec-hud-text">REC ${formatTime(elapsedSec)}</span>
-        <span class="cineglow-rec-badge-tag">${fmt} • ${currentFps} FPS</span>
+        <span class="cineglow-rec-badge-tag">${fmt} • ${fps} FPS</span>
       `;
     }
   }
@@ -517,8 +616,10 @@
 
       if ('requestVideoFrameCallback' in video) {
         rvfcHandle = video.requestVideoFrameCallback(renderFrame);
-      } else {
+      } else if (typeof requestAnimationFrame === 'function') {
         rafHandle = requestAnimationFrame(renderFrame);
+      } else if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        rafHandle = window.requestAnimationFrame(renderFrame);
       }
     }
 
@@ -549,7 +650,11 @@
         rvfcHandle = null;
       }
       if (rafHandle) {
-        cancelAnimationFrame(rafHandle);
+        if (typeof cancelAnimationFrame === 'function') {
+          cancelAnimationFrame(rafHandle);
+        } else if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+          window.cancelAnimationFrame(rafHandle);
+        }
         rafHandle = null;
       }
       video.removeEventListener('play', onVideoPlay);
@@ -566,7 +671,13 @@
     }
 
     if (!canvasStream || canvasStream.getVideoTracks().length === 0) {
-      alert('Cannot record: Canvas stream capture is not supported by your browser.');
+      if (typeof alert === 'function') {
+        alert('Cannot record: Canvas stream capture is not supported by your browser.');
+      } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert('Cannot record: Canvas stream capture is not supported by your browser.');
+      } else {
+        console.warn('[CineGlow Record] Canvas stream capture is not supported by your browser.');
+      }
       if (canvasPipelineCleanup) canvasPipelineCleanup();
       return;
     }
@@ -615,71 +726,16 @@
 
     activeStream = combinedStream;
 
+    activeRecordingFormat = currentFormat;
+    activeRecordingFps = currentFps;
+
     // 7. Pick best supported MIME type for target format
-    let mimeType = '';
-    if (currentFormat === 'mp4') {
-      const mp4Candidates = [
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/mp4;codecs=avc1',
-        'video/mp4'
-      ];
-      for (const t of mp4Candidates) {
-        if (MediaRecorder.isTypeSupported(t)) {
-          mimeType = t;
-          break;
-        }
-      }
-    } else if (currentFormat === 'mkv') {
-      const mkvCandidates = [
-        'video/x-matroska;codecs=avc1',
-        'video/x-matroska;codecs=vp9,opus',
-        'video/x-matroska',
-        'video/webm;codecs=vp9,opus'
-      ];
-      for (const t of mkvCandidates) {
-        if (MediaRecorder.isTypeSupported(t)) {
-          mimeType = t;
-          break;
-        }
-      }
-    } else {
-      const webmCandidates = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm;codecs=h264,opus',
-        'video/webm'
-      ];
-      for (const t of webmCandidates) {
-        if (MediaRecorder.isTypeSupported(t)) {
-          mimeType = t;
-          break;
-        }
-      }
-    }
-
-    if (!mimeType) {
-      const fallbacks = [
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/webm;codecs=vp9,opus',
-        'video/webm'
-      ];
-      for (const t of fallbacks) {
-        if (MediaRecorder.isTypeSupported(t)) {
-          mimeType = t;
-          break;
-        }
-      }
-    }
-
-    if (!mimeType) {
-      mimeType = 'video/webm';
-    }
-
+    const mimeType = selectMimeType(activeRecordingFormat);
     activeRecordedMimeType = mimeType;
     recordedChunks = [];
 
     // 12 Mbps for 60fps, 8 Mbps for 30fps
-    const targetBitrate = currentFps === 60 ? 12000000 : 8000000;
+    const targetBitrate = activeRecordingFps === 60 ? 12000000 : 8000000;
 
     try {
       mediaRecorder = new MediaRecorder(combinedStream, {
@@ -692,6 +748,10 @@
       } catch (_) {
         mediaRecorder = new MediaRecorder(combinedStream);
       }
+    }
+
+    if (mediaRecorder && mediaRecorder.mimeType) {
+      activeRecordedMimeType = mediaRecorder.mimeType;
     }
 
     mediaRecorder.ondataavailable = (e) => {
@@ -717,16 +777,21 @@
       if (badge) badge.textContent = formatTime(elapsed);
       updateHUD(elapsed);
     }, 1000);
+    if (timerInterval && typeof timerInterval === 'object' && typeof timerInterval.unref === 'function') {
+      timerInterval.unref();
+    }
   }
 
   function stopRecording() {
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = 0;
+    }
     if (canvasPipelineCleanup) {
       canvasPipelineCleanup();
       canvasPipelineCleanup = null;
     }
-    clearInterval(timerInterval);
-    timerInterval = 0;
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
     try {
       mediaRecorder.stop();
     } catch (e) {}
@@ -747,17 +812,24 @@
     }
 
     if (recordedChunks.length === 0) {
+      activeRecordingFormat = null;
+      activeRecordingFps = null;
       hideHUD(null);
       return;
     }
 
+    const effectiveMime = (mediaRecorder && mediaRecorder.mimeType) ||
+      (recordedChunks.length > 0 && recordedChunks[0]?.type) ||
+      activeRecordedMimeType;
+    if (effectiveMime) {
+      activeRecordedMimeType = effectiveMime;
+    }
+
     const durationMs = Math.max(500, Date.now() - recordingStartTime);
     const durationSec = Math.round(durationMs / 1000);
-    const title = (document.title || 'YouTube').replace(/ - YouTube$/, '').replace(/[\\/:*?"<>|]/g, '');
 
-    const isMp4 = (currentFormat === 'mp4' && activeRecordedMimeType.includes('mp4'));
-    const isMkv = (currentFormat === 'mkv' || (!isMp4 && currentFormat !== 'webm'));
-    const ext = isMp4 ? 'mp4' : (isMkv ? 'mkv' : 'webm');
+    const ext = deriveContainerExtension(activeRecordedMimeType, activeRecordingFormat);
+    const isMp4 = (ext === 'mp4');
 
     let finalBlob;
     if (isMp4) {
@@ -772,20 +844,30 @@
 
     const sizeMB = (finalBlob.size / (1024 * 1024)).toFixed(1);
 
+    const filename = getRecordingFilename(document.title || 'YouTube', durationSec, ext);
+
     const url = URL.createObjectURL(finalBlob);
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
-    a.download = `Recording_${title}_${durationSec}s.${ext}`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
 
     setTimeout(() => {
       if (a.parentNode) a.parentNode.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      try {
+        if (typeof URL !== 'undefined' && URL.revokeObjectURL) {
+          URL.revokeObjectURL(url);
+        } else if (typeof window !== 'undefined' && window.URL?.revokeObjectURL) {
+          window.URL.revokeObjectURL(url);
+        }
+      } catch (_) {}
     }, 1000);
 
     hideHUD(`✅ Saved as ${ext.toUpperCase()}! (${sizeMB} MB)`);
+    activeRecordingFormat = null;
+    activeRecordingFps = null;
   }
 
   function initToolbarAutohide(player, toolbar) {
@@ -1060,6 +1142,27 @@
     currentWrapper = wrapper;
     updateButtonVisuals();
   }
+
+  // Expose for testing and external integration
+  window.CineGlowRecorder = {
+    FORMAT_CONFIGS,
+    selectMimeType,
+    deriveContainerExtension,
+    sanitizeRecordingTitle,
+    getRecordingFilename,
+    startRecording,
+    stopRecording,
+    finalizeRecording,
+    fixDurationAndFormat,
+    getActiveRecordingFormat: () => activeRecordingFormat,
+    getActiveRecordedMimeType: () => activeRecordedMimeType,
+    setCurrentFormat: (fmt) => { currentFormat = fmt; },
+    getCurrentFormat: () => currentFormat,
+    setRecordedChunks: (chunks) => { recordedChunks = chunks; },
+    setRecordingStartTime: (t) => { recordingStartTime = t; },
+    setActiveRecordedMimeType: (m) => { activeRecordedMimeType = m; },
+    setActiveRecordingFormat: (f) => { activeRecordingFormat = f; }
+  };
 
   // Listen to CineGlow player lifecycle
   if (window.CineGlowPlayer) {
