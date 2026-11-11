@@ -14,7 +14,7 @@
   "host_permissions": [
     "*://*.youtube.com/*",
     "https://returnyoutubedislikeapi.com/*",
-    "https://storage.googleapis.com/*"
+    "https://biggest_bucket.storage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background/background.js"

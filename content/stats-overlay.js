@@ -37,7 +37,7 @@
 
   // Listen for Stats for Nerds response from MAIN world
   window.addEventListener('message', (event) => {
-    if (event.source !== window || !event.data || event.data.type !== 'CINEGLOW_STATS_NERDS_RESPONSE') return;
+    if (event.source !== window || event.origin !== window.location.origin || !event.data || event.data.type !== 'CINEGLOW_STATS_NERDS_RESPONSE') return;
     nerdStats = event.data.stats || null;
   });
 
@@ -492,7 +492,7 @@
 
     // Request fresh Stats for Nerds (codecs, color, format) from MAIN world
     try {
-      window.postMessage({ type: 'CINEGLOW_GET_STATS_NERDS' }, '*');
+      window.postMessage({ type: 'CINEGLOW_GET_STATS_NERDS' }, window.location.origin);
     } catch (e) {}
 
     const now = performance.now();

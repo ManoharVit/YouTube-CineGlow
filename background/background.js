@@ -138,7 +138,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         let dir = videoId[0];
         if (dir === '-') dir = '-/ar-';
-        const url = `https://storage.googleapis.com/biggest_bucket/annotations/${dir}/${videoId.substring(0, 3)}/${videoId}.xml.gz`;
+        const url = `https://biggest_bucket.storage.googleapis.com/annotations/${dir}/${videoId.substring(0, 3)}/${videoId}.xml.gz`;
 
         const resp = await fetch(url);
         if (!resp.ok) {

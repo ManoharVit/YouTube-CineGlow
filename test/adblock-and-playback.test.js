@@ -58,6 +58,27 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     }
   });
 
+  test('manifest.json adheres to Phase 1 permission lockdown and origin-level host scoping', () => {
+    const rawManifest = fs.readFileSync(path.join(__dirname, '../manifest.json'), 'utf8');
+    const manifest = JSON.parse(rawManifest);
+
+    const perms = manifest.permissions || [];
+    const hostPerms = manifest.host_permissions || [];
+
+    // Verify forbidden high-risk permissions
+    assert.strictEqual(perms.includes('<all_urls>'), false, '<all_urls> must not be declared in permissions');
+    assert.strictEqual(perms.includes('tabs'), false, 'tabs permission must not be declared');
+    assert.strictEqual(perms.includes('webRequest'), false, 'webRequest must not be declared');
+
+    // Verify host permission isolation
+    assert.strictEqual(hostPerms.includes('<all_urls>'), false, '<all_urls> must not be in host_permissions');
+    assert.strictEqual(hostPerms.includes('https://storage.googleapis.com/*'), false, 'Global GCS wildcard must be replaced by virtual-hosted bucket');
+    assert.ok(
+      hostPerms.includes('https://biggest_bucket.storage.googleapis.com/*'),
+      'Virtual-hosted bucket origin must be explicitly pinned'
+    );
+  });
+
   test('normal video is not treated as an ad and playback is never interrupted or jumped', async () => {
     const player = new MockElement('div', { id: 'movie_player' });
     const video = new MockVideoElement();

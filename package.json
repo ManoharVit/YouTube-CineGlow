@@ -7,6 +7,6 @@
     "package": "zip -r YouTube-CineGlow-v2.3.0.zip manifest.json README.md LICENSE background content popup shared icons rules -x '*.DS_Store*'"
   },
   "devDependencies": {
-    "puppeteer": "^25.12.0"
+    "puppeteer": "^25.17.0"
   }
 }

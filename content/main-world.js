@@ -6,7 +6,7 @@
 
   // --- 2. Quality Controller API Interceptor ---
   window.addEventListener('message', (event) => {
-    if (event.source !== window || event.data.type !== 'AURA_SET_QUALITY') return;
+    if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'AURA_SET_QUALITY') return;
     let quality = event.data.quality;
     const player = document.getElementById('movie_player');
     
@@ -34,7 +34,7 @@
 
   // --- 3. Stats for Nerds / Codec Info Extractor ---
   window.addEventListener('message', (event) => {
-    if (event.source !== window || event.data.type !== 'CINEGLOW_GET_STATS_NERDS') return;
+    if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'CINEGLOW_GET_STATS_NERDS') return;
     try {
       const player = document.getElementById('movie_player');
       let stats = null;
@@ -79,7 +79,7 @@
       window.postMessage({
         type: 'CINEGLOW_STATS_NERDS_RESPONSE',
         stats: stats
-      }, '*');
+      }, window.location.origin);
     } catch (e) {}
   });
 })();

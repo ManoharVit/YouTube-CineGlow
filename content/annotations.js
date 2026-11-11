@@ -254,11 +254,22 @@
           currentVideo.currentTime = item.action.seconds;
           try { currentVideo.play(); } catch (_) {}
         } else if (item.action.type === 'url') {
-          if (item.action.url.startsWith('https://www.youtube.com/') || item.action.url.startsWith('/')) {
-            window.location.href = item.action.url;
-          } else {
-            window.open(item.action.url, '_blank', 'noopener,noreferrer');
-          }
+          try {
+            // Block protocol-relative URLs (e.g. //attacker.com) and unvalidated external schemes
+            if (typeof item.action.url === 'string' && !item.action.url.startsWith('//')) {
+              const parsed = new URL(item.action.url, 'https://www.youtube.com');
+              const isYouTube = parsed.hostname === 'www.youtube.com' || parsed.hostname === 'youtube.com' || parsed.hostname === 'youtu.be';
+              if ((parsed.protocol === 'https:' || parsed.protocol === 'http:') && isYouTube) {
+                if (item.action.target === 'new') {
+                  window.open(parsed.href, '_blank', 'noopener,noreferrer');
+                } else {
+                  window.location.href = parsed.href;
+                }
+              } else {
+                console.warn('[CineGlow Annotations] Blocked untrusted external navigation:', item.action.url);
+              }
+            }
+          } catch (_) {}
         }
       });
     }
@@ -486,7 +497,8 @@
     teardown,
     onPlayerState,
     isEnabled: () => enabled,
-    isSettingsLoaded: () => settingsLoaded
+    isSettingsLoaded: () => settingsLoaded,
+    createAnnotationElement
   };
 
   loadSettings();

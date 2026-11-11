@@ -73,7 +73,7 @@
     window.postMessage({
       type: 'AURA_SET_QUALITY',
       quality: settings.preferredQuality
-    }, '*');
+    }, window.location.origin);
   }
 
   let lastVideo = null;

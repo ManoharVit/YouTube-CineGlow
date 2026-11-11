@@ -184,4 +184,64 @@ describe('Annotations Opt-in Lifecycle & Network Guard', () => {
     );
     assert.strictEqual(overlays.length, 0, 'No overlay containers should remain after disabling');
   });
+
+  test('blocks protocol-relative open redirect and unvalidated external navigation in annotation actions', () => {
+    const anno = loadAnnotations();
+    assert.ok(typeof anno.createAnnotationElement === 'function');
+
+    let openedUrl = null;
+    globalThis.window.open = (url) => { openedUrl = url; };
+
+    const initialHref = globalThis.window.location.href;
+
+    // 1. Attack Vector: Protocol-relative URL (e.g. //evil.com)
+    const attackItem1 = {
+      id: 'anno_exploit_1',
+      type: 'text',
+      text: 'Click here for free V-bucks',
+      rect: { x: 10, y: 10, w: 20, h: 20 },
+      action: { type: 'url', url: '//evil.com/phish', target: 'current' }
+    };
+    const el1 = anno.createAnnotationElement(attackItem1);
+    el1.dispatchEvent(new Event('click'));
+    assert.strictEqual(globalThis.window.location.href, initialHref, 'Protocol-relative URL must NOT redirect top-level location');
+
+    // 2. Attack Vector: Arbitrary external domain (e.g. https://evil.com)
+    openedUrl = null;
+    const attackItem2 = {
+      id: 'anno_exploit_2',
+      type: 'text',
+      text: 'External link',
+      rect: { x: 10, y: 10, w: 20, h: 20 },
+      action: { type: 'url', url: 'https://evil.com/malware', target: 'new' }
+    };
+    const el2 = anno.createAnnotationElement(attackItem2);
+    el2.dispatchEvent(new Event('click'));
+    assert.strictEqual(openedUrl, null, 'Untrusted external URL must be blocked from window.open');
+
+    // 3. Legitimate YouTube relative path (e.g. /watch?v=nextVideo)
+    const validRelativeItem = {
+      id: 'anno_valid_rel',
+      type: 'text',
+      text: 'Next Video',
+      rect: { x: 10, y: 10, w: 20, h: 20 },
+      action: { type: 'url', url: '/watch?v=nextVideo', target: 'current' }
+    };
+    const el3 = anno.createAnnotationElement(validRelativeItem);
+    el3.dispatchEvent(new Event('click'));
+    assert.strictEqual(globalThis.window.location.href, 'https://www.youtube.com/watch?v=nextVideo', 'Valid relative YouTube path must navigate safely');
+
+    // 4. Legitimate YouTube full URL with new window target
+    openedUrl = null;
+    const validFullItem = {
+      id: 'anno_valid_full',
+      type: 'text',
+      text: 'Channel Link',
+      rect: { x: 10, y: 10, w: 20, h: 20 },
+      action: { type: 'url', url: 'https://www.youtube.com/@OfficialChannel', target: 'new' }
+    };
+    const el4 = anno.createAnnotationElement(validFullItem);
+    el4.dispatchEvent(new Event('click'));
+    assert.strictEqual(openedUrl, 'https://www.youtube.com/@OfficialChannel', 'Valid YouTube domain must be permitted in window.open');
+  });
 });

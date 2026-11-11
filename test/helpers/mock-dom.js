@@ -366,6 +366,8 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
   const mockWindow = {
     location: {
       href: url.href,
+      origin: url.origin,
+      hostname: url.hostname,
       pathname: url.pathname,
       search: url.search,
       get searchParams() {
