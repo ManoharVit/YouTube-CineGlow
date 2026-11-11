@@ -4,6 +4,7 @@
 
   let settings = { adblockEnabled: true };
   let adMutedByUs = false;
+  let mutedVideoElement = null;
   let userWasMuted = false;
   let preAdSpeed = 1.0;
   let lastAdSkipTime = 0;
@@ -141,10 +142,12 @@
         if (!video.muted) {
           video.muted = true;
           adMutedByUs = true;
+          mutedVideoElement = video;
         }
       } else if (!userWasMuted && !video.muted) {
         // Handle video element swap mid-ad
         video.muted = true;
+        mutedVideoElement = video;
       }
       video.playbackRate = 16.0;
       if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
@@ -156,12 +159,13 @@
         lastAdSkipTime = Date.now();
       }
     } else if (!isAd && video) {
-      // Ad finished — restore audio and user's playback speed
+      // Ad finished — restore audio and user's playback speed ONLY on the element we modified
       if (adMutedByUs) {
-        if (!userWasMuted) {
+        if (mutedVideoElement && mutedVideoElement === video && !userWasMuted) {
           video.muted = false;
         }
         adMutedByUs = false;
+        mutedVideoElement = null;
       }
       userWasMuted = false;
       if (video.playbackRate === 16.0) {
@@ -199,10 +203,11 @@
         adSkipTimer = 0;
       }
       if (adMutedByUs) {
-        if (video && !userWasMuted) {
+        if (mutedVideoElement && mutedVideoElement === video && !userWasMuted) {
           video.muted = false;
         }
         adMutedByUs = false;
+        mutedVideoElement = null;
       }
       userWasMuted = false;
       if (video && video.playbackRate === 16.0) {
@@ -248,6 +253,7 @@
     }
     adMutedByUs = false;
     userWasMuted = false;
+    mutedVideoElement = null;
   }
 
   // Expose for testing and external diagnostics if needed

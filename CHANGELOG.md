@@ -7,37 +7,23 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [2.2.0] — 2026-11-10
 
-### 1. Store Policy & Trademark Compliance
-- **Extension Renaming**: Renamed from `YouTube CineGlow Pro` to `CineGlow Pro for YouTube` across `manifest.json`, `package.json`, `CHROMEWEBSTORE.md`, `README.md`, and `PACKAGE_SUMMARY.md` to adhere strictly to the Chrome Web Store Trademark Guidelines. Short name set to `CineGlow Pro` (12 characters).
-- **Prohibited Downloader Dead Code Purged**: Removed `setupDownloadHeadersRule` and `DOWNLOAD_VIDEO` message handling from `background/background.js`. Purged `CINEGLOW_GET_DOWNLOAD_FORMAT` format extraction listener from `content/main-world.js`.
-- **Permission Shedding**: Completely removed `downloads` permission and `*://*.googlevideo.com/*` host permission from `manifest.json` to comply with Chrome Web Store Single Purpose and video streaming policies.
-- **Minimum Chrome Version**: Raised `minimum_chrome_version` in `manifest.json` from `105` to `111` to match the Chromium release where declarative `world: "MAIN"` content scripts were introduced.
-- **Action Title Updated**: Changed default action title in `manifest.json` from `Aura` to `CineGlow Pro`.
+### Targeted Release Patch (Post-Review Remediation)
+- **Store Policy & Trademark Compliance**: Renamed extension from `YouTube CineGlow Pro` to `CineGlow Pro for YouTube` across `manifest.json`, `package.json`, `CHROMEWEBSTORE.md`, `README.md`, and `PACKAGE_SUMMARY.md`. Short name set to `CineGlow Pro`. Action default title updated to `CineGlow Pro`.
+- **Downloader Dead Code & Permission Shedding**: Purged dead downloader code (`setupDownloadHeadersRule` and `DOWNLOAD_VIDEO` from `background/background.js`, `CINEGLOW_GET_DOWNLOAD_FORMAT` from `content/main-world.js`). Removed `downloads` and `*://*.googlevideo.com/*` permissions from `manifest.json`.
+- **Minimum Chrome Version**: Raised `minimum_chrome_version` in `manifest.json` from `105` to `111` for declarative `world: "MAIN"` content scripts.
+- **Playback Mute Restoration Integrity (BUG-1 & Follow-up)**: In `content/youtube-ads.js`, tracked `userWasMuted = video.muted` before ad muting so pre-muted videos remain muted when ads end. Explicitly tracked `mutedVideoElement = video` so unmute restoration applies strictly to the exact element muted by CineGlow, preventing unmuting of replacement video elements mounted in a muted state.
+- **Audio Dynamic Headroom Attenuation (BUG-3)**: In `content/audio-processor.js`, implemented `computeEffectiveGain()` to compute total accumulated boost ($\text{totalMaxBoostDb} = \text{bass} + \text{vocal} + \text{eqMax}$). When total boost exceeds $+6\text{ dB}$, gain attenuates dynamically by $10^{-\frac{\text{totalMaxBoostDb} - 6}{40}}$ across all volume levels (including 100%) to mitigate digital overdriving into the brickwall limiter node.
+- **Sync Storage Quota Throttle (BUG-4)**: Implemented a 550ms trailing-edge throttle with batch flushing in `popup/popup.js`, capping sync writes under continuous slider dragging to a maximum of 109 writes/minute (below Chrome's 120 writes/minute quota limit).
+- **HTML Label Validation**: Converted duplicate `<label for="...">` wrappers on settings toggle rows in `popup/popup.html` to `<span>` elements with `aria-labelledby` referencing control IDs.
+- **Store Screenshots Standardized**: Resized all 5 Chrome Web Store screenshots in `store_assets/` to strictly 1280 × 800 px (16:10 aspect ratio).
+- **Repository Cleanliness**: Untracked 2,268 committed `node_modules/` files from Git and added `node_modules/` to `.gitignore`. Removed scratch test files.
+- **Regression Test Suite**: Added regression unit tests for user mute preservation, mid-ad video element replacement, and headroom gain scaling under high EQ boost (34 / 34 tests passing).
 
-### 2. Core Playback & Ad Handling
-- **BUG-1 (Forced Unmute Fix)**: Resolved an issue in `content/youtube-ads.js` where videos intentionally muted by the user were forcibly unmuted when an ad sequence completed. Added `userWasMuted` state tracking so pre-existing user mute states are preserved after ad completion.
-- **BUG-2 (Mid-Ad Video Swap Tracking)**: Fixed video listener desynchronization in `content/youtube-ads.js` occurring when YouTube destroys and recreates the HTML5 `<video>` element during ad playback. Added element inequality checks (`activeVideo !== video`) and immediate mute re-application.
-- **Cleanup & Memory Management**: Added `CineGlowAdBlock.cleanup()` to properly clear intervals and detach `timeupdate` listeners upon page transitions or test resets.
-
-### 3. Web Audio DSP & Dynamic Headroom Protection
-- **BUG-3 (Acoustic Clipping Fix)**: Fixed severe audio clipping distortion in `content/audio-processor.js` when combining 300% volume boost with aggressive Bass Boost (+15 dB), Vocal Boost (+12 dB), or 5-band graphic EQ.
-- **Dynamic Headroom Scaling**: Implemented `computeEffectiveGain()` to compute total accumulated boost ($$\text{totalMaxBoostDb} = \text{bass} + \text{vocal} + \text{eqMax}$$). When boost exceeds $$+6\text{ dB}$$ and volume multiplier $$> 1.0$$, gain is smoothly attenuated via $$10^{-\frac{\text{totalMaxBoostDb} - 6}{40}}$$ to ensure the brickwall limiter receives clean, non-distorted signals.
-
-### 4. UI Accessibility & Quota Protection
-- **BUG-4 (Sync Storage Quota Throttle)**: Implemented a 550ms trailing-edge throttle in `popup/popup.js` with batch flushing. Guarantees maximum write frequency of 109 writes/minute under continuous slider dragging, eliminating `MAX_WRITE_OPERATIONS_PER_MINUTE = 120` errors.
-- **Accessibility & Validation Fix**: Corrected duplicate `for` attributes in `popup/popup.html` on toggle rows (`hideScrollbar`, `blockAV1`, `blockVP9`, `block60fps`). Converted title `<label>` elements to `<span>` with `aria-labelledby` referencing control IDs.
-- **Active Tab Sync**: Added one-click reload button in popup header allowing users to immediately synchronize settings with the active YouTube watch tab.
-
-### 5. Store Assets & Visual Packaging
-- **Screenshot Dimensions Standardized**: Resized all 5 Chrome Web Store screenshots in `store_assets/` to strictly 1280 × 800 px (16:10 aspect ratio), resolving developer console upload rejections.
-- **Asset Palette & Layout**: Standardized Small Promo Tile at 440 × 280 px and Marquee Promo Tile at 1400 × 560 px.
-- **Video Walkthrough**: Bundled 1080p narrated demonstration video `store_assets/YouTube_CineGlow_Pro_Demo.mp4` highlighting ambient lighting, audio normalization, and cinema layouts.
-
-### 6. Repository Hygiene & Test Suite
-- **Git History Cleanup**: Removed 2,268 committed `node_modules/` files from Git tracking and added `node_modules/` to `.gitignore`.
-- **Scratch Files Removed**: Deleted redundant root test script `test-worker.js` and redundant root video copy.
-- **Automated Regression Suite**: Expanded `test/adblock-and-playback.test.js` with unit tests for BUG-1 (user mute preservation) and BUG-2 (mid-ad element swap). Automated suite passes with 32 / 32 tests (100% pass rate in ~131ms).
-- **Release Package**: Rebuilt production package `YouTube-CineGlow-v2.2.0.zip` (109 KB, 41 files, SHA-256: `81745c83e62920e0159d03ef1657f4e6ed2ce8ffc55e63324631f284447ea994`).
+### Baseline v2.2.0 Features (Commit `c7f0856`)
+- **Settings Popup Redesign**: Quiet card layout with segmented controls and reduced visual clutter.
+- **Active Tab Sync**: Added one-click tab reload button in popup header allowing users to immediately reload the active YouTube watch tab after modifying settings.
+- **Demonstration Video**: Created 1080p narrated walkthrough video in `store_assets/YouTube_CineGlow_Pro_Demo.mp4`.
+- **Widescreen Auto-Crop**: Improved black bar auto-crop expansion for cinematic letterbox trailers.
 
 ---
 

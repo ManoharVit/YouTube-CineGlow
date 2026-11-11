@@ -217,10 +217,10 @@
     );
     const totalMaxBoostDb = bass + vocal + eqMax;
     
-    // Provide dynamic headroom scaling when massive EQ boost is combined with volume boost
-    if (totalMaxBoostDb > 6 && rawGain > 1.0) {
+    // Provide dynamic headroom scaling when massive EQ boost is applied across any volume level
+    if (totalMaxBoostDb > 6) {
       const headroomFactor = Math.pow(10, -(totalMaxBoostDb - 6) / 40);
-      return Math.max(1.0, rawGain * headroomFactor);
+      return rawGain * headroomFactor;
     }
     return rawGain;
   }
@@ -277,6 +277,8 @@
       if (window.CineGlowPlayer) attachToPlayer();
     });
   }
+
+  window.CineGlowAudioComputeEffectiveGain = computeEffectiveGain;
 
   loadSettings();
 })();

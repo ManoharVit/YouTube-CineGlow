@@ -266,4 +266,40 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     adBlock.checkAdState();
     assert.strictEqual(video2.muted, true, 'Replacement video element must be muted while ad is showing');
   });
+
+  test('does not unmute a replacement video element when ad ends if replacement was not muted by controller', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video1 = new MockVideoElement();
+    video1.muted = false; // video1 was originally unmuted
+    player.appendChild(video1);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video1);
+    env.elements.set('video', video1);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const fn = new Function(code);
+    fn();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Ad starts and controller mutes video1
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+    assert.strictEqual(video1.muted, true, 'video1 must be muted by adblock');
+
+    // Video 2 replaces Video 1 right as ad finishes, and Video 2 is muted
+    const video2 = new MockVideoElement();
+    video2.muted = true; // New video was mounted in muted state
+    env.elements.set('video.html5-main-video', video2);
+    env.elements.set('video', video2);
+
+    // Ad ends
+    player.classList.remove('ad-showing');
+    adBlock.checkAdState();
+
+    // Verify video2 is NOT unmuted by stale video1 state
+    assert.strictEqual(video2.muted, true, 'Replacement video element must not be unmuted by controller using stale element state');
+  });
 });

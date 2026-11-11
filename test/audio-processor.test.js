@@ -208,4 +208,38 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
     video.dispatchEvent(new Event('play'));
     assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on play event');
   });
+
+  test('computeEffectiveGain scales headroom dynamically under high EQ and bass boost at 100% and 300% volume', () => {
+    loadAudioProcessor();
+    const computeGain = globalThis.window.CineGlowAudioComputeEffectiveGain;
+    assert.ok(typeof computeGain === 'function', 'computeEffectiveGain should be exposed for testing');
+
+    // Default settings: 100% volume, 0 dB boost
+    const defaultGain = computeGain();
+    assert.strictEqual(defaultGain, 1.0, 'Default effective gain at 100% volume without EQ boost should be 1.0');
+
+    // Apply high EQ boost (+15 dB bass + +12 dB vocal) at 100% volume
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({
+        audioBoost: { newValue: 100 },
+        bassBoost: { newValue: 15 },
+        vocalBoost: { newValue: 12 }
+      }, 'sync');
+    }
+
+    const compensatedAt100 = computeGain();
+    assert.ok(compensatedAt100 < 0.5, `Effective gain at 100% volume with +27 dB boost must attenuate below 1.0, got ${compensatedAt100}`);
+
+    // Apply high EQ boost at 300% volume
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({
+        audioBoost: { newValue: 300 },
+        bassBoost: { newValue: 15 },
+        vocalBoost: { newValue: 12 }
+      }, 'sync');
+    }
+
+    const compensatedAt300 = computeGain();
+    assert.ok(compensatedAt300 < 1.5, `Effective gain at 300% volume with +27 dB boost must scale below uncompressed 3.0, got ${compensatedAt300}`);
+  });
 });
