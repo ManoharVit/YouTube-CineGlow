@@ -423,6 +423,19 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
         get: async (key) => ({ [key]: mockChrome.storage.local._data[key] }),
         set: async (items) => Object.assign(mockChrome.storage.local._data, items)
       },
+      managed: {
+        _data: {},
+        get: async (keys) => {
+          if (!keys) return { ...mockChrome.storage.managed._data };
+          if (typeof keys === 'string') return { [keys]: mockChrome.storage.managed._data[keys] };
+          if (Array.isArray(keys)) {
+            const out = {};
+            keys.forEach(k => { out[k] = mockChrome.storage.managed._data[k]; });
+            return out;
+          }
+          return { ...mockChrome.storage.managed._data };
+        }
+      },
       onChanged: {
         _listeners: [],
         addListener(fn) { this._listeners.push(fn); }

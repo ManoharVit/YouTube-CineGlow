@@ -106,6 +106,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       try {
+        if (chrome.storage && chrome.storage.managed) {
+          const managed = await chrome.storage.managed.get('DisableThirdPartyAPIs').catch(() => null);
+          if (managed && managed.DisableThirdPartyAPIs) {
+            sendResponse({ success: false, error: 'Blocked by enterprise policy' });
+            return;
+          }
+        }
         const resp = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${encodeURIComponent(videoId)}`, {
           cache: 'no-cache'
         });
@@ -129,6 +136,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       try {
+        if (chrome.storage && chrome.storage.managed) {
+          const managed = await chrome.storage.managed.get('DisableThirdPartyAPIs').catch(() => null);
+          if (managed && managed.DisableThirdPartyAPIs) {
+            sendResponse({ success: false, error: 'Blocked by enterprise policy' });
+            return;
+          }
+        }
         const cacheKey = `ar_${videoId}`;
         const cached = await chrome.storage.local.get(cacheKey);
         if (cached && cached[cacheKey]) {

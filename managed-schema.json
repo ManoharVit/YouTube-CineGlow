@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "type": "object",
+  "properties": {
+    "DisableAdBlock": {
+      "title": "Disable AdBlock",
+      "description": "Force-disables ad blocking across corporate managed endpoints.",
+      "type": "boolean"
+    },
+    "DisableRecording": {
+      "title": "Disable Recording",
+      "description": "Disables screen and video recording for Data Loss Prevention (DLP) compliance.",
+      "type": "boolean"
+    },
+    "DisableThirdPartyAPIs": {
+      "title": "Disable Third-Party Telemetry & APIs",
+      "description": "Blocks external network calls to third-party endpoints (Dislikes API and Annotation Archive).",
+      "type": "boolean"
+    },
+    "ForceDefaultQuality": {
+      "title": "Force Default Video Quality",
+      "description": "Enforces a default video playback quality (e.g., hd720 or hd1080) to conserve corporate network bandwidth.",
+      "type": "string"
+    }
+  }
+}

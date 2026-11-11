@@ -986,6 +986,17 @@
       return;
     }
 
+    // Check enterprise managed policy for DLP compliance
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.managed) {
+        const managed = await chrome.storage.managed.get('DisableRecording').catch(() => null);
+        if (managed && managed.DisableRecording) {
+          removeExistingButton();
+          return;
+        }
+      }
+    } catch (_) {}
+
     if (currentButton && player.contains(currentButton)) {
       return;
     }

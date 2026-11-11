@@ -254,4 +254,76 @@ describe('Settings Schema & Configuration Integrity', () => {
       globalThis.chrome = origChrome;
     }
   });
+
+  test('enforces enterprise managed policies (storage.managed) over user preferences in popup initialization', async () => {
+    const { setupMockEnvironment } = require('./helpers/mock-dom');
+    const env = setupMockEnvironment();
+    const origWindow = globalThis.window;
+    const origDoc = globalThis.document;
+    const origChrome = globalThis.chrome;
+
+    globalThis.window = env.window;
+    globalThis.document = env.document;
+    globalThis.chrome = env.chrome;
+
+    // Load defaults
+    const defaultsCode = fs.readFileSync(path.join(__dirname, '../shared/defaults.js'), 'utf8');
+    new Function('globalThis', `${defaultsCode}; globalThis.AURA_DEFAULTS = AURA_DEFAULTS;`)(globalThis);
+
+    // Setup managed policy overrides
+    env.chrome.storage.managed._data = {
+      DisableAdBlock: true,
+      DisableThirdPartyAPIs: true,
+      ForceDefaultQuality: 'hd720'
+    };
+
+    // User sync preferences try to enable adblock and 4k quality
+    env.chrome.storage.sync._data = {
+      adblockEnabled: true,
+      preferredQuality: 'hd2160',
+      returnDislikes: true
+    };
+
+    const ids = [
+      'enabled', 'adblockEnabled', 'audioNormalizer', 'audioBoost', 'audioBoostVal',
+      'bassBoost', 'bassBoostVal', 'vocalBoost', 'vocalBoostVal',
+      'eq60', 'eq60Val', 'eq250', 'eq250Val', 'eq1000', 'eq1000Val',
+      'eq4000', 'eq4000Val', 'eq12000', 'eq12000Val', 'eqReset',
+      'qualityEnabled', 'statsEnabled', 'adblockCount', 'preferredQuality',
+      'blockAV1', 'blockVP9', 'block60fps', 'hideScrollbar', 'hideInTheater',
+      'enableInPiP', 'removeBlackBars', 'audioReactive', 'lightsOut', 'ultrawideZoom',
+      'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'fps',
+      'preferredSpeed', 'preferredSpeedVal', 'autoPauseMode', 'returnDislikes',
+      'hideShorts', 'restoreAnnotations', 'hideEndCards', 'controls', 'reset',
+      'masterStatusTag', 'glowReset', 'videoReset', 'audioReset', 'toolsReset',
+      'opacity', 'blur', 'spread', 'saturation', 'contrast', 'brightness',
+      'smoothness', 'fadeInDuration', 'videoBrightness', 'videoContrast', 'videoSepia'
+    ];
+    for (const id of ids) {
+      env.elements.set(id, env.document.createElement('div'));
+      env.elements.set(`#${id}`, env.elements.get(id));
+    }
+
+    try {
+      const popupCode = fs.readFileSync(path.join(__dirname, '../popup/popup.js'), 'utf8');
+      new Function(popupCode)();
+
+      // Wait microtask for async init() to complete
+      await new Promise(r => setTimeout(r, 10));
+
+      const adblockEl = env.elements.get('adblockEnabled');
+      assert.strictEqual(adblockEl.disabled, true, 'Enterprise policy must disable adblock switch');
+      assert.strictEqual(adblockEl.title, 'Managed by organization policy');
+
+      const prefQualityEl = env.elements.get('preferredQuality');
+      assert.strictEqual(prefQualityEl.disabled, true, 'Enterprise policy must lock preferred quality');
+
+      const dislikesEl = env.elements.get('returnDislikes');
+      assert.strictEqual(dislikesEl.disabled, true, 'Enterprise policy must lock third-party dislike integration');
+    } finally {
+      globalThis.window = origWindow;
+      globalThis.document = origDoc;
+      globalThis.chrome = origChrome;
+    }
+  });
 });

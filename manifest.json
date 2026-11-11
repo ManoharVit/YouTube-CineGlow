@@ -12,10 +12,13 @@
     "scripting"
   ],
   "host_permissions": [
-    "*://*.youtube.com/*",
+    "https://*.youtube.com/*",
     "https://returnyoutubedislikeapi.com/*",
     "https://biggest_bucket.storage.googleapis.com/*"
   ],
+  "storage": {
+    "managed_schema": "managed-schema.json"
+  },
   "background": {
     "service_worker": "background/background.js"
   },

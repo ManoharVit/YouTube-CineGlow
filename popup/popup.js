@@ -318,11 +318,43 @@ function render(settings) {
 
 async function init() {
   let settings = { ...AURA_DEFAULTS };
+  let managedPolicies = null;
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.managed) {
+      managedPolicies = await chrome.storage.managed.get(null).catch(() => null);
+    }
+  } catch (_) {}
+
   try {
     settings = { ...AURA_DEFAULTS, ...(await chrome.storage.sync.get(AURA_DEFAULTS)) };
   } catch (err) {
     console.error('[Aura] Failed to load settings:', err);
   }
+
+  // Enforce enterprise managed policies over user preferences
+  if (managedPolicies && typeof managedPolicies === 'object') {
+    if (managedPolicies.DisableAdBlock) {
+      settings.adblockEnabled = false;
+      if (adblockEnabledEl) {
+        adblockEnabledEl.disabled = true;
+        adblockEnabledEl.title = 'Managed by organization policy';
+      }
+    }
+    if (managedPolicies.DisableThirdPartyAPIs) {
+      settings.returnDislikes = false;
+      settings.restoreAnnotations = false;
+      const rDislikes = document.getElementById('returnDislikes');
+      const rAnno = document.getElementById('restoreAnnotations');
+      if (rDislikes) { rDislikes.disabled = true; rDislikes.title = 'Managed by organization policy'; }
+      if (rAnno) { rAnno.disabled = true; rAnno.title = 'Managed by organization policy'; }
+    }
+    if (managedPolicies.ForceDefaultQuality) {
+      settings.preferredQuality = managedPolicies.ForceDefaultQuality;
+      const prefQ = document.getElementById('preferredQuality');
+      if (prefQ) { prefQ.disabled = true; prefQ.title = 'Managed by organization policy'; }
+    }
+  }
+
   render(settings);
 
   // Dynamically populate version pill from extension manifest
