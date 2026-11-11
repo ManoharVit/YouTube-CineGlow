@@ -425,6 +425,9 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
         _listeners: [],
         addListener(fn) { this._listeners.push(fn); }
       }
+    },
+    runtime: {
+      getManifest: () => ({ version: '2.3.0' })
     }
   };
 

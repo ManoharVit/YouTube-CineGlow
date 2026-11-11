@@ -325,6 +325,17 @@ async function init() {
   }
   render(settings);
 
+  // Dynamically populate version pill from extension manifest
+  try {
+    const versionPill = document.querySelector('.header-version-pill');
+    if (versionPill && typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.getManifest === 'function') {
+      const manifest = chrome.runtime.getManifest();
+      if (manifest && manifest.version) {
+        versionPill.textContent = `v${manifest.version}`;
+      }
+    }
+  } catch (_) {}
+
   // Keep counter updated if ads are blocked while popup is open
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'sync' && changes.adblockCount) {

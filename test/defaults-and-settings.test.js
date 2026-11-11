@@ -168,10 +168,17 @@ describe('Settings Schema & Configuration Integrity', () => {
       env.elements.set(id, env.document.createElement('div'));
       env.elements.set(`#${id}`, env.elements.get(id));
     }
+    const versionPill = env.document.createElement('span');
+    versionPill.textContent = 'v0.0.0';
+    env.elements.set('.header-version-pill', versionPill);
 
     try {
       const popupCode = fs.readFileSync(path.join(__dirname, '../popup/popup.js'), 'utf8');
       new Function(popupCode)();
+
+      // Wait a microtask for async init() to complete
+      await new Promise(r => setTimeout(r, 10));
+      assert.strictEqual(versionPill.textContent, 'v2.3.0', 'Popup version pill must dynamically derive version from extension manifest');
 
       const popup = globalThis.window.CineGlowPopup;
       assert.ok(popup, 'CineGlowPopup must be exposed');

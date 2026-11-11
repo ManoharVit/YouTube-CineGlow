@@ -181,6 +181,8 @@
         };
         window.addEventListener('click', tryResume, { passive: true });
         window.addEventListener('keydown', tryResume, { passive: true });
+        window.addEventListener('pointerdown', tryResume, { passive: true });
+        window.addEventListener('touchstart', tryResume, { passive: true });
       }
 
       if (source) {
@@ -216,6 +218,8 @@
           }
         };
         video.addEventListener('play', tryResume);
+        video.addEventListener('playing', tryResume);
+        video.addEventListener('volumechange', tryResume);
         video._cineGlowResumeAttached = true;
       }
       if (!video.paused && audioCtx.state === 'suspended') {

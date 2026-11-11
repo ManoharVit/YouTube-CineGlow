@@ -202,11 +202,31 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
     globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
 
     const ctx = globalThis.window.CineGlowAudioCtx;
-    ctx.state = 'suspended';
 
-    // Simulate play event
+    // 1. Simulate play event
+    ctx.state = 'suspended';
     video.dispatchEvent(new Event('play'));
     assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on play event');
+
+    // 2. Simulate playing event
+    ctx.state = 'suspended';
+    video.dispatchEvent(new Event('playing'));
+    assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on playing event');
+
+    // 3. Simulate volumechange event
+    ctx.state = 'suspended';
+    video.dispatchEvent(new Event('volumechange'));
+    assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on volumechange event');
+
+    // 4. Simulate window pointerdown event
+    ctx.state = 'suspended';
+    globalThis.window.dispatchEvent(new Event('pointerdown'));
+    assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on window pointerdown event');
+
+    // 5. Simulate window click event
+    ctx.state = 'suspended';
+    globalThis.window.dispatchEvent(new Event('click'));
+    assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on window click event');
   });
 
   test('computeEffectiveGain scales headroom dynamically under high EQ and bass boost at 100% and 300% volume', () => {
