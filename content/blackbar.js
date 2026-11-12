@@ -1,6 +1,7 @@
 /*
  * Aura - Black Bar Detection and Removal (Auto-Crop)
- * Production Architecture: OffscreenCanvas + Web Worker Async Frame Analysis
+ * Production Architecture: OffscreenCanvas + Synchronous Low-Overhead Frame Analysis
+ * Note: Avoids Blob Web Workers to comply strictly with YouTube Content Security Policy (script-src/worker-src).
  */
 (() => {
   'use strict';
@@ -8,10 +9,9 @@
   let settings = { ...AURA_DEFAULTS };
   let video = null;
   let intervalId = null;
-  let worker = null;
   let isKilled = false;
   
-  // Milestone 3 Item 2: Downsampled OffscreenCanvas (64x64) eliminates GPU readback stalls
+  // Downsampled OffscreenCanvas (64x64) eliminates GPU readback stalls
   const SCAN_WIDTH = 64;
   const SCAN_HEIGHT = 64;
   let offscreenCanvas = null;
@@ -30,73 +30,6 @@
   canvas.width = SCAN_WIDTH;
   canvas.height = SCAN_HEIGHT;
   const ctx = offscreenCtx || (canvas.getContext && canvas.getContext('2d', { willReadFrequently: true }));
-
-  // Initialize Web Worker for non-blocking asynchronous pixel analysis
-  if (typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
-    try {
-      const workerBlob = new Blob([`
-        self.onmessage = function(e) {
-          const { buffer, width, height } = e.data;
-          const data = new Uint8ClampedArray(buffer);
-          const threshold = 15;
-          function isBlack(x, y) {
-            const i = (y * width + x) * 4;
-            return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
-          }
-          function isRowBlack(y) {
-            const startX = Math.floor(width * 0.25);
-            const endX = Math.floor(width * 0.75);
-            const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
-            let nonBlack = 0;
-            for (let x = startX; x < endX; x++) {
-              if (!isBlack(x, y)) {
-                nonBlack++;
-                if (nonBlack > tolerance) return false;
-              }
-            }
-            return true;
-          }
-          function isColBlack(x) {
-            const startY = Math.floor(height * 0.25);
-            const endY = Math.floor(height * 0.75);
-            const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
-            let nonBlack = 0;
-            for (let y = startY; y < endY; y++) {
-              if (!isBlack(x, y)) {
-                nonBlack++;
-                if (nonBlack > tolerance) return false;
-              }
-            }
-            return true;
-          }
-          let topBar = height;
-          for (let y = 0; y < height; y++) {
-            if (!isRowBlack(y)) { topBar = y; break; }
-          }
-          let bottomBar = height;
-          for (let y = height - 1; y >= 0; y--) {
-            if (!isRowBlack(y)) { bottomBar = height - 1 - y; break; }
-          }
-          let leftBar = width;
-          for (let x = 0; x < width; x++) {
-            if (!isColBlack(x)) { leftBar = x; break; }
-          }
-          let rightBar = width;
-          for (let x = width - 1; x >= 0; x--) {
-            if (!isColBlack(x)) { rightBar = width - 1 - x; break; }
-          }
-          self.postMessage({ topBar, bottomBar, leftBar, rightBar, width, height });
-        };
-      `], { type: 'application/javascript' });
-      worker = new Worker(URL.createObjectURL(workerBlob));
-      worker.onmessage = (e) => {
-        const { topBar, bottomBar, leftBar, rightBar, width, height } = e.data;
-        calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height);
-      };
-    } catch (_) {
-      worker = null;
-    }
-  }
 
   const STABILITY_REQUIRED = 4;
   let stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -186,7 +119,7 @@
     }
   }
 
-  function processScanFallback(data, width, height) {
+  function processScan(data, width, height) {
     const threshold = 15;
     function isBlack(x, y) {
       const i = (y * width + x) * 4;
@@ -249,12 +182,7 @@
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       if (!imageData || !imageData.data) return;
 
-      if (worker) {
-        const bufferCopy = imageData.data.buffer.slice(0);
-        worker.postMessage({ buffer: bufferCopy, width: canvas.width, height: canvas.height }, [bufferCopy]);
-      } else {
-        processScanFallback(imageData.data, canvas.width, canvas.height);
-      }
+      processScan(imageData.data, canvas.width, canvas.height);
     } catch (err) {
       console.debug('[Aura] BlackBar drawImage failed:', err);
     }
@@ -300,13 +228,6 @@
     resetCrop();
     window.CineGlowCrop = null;
     video = null;
-
-    if (worker) {
-      try {
-        worker.terminate();
-      } catch (_) {}
-      worker = null;
-    }
   }
 
   // Dual listener registration: Direct runtime message + In-tab fallback event
