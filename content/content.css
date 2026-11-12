@@ -121,9 +121,16 @@ html.aura-hide-theater.aura-in-theater #masthead,
 html.aura-hide-theater.aura-theater-mode #masthead-container,
 html.aura-hide-theater.aura-theater-mode ytd-masthead,
 html.aura-hide-theater.aura-theater-mode #masthead,
+html.aura-hide-theater[data-cineglow-theater="true"] #masthead-container,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-masthead,
+html.aura-hide-theater[data-cineglow-theater="true"] #masthead,
+html.aura-hide-theater:has(#player-theater-container #movie_player) #masthead-container,
+html.aura-hide-theater:has(#full-bleed-container #movie_player) #masthead-container,
+html.aura-hide-theater:has(#player-full-bleed-container #movie_player) #masthead-container,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container,
+html.aura-hide-theater:has(ytd-watch-grid[full-bleed-player]:not([fullscreen])) #masthead-container,
 html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container {
   position: fixed !important;
   top: 0 !important;
@@ -131,6 +138,7 @@ html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen]))
   right: 0 !important;
   transform: translateY(-100%) !important;
   opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
   z-index: 2050 !important;
@@ -139,8 +147,14 @@ html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen]))
 html.aura-hide-theater.aura-in-theater,
 html.aura-hide-theater.aura-theater-mode,
 html.aura-hide-theater.aura-in-theater ytd-app,
+html.aura-hide-theater.aura-theater-mode ytd-app,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-app,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])),
-html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) {
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])),
+html.aura-hide-theater:has(ytd-watch-grid[full-bleed-player]:not([fullscreen])),
+html.aura-hide-theater:has(#player-theater-container #movie_player),
+html.aura-hide-theater:has(#full-bleed-container #movie_player),
+html.aura-hide-theater:has(#player-full-bleed-container #movie_player) {
   --ytd-masthead-height: 0px !important;
 }
 
@@ -157,19 +171,28 @@ html.aura-hide-theater.aura-theater-mode #masthead:hover,
 html.aura-hide-theater.aura-theater-mode #masthead-container:focus-within,
 html.aura-hide-theater.aura-theater-mode ytd-masthead:focus-within,
 html.aura-hide-theater.aura-theater-mode #masthead:focus-within,
+html.aura-hide-theater[data-cineglow-theater="true"] #masthead-container:hover,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-masthead:hover,
+html.aura-hide-theater[data-cineglow-theater="true"] #masthead:hover,
+html.aura-hide-theater[data-cineglow-theater="true"] #masthead-container:focus-within,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-masthead:focus-within,
+html.aura-hide-theater[data-cineglow-theater="true"] #masthead:focus-within,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container:hover,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container:hover,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container:hover,
+html.aura-hide-theater:has(ytd-watch-grid[full-bleed-player]:not([fullscreen])) #masthead-container:hover,
 html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container:hover,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container:focus-within,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container:focus-within,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container:focus-within,
+html.aura-hide-theater:has(ytd-watch-grid[full-bleed-player]:not([fullscreen])) #masthead-container:focus-within,
 html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container:focus-within,
 html.aura-hide-theater.aura-theater-reveal-top #masthead-container,
 html.aura-hide-theater.aura-theater-reveal-top ytd-masthead,
 html.aura-hide-theater.aura-theater-reveal-top #masthead {
   transform: translateY(0) !important;
   opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: auto !important;
 }
 
@@ -177,23 +200,45 @@ html.aura-hide-theater.aura-in-theater ytd-page-manager,
 html.aura-hide-theater.aura-in-theater #page-manager,
 html.aura-hide-theater.aura-theater-mode ytd-page-manager,
 html.aura-hide-theater.aura-theater-mode #page-manager,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-page-manager,
+html.aura-hide-theater[data-cineglow-theater="true"] #page-manager,
+html.aura-hide-theater:has(#player-theater-container #movie_player) ytd-page-manager,
+html.aura-hide-theater:has(#full-bleed-container #movie_player) ytd-page-manager,
+html.aura-hide-theater:has(#player-full-bleed-container #movie_player) ytd-page-manager,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) ytd-page-manager,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) ytd-page-manager,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) ytd-page-manager,
+html.aura-hide-theater:has(ytd-watch-grid[full-bleed-player]:not([fullscreen])) ytd-page-manager,
 html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) ytd-page-manager {
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
 
+html.aura-hide-theater.aura-in-theater ytd-watch-flexy,
+html.aura-hide-theater.aura-in-theater ytd-watch-grid,
+html.aura-hide-theater.aura-theater-mode ytd-watch-flexy,
+html.aura-hide-theater.aura-theater-mode ytd-watch-grid,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-watch-flexy,
+html.aura-hide-theater[data-cineglow-theater="true"] ytd-watch-grid,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]),
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]),
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]),
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]),
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) {
   padding-top: 0 !important;
   margin-bottom: 0 !important;
 }
 
 /* Center theater player container to full viewport height for true cinema centering */
+html.aura-hide-theater.aura-in-theater #full-bleed-container,
+html.aura-hide-theater.aura-in-theater #player-full-bleed-container,
+html.aura-hide-theater.aura-in-theater #player-theater-container,
+html.aura-hide-theater.aura-theater-mode #full-bleed-container,
+html.aura-hide-theater.aura-theater-mode #player-full-bleed-container,
+html.aura-hide-theater.aura-theater-mode #player-theater-container,
+html.aura-hide-theater[data-cineglow-theater="true"] #full-bleed-container,
+html.aura-hide-theater[data-cineglow-theater="true"] #player-full-bleed-container,
+html.aura-hide-theater[data-cineglow-theater="true"] #player-theater-container,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #full-bleed-container,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #full-bleed-container,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #player-full-bleed-container,
@@ -203,12 +248,16 @@ html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #pl
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #movie_player,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #movie_player,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #full-bleed-container,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) #full-bleed-container,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #full-bleed-container,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #player-full-bleed-container,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) #player-full-bleed-container,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #player-full-bleed-container,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #player-container,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) #player-container,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #player-container,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #movie_player,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) #movie_player,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #movie_player {
   height: 100vh !important;
   height: 100% !important;
@@ -218,9 +267,13 @@ html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #mov
 }
 
 /* Ensure the video container spans 100% of the player in theater mode */
+html.aura-hide-theater.aura-in-theater .html5-video-container,
+html.aura-hide-theater.aura-theater-mode .html5-video-container,
+html.aura-hide-theater[data-cineglow-theater="true"] .html5-video-container,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) .html5-video-container,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) .html5-video-container,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) .html5-video-container,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) .html5-video-container {
   width: 100% !important;
   height: 100% !important;
@@ -230,13 +283,21 @@ html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) .htm
 }
 
 /* Pure percentage-based centering (50% / -50%) across all screen resolutions, laptops & tabs */
+html.aura-hide-theater.aura-in-theater .html5-video-container video.html5-main-video,
+html.aura-hide-theater.aura-theater-mode .html5-video-container video.html5-main-video,
+html.aura-hide-theater[data-cineglow-theater="true"] .html5-video-container video.html5-main-video,
+html.aura-hide-theater.aura-in-theater video.html5-main-video,
+html.aura-hide-theater.aura-theater-mode video.html5-main-video,
+html.aura-hide-theater[data-cineglow-theater="true"] video.html5-main-video,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) .html5-video-container video.html5-main-video,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container video.html5-main-video,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) video.html5-main-video,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) .html5-video-container video.html5-main-video,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) .html5-video-container video.html5-main-video,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) .html5-video-container video.html5-main-video,
 html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater ytd-watch-grid[full-bleed-player]:not([fullscreen]) video.html5-main-video,
 html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) video.html5-main-video {
   position: absolute !important;
   top: 50% !important;

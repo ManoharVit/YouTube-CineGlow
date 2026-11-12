@@ -413,34 +413,55 @@
   function updateTheaterMasthead() {
     if (isKilled || !document.documentElement) return;
     const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
-    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : document.documentElement.classList.contains('aura-in-theater');
+    const isTheater = window.CineGlowPlayer
+      ? window.CineGlowPlayer.isTheater
+      : (document.documentElement.classList.contains('aura-in-theater') || document.documentElement.hasAttribute('data-cineglow-theater'));
     const isFullscreen = window.CineGlowPlayer ? window.CineGlowPlayer.isFullscreen : !!document.fullscreenElement;
     const shouldHide = !!(settings.hideInTheater && isWatch && isTheater && !isFullscreen);
 
     document.documentElement.classList.toggle('aura-in-theater', shouldHide);
     document.documentElement.classList.toggle('aura-theater-mode', shouldHide);
 
-    const masthead = document.querySelector('#masthead-container, ytd-masthead');
-    if (masthead) {
+    const mastheads = document.querySelectorAll('#masthead-container, ytd-masthead, #masthead');
+    mastheads.forEach((el) => {
       if (shouldHide && !document.documentElement.classList.contains('aura-theater-reveal-top')) {
-        masthead.style.setProperty('transform', 'translateY(-100%)', 'important');
-        masthead.style.setProperty('opacity', '0', 'important');
-        masthead.style.setProperty('pointer-events', 'none', 'important');
+        el.style.setProperty('transform', 'translateY(-100%)', 'important');
+        el.style.setProperty('opacity', '0', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
       } else {
-        masthead.style.removeProperty('transform');
-        masthead.style.removeProperty('opacity');
-        masthead.style.removeProperty('pointer-events');
+        el.style.removeProperty('transform');
+        el.style.removeProperty('opacity');
+        el.style.removeProperty('visibility');
+        el.style.removeProperty('pointer-events');
+      }
+    });
+
+    const pageManagers = document.querySelectorAll('ytd-page-manager, #page-manager');
+    pageManagers.forEach((el) => {
+      if (shouldHide) {
+        el.style.setProperty('margin-top', '0px', 'important');
+        el.style.setProperty('padding-top', '0px', 'important');
+      } else {
+        el.style.removeProperty('margin-top');
+        el.style.removeProperty('padding-top');
+      }
+    });
+
+    const app = document.querySelector('ytd-app');
+    if (app?.style) {
+      if (shouldHide) {
+        app.style.setProperty('--ytd-masthead-height', '0px', 'important');
+      } else {
+        app.style.removeProperty('--ytd-masthead-height');
       }
     }
 
-    const pageManager = document.querySelector('ytd-page-manager, #page-manager');
-    if (pageManager) {
+    if (document.documentElement?.style) {
       if (shouldHide) {
-        pageManager.style.setProperty('margin-top', '0px', 'important');
-        pageManager.style.setProperty('padding-top', '0px', 'important');
+        document.documentElement.style.setProperty('--ytd-masthead-height', '0px', 'important');
       } else {
-        pageManager.style.removeProperty('margin-top');
-        pageManager.style.removeProperty('padding-top');
+        document.documentElement.style.removeProperty('--ytd-masthead-height');
       }
     }
   }
@@ -534,20 +555,27 @@
       if (document.documentElement.style?.removeProperty) {
         document.documentElement.style.removeProperty('--aura-opacity');
         document.documentElement.style.removeProperty('--aura-fade');
+        document.documentElement.style.removeProperty('--ytd-masthead-height');
       }
     }
 
-    const masthead = document.querySelector('#masthead-container, ytd-masthead');
-    if (masthead) {
-      masthead.style.removeProperty('transform');
-      masthead.style.removeProperty('opacity');
-      masthead.style.removeProperty('pointer-events');
+    const app = document.querySelector('ytd-app');
+    if (app?.style?.removeProperty) {
+      app.style.removeProperty('--ytd-masthead-height');
     }
-    const pageManager = document.querySelector('ytd-page-manager, #page-manager');
-    if (pageManager) {
-      pageManager.style.removeProperty('margin-top');
-      pageManager.style.removeProperty('padding-top');
-    }
+
+    const mastheads = document.querySelectorAll('#masthead-container, ytd-masthead, #masthead');
+    mastheads.forEach((el) => {
+      el.style.removeProperty('transform');
+      el.style.removeProperty('opacity');
+      el.style.removeProperty('visibility');
+      el.style.removeProperty('pointer-events');
+    });
+    const pageManagers = document.querySelectorAll('ytd-page-manager, #page-manager');
+    pageManagers.forEach((el) => {
+      el.style.removeProperty('margin-top');
+      el.style.removeProperty('padding-top');
+    });
 
     // 5. Restore video filters & unregister video listeners
     const currentVideo = video || (window.CineGlowPlayer ? window.CineGlowPlayer.video : null);

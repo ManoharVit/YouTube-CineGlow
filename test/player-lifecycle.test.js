@@ -228,9 +228,58 @@ describe('PlayerManager Lifecycle & State Tracking', () => {
     watchGrid.setAttribute('theater', '');
     pm.checkState();
     assert.strictEqual(pm.isTheater, true);
+    assert.strictEqual(globalThis.document.documentElement.classList.contains('aura-in-theater'), true);
+    assert.strictEqual(globalThis.document.documentElement.getAttribute('data-cineglow-theater'), 'true');
 
     // Remove theater attribute
     watchGrid.removeAttribute('theater');
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, false);
+    assert.strictEqual(globalThis.document.documentElement.classList.contains('aura-in-theater'), false);
+    assert.strictEqual(globalThis.document.documentElement.hasAttribute('data-cineglow-theater'), false);
+  });
+
+  test('detects theater mode via full-bleed and theater containers, size button, and structural columns check', () => {
+    const pm = loadPlayerManager();
+    const watchFlexy = new MockElement('ytd-watch-flexy');
+    const player = new MockElement('div', { id: 'movie_player' });
+    const fullBleed = new MockElement('div', { id: 'full-bleed-container' });
+    const theaterContainer = new MockElement('div', { id: 'player-theater-container' });
+    const sizeBtn = new MockElement('button', { class: 'ytp-size-button' });
+    const columns = new MockElement('div', { id: 'columns' });
+
+    env.elements.set('ytd-watch-flexy', watchFlexy);
+    env.elements.set('#movie_player', player);
+
+    // 1. Full bleed container holding movie_player
+    env.elements.set('#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player', player);
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, true);
+
+    // Reset container
+    env.elements.delete('#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player');
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, false);
+
+    // 2. Size button tooltip indicating default view (theater mode active)
+    sizeBtn.setAttribute('title', 'Default view (t)');
+    env.elements.set('.ytp-size-button', sizeBtn);
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, true);
+
+    // Reset size button
+    env.elements.delete('.ytp-size-button');
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, false);
+
+    // 3. Structural column exclusion check (player is outside #columns)
+    columns.contains = (el) => el !== player;
+    env.elements.set('#columns', columns);
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, true);
+
+    // Inside columns -> standard layout
+    columns.contains = (el) => el === player;
     pm.checkState();
     assert.strictEqual(pm.isTheater, false);
   });

@@ -64,15 +64,21 @@
       document.addEventListener('visibilitychange', handleEvent);
       document.addEventListener('click', (e) => {
         if (e.target?.closest?.('.ytp-size-button')) {
-          setTimeout(handleEvent, 80);
+          setTimeout(handleEvent, 50);
+          setTimeout(handleEvent, 150);
           setTimeout(handleEvent, 350);
+          setTimeout(handleEvent, 600);
         }
       }, { passive: true });
       document.addEventListener('keydown', (e) => {
         if (e.key === 't' || e.key === 'T') {
-          setTimeout(handleEvent, 120);
+          setTimeout(handleEvent, 50);
+          setTimeout(handleEvent, 150);
+          setTimeout(handleEvent, 350);
+          setTimeout(handleEvent, 600);
         }
       }, { passive: true });
+      document.addEventListener('yt-action', handleEvent, { passive: true });
     }
 
     checkState() {
@@ -91,11 +97,22 @@
         isTheater = watchFlexy.hasAttribute('theater') ||
                     watchFlexy.hasAttribute('theater-requested_') ||
                     watchFlexy.hasAttribute('full-bleed-player') ||
-                    watchFlexy.classList.contains('theater');
+                    watchFlexy.hasAttribute('full-bleed') ||
+                    watchFlexy.classList.contains('theater') ||
+                    watchFlexy.classList.contains('theater-mode') ||
+                    watchFlexy.classList.contains('full-bleed-player');
       }
       if (!isTheater && isWatchPage && !isFullscreen) {
-        const fullBleed = document.querySelector('#full-bleed-container #movie_player, #player-full-bleed-container #movie_player');
+        const fullBleed = document.querySelector(
+          '#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player'
+        );
         if (fullBleed) {
+          isTheater = true;
+        }
+      }
+      if (!isTheater && isWatchPage && !isFullscreen && !isMiniplayer && player) {
+        const columns = document.querySelector('#columns');
+        if (columns && !columns.contains(player)) {
           isTheater = true;
         }
       }
@@ -111,7 +128,7 @@
       if (!isTheater && isWatchPage && !isFullscreen && player && typeof window !== 'undefined' && window.innerWidth > 0) {
         try {
           const rect = player.getBoundingClientRect();
-          if (rect.width >= window.innerWidth * 0.92) {
+          if (rect.width >= window.innerWidth * 0.90) {
             isTheater = true;
           }
         } catch (_) {}
@@ -145,13 +162,21 @@
       if (document.documentElement) {
         document.documentElement.classList.toggle('aura-in-theater', inTheaterMode);
         document.documentElement.classList.toggle('aura-theater-mode', inTheaterMode);
+        if (inTheaterMode) {
+          document.documentElement.setAttribute('data-cineglow-theater', 'true');
+        } else {
+          document.documentElement.removeAttribute('data-cineglow-theater');
+        }
       }
 
       if (this.watchFlexy !== watchFlexy) {
         this.watchFlexy = watchFlexy;
         this.watchFlexyObserver.disconnect();
         if (watchFlexy) {
-          this.watchFlexyObserver.observe(watchFlexy, { attributes: true, attributeFilter: ['theater', 'theater-requested_'] });
+          this.watchFlexyObserver.observe(watchFlexy, {
+            attributes: true,
+            attributeFilter: ['theater', 'theater-requested_', 'full-bleed-player', 'full-bleed', 'class', 'style', 'default-layout']
+          });
         }
       }
       
@@ -161,6 +186,15 @@
         if (app) {
           this.appObserver.observe(app, { attributes: true, attributeFilter: ['miniplayer-is-active'] });
         }
+      }
+
+      if (typeof ResizeObserver !== 'undefined' && player && this.playerResizeTarget !== player) {
+        if (this.playerResizeObserver) {
+          this.playerResizeObserver.disconnect();
+        }
+        this.playerResizeTarget = player;
+        this.playerResizeObserver = new ResizeObserver(() => this.checkState());
+        this.playerResizeObserver.observe(player);
       }
 
       if (this.player !== player || this.video !== video) {
@@ -228,6 +262,7 @@
       if (this.playerObserver) { this.playerObserver.disconnect(); this.playerObserver = null; }
       if (this.appObserver) { this.appObserver.disconnect(); this.appObserver = null; }
       if (this.watchFlexyObserver) { this.watchFlexyObserver.disconnect(); this.watchFlexyObserver = null; }
+      if (this.playerResizeObserver) { this.playerResizeObserver.disconnect(); this.playerResizeObserver = null; this.playerResizeTarget = null; }
 
       // 3. Detach video listeners
       if (this.video) {

@@ -83,15 +83,47 @@
     } catch (e) {}
   }
 
+  function syncTheaterState() {
+    if (isKilled) return;
+    try {
+      const watchFlexy = document.querySelector('ytd-watch-flexy, ytd-watch-grid');
+      const isTheater = !!(
+        watchFlexy && (
+          watchFlexy.theater ||
+          watchFlexy.theaterRequested_ ||
+          watchFlexy.hasAttribute('theater') ||
+          watchFlexy.hasAttribute('full-bleed-player')
+        )
+      );
+      if (document.documentElement) {
+        if (isTheater) {
+          document.documentElement.setAttribute('data-cineglow-theater', 'true');
+        } else if (!document.documentElement.classList.contains('aura-in-theater')) {
+          document.documentElement.removeAttribute('data-cineglow-theater');
+        }
+      }
+    } catch (_) {}
+  }
+
   function teardownMainWorld() {
     if (isKilled) return;
     isKilled = true;
     window.removeEventListener('message', handleQualityMessage);
     window.removeEventListener('message', handleStatsMessage);
+    document.removeEventListener('yt-action', syncTheaterState);
+    document.removeEventListener('yt-navigate-finish', syncTheaterState);
   }
 
   window.addEventListener('message', handleQualityMessage);
   window.addEventListener('message', handleStatsMessage);
+  document.addEventListener('yt-action', syncTheaterState, { passive: true });
+  document.addEventListener('yt-navigate-finish', syncTheaterState, { passive: true });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 't' || e.key === 'T') {
+      setTimeout(syncTheaterState, 80);
+      setTimeout(syncTheaterState, 350);
+    }
+  }, { passive: true });
 
   window.addEventListener('cineglow:kill-switch', () => {
     teardownMainWorld();
