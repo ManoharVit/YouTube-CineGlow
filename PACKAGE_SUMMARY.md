@@ -5,7 +5,7 @@
 **Package Archive:** [`YouTube-CineGlow-v2.4.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.4.0.zip)  
 **Package Size:** `135 KB`  
 **File Count:** 45 entries (39 files, 6 directories)  
-**SHA-256 Checksum:** `abdab73d5e1fcfdb1eac49f58fbcd694756857f484dc94876454268dd5ce6cb2`  
+**SHA-256 Checksum:** `15608735746af5e58a3c2a1b610ce359fd1e4cf9b12670372247bbad2b09e918`  
 **Last Updated:** November 12, 2026  
 
 ---

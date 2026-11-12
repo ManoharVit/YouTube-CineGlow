@@ -249,17 +249,17 @@
 
       const isAd = isAdActive();
 
-      // 1. Click the active skip button (resolving to child button if container element is matched)
+      // 1. Click the active skip button
       const now = Date.now();
-      if (now - lastSkipButtonClickTime > 200) {
+      if (now - lastSkipButtonClickTime > 150) {
         let btn = document.querySelector(SKIP_BUTTON_SELECTOR);
-        if (btn && btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
-          const childBtn = btn.querySelector('button, [role="button"]');
-          if (childBtn) btn = childBtn;
-        }
         if (btn) {
           lastSkipButtonClickTime = now;
           try {
+            if (btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
+              const childBtn = btn.querySelector('button, [role="button"]');
+              if (childBtn) childBtn.click();
+            }
             btn.click();
           } catch (_) {}
         }
@@ -290,10 +290,8 @@
           video.currentTime = 99999;
         }
 
-        if (Date.now() - lastAdSkipTime > 2500) {
-          safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
+        safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
           lastAdSkipTime = Date.now();
-        }
       } else if (!isAd && video) {
         // Ad finished — restore audio and user's playback speed ONLY on the element we modified
         restoreModifiedPlaybackState(video);
@@ -339,7 +337,7 @@
     if (isAd) {
       skipVideoAds();
       if (!adSkipTimer) {
-        adSkipTimer = setInterval(skipVideoAds, 250);
+        adSkipTimer = setInterval(skipVideoAds, 50);
         if (adSkipTimer && typeof adSkipTimer === 'object' && typeof adSkipTimer.unref === 'function') {
           adSkipTimer.unref();
         }

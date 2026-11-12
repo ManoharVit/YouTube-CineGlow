@@ -32,29 +32,33 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     globalThis.chrome = originalChrome;
   });
 
-  test('rules/adblock.json conforms to DNR schema and never blocks YouTube canary pings', () => {
+  test('rules/adblock.json conforms to DNR schema and blocks ad tracking endpoints aggressively', () => {
     const raw = fs.readFileSync(path.join(__dirname, '../rules/adblock.json'), 'utf8');
     const rules = JSON.parse(raw);
 
     assert.ok(Array.isArray(rules), 'Rules must be an array');
     assert.ok(rules.length > 0, 'Rules must not be empty');
 
+    // Verify ad tracking endpoints ARE blocked (aggressive Brave-style blocking)
     const blockedUrls = rules.map(r => r.condition?.urlFilter || '');
     assert.strictEqual(
-      blockedUrls.some(u => u.includes('youtube.com/api/stats/ads')),
-      false,
-      'rules/adblock.json must NOT block youtube.com/api/stats/ads as this triggers YouTube anti-adblock lockdown'
+      blockedUrls.some(u => u.includes('doubleclick.net')),
+      true,
+      'rules/adblock.json must block doubleclick.net'
+    );
+    assert.strictEqual(
+      blockedUrls.some(u => u.includes('googlesyndication.com')),
+      true,
+      'rules/adblock.json must block googlesyndication.com'
     );
 
-    // Ensure all third-party ad network rules exclude youtube.com as initiator domain
+    // Verify all rules have valid structure
     for (const rule of rules) {
       assert.strictEqual(rule.action.type, 'block');
-      assert.ok(rule.condition.resourceTypes && rule.condition.resourceTypes.length > 0);
-      assert.ok(
-        Array.isArray(rule.condition.excludedInitiatorDomains) &&
-        rule.condition.excludedInitiatorDomains.includes('youtube.com'),
-        `Rule ${rule.id} (${rule.condition.urlFilter}) must exclude youtube.com from initiatorDomains to prevent ERR_BLOCKED_BY_CLIENT`
-      );
+      assert.ok(rule.condition.resourceTypes && rule.condition.resourceTypes.length > 0,
+        `Rule ${rule.id} (${rule.condition.urlFilter}) must specify resourceTypes`);
+      assert.ok(typeof rule.id === 'number', `Rule must have numeric id`);
+      assert.ok(typeof rule.condition.urlFilter === 'string', `Rule ${rule.id} must have urlFilter string`);
     }
   });
 
