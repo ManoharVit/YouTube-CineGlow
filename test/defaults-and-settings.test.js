@@ -75,6 +75,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(d.removeBlackBars, true);
     assert.strictEqual(d.ultrawideZoom, false);
     assert.strictEqual(d.lightsOut, false);
+    assert.strictEqual(d.lightsOutOpacity, 85);
     assert.strictEqual(d.videoBrightness, 100);
     assert.strictEqual(d.videoContrast, 100);
     assert.strictEqual(d.videoSepia, 0);
@@ -82,6 +83,8 @@ describe('Settings Schema & Configuration Integrity', () => {
     // Tools & Enhancements
     assert.strictEqual(d.adblockEnabled, true);
     assert.strictEqual(d.statsEnabled, false);
+    assert.strictEqual(d.abLoopEnabled, false);
+    assert.strictEqual(d.abLoopAutoClear, false);
     assert.strictEqual(d.returnDislikes, false);
     assert.strictEqual(d.restoreAnnotations, false);
     assert.strictEqual(d.hideShorts, false);

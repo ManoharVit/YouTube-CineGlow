@@ -301,10 +301,11 @@
     if (hudEl) {
       const fmt = (activeRecordingFormat || currentFormat).toUpperCase();
       const fps = activeRecordingFps || currentFps;
+      const audioLabel = activeStream && activeStream.getAudioTracks().length > 0 ? 'AUDIO' : 'NO AUDIO';
       hudEl.innerHTML = `
         <span class="cineglow-rec-dot"></span>
         <span class="cineglow-rec-hud-text">REC ${formatTime(elapsedSec)}</span>
-        <span class="cineglow-rec-badge-tag">${fmt} • ${fps} FPS</span>
+        <span class="cineglow-rec-badge-tag">${fmt} • ${fps} FPS • ${audioLabel}</span>
       `;
     }
   }

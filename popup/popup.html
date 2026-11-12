@@ -20,7 +20,7 @@
       </div>
     </div>
     <div class="header-right">
-      <span class="header-version-pill">v2.3.0</span>
+      <span class="header-version-pill">v2.4.0</span>
     </div>
   </header>
 
@@ -329,12 +329,23 @@
         <div class="control-row">
           <div class="row-info">
             <span class="row-title" id="lightsOutTitle">Lights Out Cinema Mode</span>
-            <span class="row-desc">Dim the page around the video</span>
+            <span class="row-desc">Dim the page around the video (Shift+D)</span>
           </div>
           <label class="switch modern-switch" for="lightsOut">
             <input type="checkbox" id="lightsOut" aria-labelledby="lightsOutTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
+        </div>
+
+        <div class="control-row" id="lightsOutOpacityRow">
+          <div class="row-info">
+            <span class="row-title" id="lightsOutOpacityTitle">Dimming Intensity</span>
+            <span class="row-desc">Ambient page opacity</span>
+          </div>
+          <div class="slider-control">
+            <input type="range" id="lightsOutOpacity" min="50" max="100" step="5" value="85" aria-labelledby="lightsOutOpacityTitle">
+            <span class="slider-val" id="lightsOutOpacityVal">85%</span>
+          </div>
         </div>
 
         <div class="section-footer-row">
@@ -559,6 +570,17 @@
           </div>
           <label class="switch modern-switch" for="restoreAnnotations">
             <input type="checkbox" id="restoreAnnotations" aria-labelledby="annotationsTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title" id="abLoopTitle">A-B Section Looper</span>
+            <span class="row-desc">Loop video segment ([ Set A, ] Set B, \ Toggle)</span>
+          </div>
+          <label class="switch modern-switch" for="abLoopEnabled">
+            <input type="checkbox" id="abLoopEnabled" aria-labelledby="abLoopTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>

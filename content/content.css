@@ -207,7 +207,14 @@ html.aura-adblock .ytp-shopping-button {
   display: none !important;
 }
 
-/* Lights Out Mode: fade out UI during playback */
+/* Lights Out Mode: fade out UI during playback with dynamic opacity */
+html.aura-lights-out-active #masthead-container,
+html.aura-lights-out-active #secondary,
+html.aura-lights-out-active #related,
+html.aura-lights-out-active #below,
+html.aura-lights-out-active #chat-container,
+html.aura-lights-out-active #panels,
+html.aura-lights-out-active ytd-engagement-panel-section-list-renderer,
 html.aura-lights-out.aura-playing #masthead-container,
 html.aura-lights-out.aura-playing #secondary,
 html.aura-lights-out.aura-playing #related,
@@ -215,10 +222,17 @@ html.aura-lights-out.aura-playing #below,
 html.aura-lights-out.aura-playing #chat-container,
 html.aura-lights-out.aura-playing #panels,
 html.aura-lights-out.aura-playing ytd-engagement-panel-section-list-renderer {
-  opacity: 0 !important;
+  opacity: var(--cineglow-dim-opacity, 0.15) !important;
   transition: opacity 0.4s ease !important;
 }
 
+html.aura-lights-out-active #masthead-container:hover,
+html.aura-lights-out-active #secondary:hover,
+html.aura-lights-out-active #related:hover,
+html.aura-lights-out-active #below:hover,
+html.aura-lights-out-active #chat-container:hover,
+html.aura-lights-out-active #panels:hover,
+html.aura-lights-out-active ytd-engagement-panel-section-list-renderer:hover,
 html.aura-lights-out.aura-playing #masthead-container:hover,
 html.aura-lights-out.aura-playing #secondary:hover,
 html.aura-lights-out.aura-playing #related:hover,

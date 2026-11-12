@@ -121,6 +121,9 @@ const enableInPiPEl = document.getElementById('enableInPiP');
 const removeBlackBarsEl = document.getElementById('removeBlackBars');
 const audioReactiveEl = document.getElementById('audioReactive');
 const lightsOutEl = document.getElementById('lightsOut');
+const lightsOutOpacityEl = document.getElementById('lightsOutOpacity');
+const lightsOutOpacityValEl = document.getElementById('lightsOutOpacityVal');
+const abLoopEnabledEl = document.getElementById('abLoopEnabled');
 const ultrawideZoomEl = document.getElementById('ultrawideZoom');
 const glowTopEl = document.getElementById('glowTop');
 const glowRightEl = document.getElementById('glowRight');
@@ -145,9 +148,9 @@ const audioResetEl = document.getElementById('audioReset');
 const toolsResetEl = document.getElementById('toolsReset');
 
 const GLOW_KEYS = ['opacity', 'spread', 'smoothness', 'blur', 'saturation', 'contrast', 'brightness', 'fadeInDuration', 'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'enableInPiP', 'audioReactive', 'fps'];
-const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'videoBrightness', 'videoContrast', 'videoSepia', 'removeBlackBars', 'ultrawideZoom', 'lightsOut'];
+const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'videoBrightness', 'videoContrast', 'videoSepia', 'removeBlackBars', 'ultrawideZoom', 'lightsOut', 'lightsOutOpacity'];
 const AUDIO_KEYS = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset'];
-const TOOLS_KEYS = ['adblockEnabled', 'statsEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
+const TOOLS_KEYS = ['adblockEnabled', 'statsEnabled', 'abLoopEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
 
 async function save(partial) {
   try {
@@ -295,6 +298,11 @@ function render(settings) {
   removeBlackBarsEl.checked = settings.removeBlackBars;
   audioReactiveEl.checked = settings.audioReactive;
   lightsOutEl.checked = settings.lightsOut;
+  if (lightsOutOpacityEl) {
+    lightsOutOpacityEl.value = settings.lightsOutOpacity ?? 85;
+    if (lightsOutOpacityValEl) lightsOutOpacityValEl.textContent = (settings.lightsOutOpacity ?? 85) + '%';
+  }
+  if (abLoopEnabledEl) abLoopEnabledEl.checked = !!settings.abLoopEnabled;
   ultrawideZoomEl.checked = settings.ultrawideZoom;
   glowTopEl.classList.toggle('active', settings.glowTop);
   glowRightEl.classList.toggle('active', settings.glowRight);
@@ -681,6 +689,20 @@ async function init() {
   lightsOutEl.addEventListener('change', async () => {
     await save({ lightsOut: lightsOutEl.checked });
   });
+
+  if (lightsOutOpacityEl) {
+    lightsOutOpacityEl.addEventListener('input', () => {
+      const val = Number(lightsOutOpacityEl.value);
+      if (lightsOutOpacityValEl) lightsOutOpacityValEl.textContent = val + '%';
+      queueSave('lightsOutOpacity', val);
+    });
+  }
+
+  if (abLoopEnabledEl) {
+    abLoopEnabledEl.addEventListener('change', async () => {
+      await save({ abLoopEnabled: abLoopEnabledEl.checked });
+    });
+  }
 
   ultrawideZoomEl.addEventListener('change', async () => {
     await save({ ultrawideZoom: ultrawideZoomEl.checked });

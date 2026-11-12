@@ -1,11 +1,11 @@
-# Chrome Web Store Package Summary — CineGlow Pro for YouTube v2.3.0
+# Chrome Web Store Package Summary — CineGlow Pro for YouTube v2.4.0
 
-**Release Version:** `2.3.0`  
+**Release Version:** `2.4.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
-**Package Archive:** [`YouTube-CineGlow-v2.3.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.3.0.zip)  
-**Package Size:** `125 KB`  
-**File Count:** 43 entries (37 files, 6 directories)  
-**SHA-256 Checksum:** `5f379d7f9ba63f3732fc7a180f533d9244481aabcefc31dca0d8142633f3346b`  
+**Package Archive:** [`YouTube-CineGlow-v2.4.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.4.0.zip)  
+**Package Size:** `135 KB`  
+**File Count:** 45 entries (39 files, 6 directories)  
+**SHA-256 Checksum:** `fcfd3e7a4537e25d44ca1e4eb662eab0553b7d96e590ca17d01ab5419d5d54b2`  
 **Last Updated:** November 12, 2026  
 
 ---
@@ -17,7 +17,7 @@
 |---|---|---|
 | **Extension Name** | `CineGlow Pro for YouTube` | Max 45 chars (Current: 24 chars) |
 | **Short Name** | `CineGlow Pro` | Max 12 chars (Current: 12 chars) |
-| **Version** | `2.3.0` | Matches `manifest.json` & `package.json` |
+| **Version** | `2.4.0` | Matches `manifest.json` & `package.json` |
 | **Category** | `Photos` / `Accessibility` | Single primary category |
 | **Primary Language** | `English` | |
 
@@ -38,20 +38,15 @@ Customise YouTube viewing with ambient lighting and related playback, audio, dis
 
 ---
 
-## 2. Release Notes / "What's New in v2.3.0" (for Reviewers & Users)
+## 2. Release Notes / "What's New in v2.4.0" (for Reviewers & Users)
 
 ```text
-Version 2.3.0:
-• Updated extension name to "CineGlow Pro for YouTube" to comply strictly with Chrome Web Store trademark policies.
-• Removed unused downloads permission and internal video streaming host permissions to adhere to minimum privilege.
-• Refined video ad controller to preserve user-muted video preferences, bound unmuting strictly to modified video elements, and restore playback speed/mute when AdBlock is disabled mid-ad.
-• Added dynamic audio headroom scaling across all volume levels when heavy EQ or bass boost is applied to prevent distortion.
-• Fixed Web Audio node retention so re-navigating to an existing video element seamlessly reconnects its audio source.
-• Fixed classic annotations to default to disabled and load settings prior to initializing or dispatching network requests.
-• Aligned Auto-HD quality defaults with shared configuration so HD resolution is active on fresh installs.
-• Enhanced video recording lifecycle to capture recording format settings at start, derive extensions from actual containers, and prevent mid-recording format mislabeling.
-• Added a 550ms trailing-edge throttle to popup settings sync, and cancelled pending writes on section resets to guarantee default preservation.
-• Corrected accessibility label attributes across settings toggles for seamless screen reader navigation.
+Version 2.4.0:
+• Interactive A-B Section Looper: Continuous loop repeat for any segment with an on-player glassmorphic Shadow DOM HUD, timeline progress bar range overlay, and keyboard shortcuts ([ to set A, ] to set B, \ to toggle, and Esc/Backspace to clear).
+• Cinema Lights Out & Ambient Focus Dimmer: Enhanced cinema dimming with dynamic opacity slider (50% to 100%), hover reveal with 2.5s idle timeout, and Shift+D hotkey toggle.
+• Recording HUD Audio Status: Live audio track detection displaying AUDIO or NO AUDIO status tag during screen capture.
+• Enhanced CSS Custom Properties: Dynamic --cineglow-dim-opacity CSS variable binding for fluid page dimming transitions.
+• Storage Quota Optimization: 550ms trailing-edge sync throttle with instant cancellation on section resets.
 ```
 
 ---

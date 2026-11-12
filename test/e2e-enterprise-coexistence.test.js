@@ -1938,10 +1938,10 @@ describe('Tier 2: Boundary & Corner Cases (70 Tests)', () => {
     });
 
     test('T2-F11-04: CRX Package Hash Integrity & Tamper Check', () => {
-      const zipPath = path.join(REPO_ROOT, 'YouTube-CineGlow-v2.3.0.zip');
+      const zipPath = path.join(REPO_ROOT, 'YouTube-CineGlow-v2.4.0.zip');
       const buffer = fs.readFileSync(zipPath);
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      assert.strictEqual(hash, '952f1d5614bdb94a5042c096e812db21c020561fbe821a2b07128d275b616d33');
+      assert.strictEqual(hash, 'fcfd3e7a4537e25d44ca1e4eb662eab0553b7d96e590ca17d01ab5419d5d54b2');
     });
 
     test('T2-F11-05: Production Code Console Log Sanitization', () => {

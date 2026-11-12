@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "CineGlow Pro for YouTube",
   "short_name": "CineGlow Pro",
-  "version": "2.3.0",
-  "version_name": "2.3.0 Pro",
+  "version": "2.4.0",
+  "version_name": "2.4.0 Pro",
   "minimum_chrome_version": "111",
   "description": "Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.",
   "permissions": [
@@ -41,7 +41,7 @@
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/defaults.js", "content/player-manager.js", "content/blackbar.js", "content/content.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js", "content/audio-processor.js", "content/smart-pause.js", "content/screenshot-button.js", "content/record-button.js", "content/speed-button.js", "content/return-dislikes.js", "content/hide-shorts.js", "content/annotations.js", "content/hide-endcards.js"],
+      "js": ["shared/defaults.js", "content/player-manager.js", "content/blackbar.js", "content/content.js", "content/lights-out.js", "content/ab-loop.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js", "content/audio-processor.js", "content/smart-pause.js", "content/screenshot-button.js", "content/record-button.js", "content/speed-button.js", "content/return-dislikes.js", "content/hide-shorts.js", "content/annotations.js", "content/hide-endcards.js"],
       "css": ["content/content.css", "content/stats-overlay.css", "content/annotations.css"],
       "run_at": "document_idle"
     }

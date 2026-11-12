@@ -39,6 +39,9 @@ const AURA_DEFAULTS = Object.freeze({
   eqPreset: 'flat',      // 'flat' | 'bass' | 'vocal' | 'rock' | 'pop' | 'electro' | 'custom'
   audioReactive: true,
   lightsOut: false,
+  lightsOutOpacity: 85,  // % dimming amount (50% to 100%)
+  abLoopEnabled: false, // interactive A-B section repeat looper
+  abLoopAutoClear: false, // auto-clear loop on video navigation
   ultrawideZoom: false,
   videoBrightness: 100,  // %
   videoContrast: 100,    // %
