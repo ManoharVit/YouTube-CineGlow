@@ -56,10 +56,23 @@
 
     initListeners() {
       const handleEvent = () => this.checkState();
+      window.addEventListener('resize', handleEvent);
+      window.addEventListener('popstate', handleEvent);
       document.addEventListener('yt-navigate-finish', handleEvent);
       document.addEventListener('yt-page-data-updated', handleEvent);
       document.addEventListener('fullscreenchange', handleEvent);
       document.addEventListener('visibilitychange', handleEvent);
+      document.addEventListener('click', (e) => {
+        if (e.target?.closest?.('.ytp-size-button')) {
+          setTimeout(handleEvent, 80);
+          setTimeout(handleEvent, 350);
+        }
+      }, { passive: true });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 't' || e.key === 'T') {
+          setTimeout(handleEvent, 120);
+        }
+      }, { passive: true });
     }
 
     checkState() {
@@ -73,7 +86,36 @@
       const isFullscreen = !!document.fullscreenElement;
       const isMiniplayer = app ? app.hasAttribute('miniplayer-is-active') : false;
       const watchFlexy = document.querySelector('ytd-watch-flexy, ytd-watch-grid');
-      const isTheater = watchFlexy ? (watchFlexy.hasAttribute('theater') || watchFlexy.hasAttribute('theater-requested_')) : false;
+      let isTheater = false;
+      if (watchFlexy) {
+        isTheater = watchFlexy.hasAttribute('theater') ||
+                    watchFlexy.hasAttribute('theater-requested_') ||
+                    watchFlexy.hasAttribute('full-bleed-player') ||
+                    watchFlexy.classList.contains('theater');
+      }
+      if (!isTheater && isWatchPage && !isFullscreen) {
+        const fullBleed = document.querySelector('#full-bleed-container #movie_player, #player-full-bleed-container #movie_player');
+        if (fullBleed) {
+          isTheater = true;
+        }
+      }
+      if (!isTheater && isWatchPage && !isFullscreen) {
+        const sizeBtn = document.querySelector('.ytp-size-button');
+        if (sizeBtn) {
+          const btnTitle = (sizeBtn.getAttribute('title') || sizeBtn.getAttribute('aria-label') || sizeBtn.getAttribute('data-title-no-tooltip') || '').toLowerCase();
+          if (btnTitle.includes('default view') || btnTitle.includes('default-view') || btnTitle.includes('exit theater') || btnTitle.includes('exit theatre')) {
+            isTheater = true;
+          }
+        }
+      }
+      if (!isTheater && isWatchPage && !isFullscreen && player && typeof window !== 'undefined' && window.innerWidth > 0) {
+        try {
+          const rect = player.getBoundingClientRect();
+          if (rect.width >= window.innerWidth * 0.92) {
+            isTheater = true;
+          }
+        } catch (_) {}
+      }
       const isAdShowing = !!(
         player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))
       );
@@ -98,6 +140,12 @@
       if (this.isAdShowing !== isAdShowing) { this.isAdShowing = isAdShowing; changed = true; }
       if (this.isPiP !== isPiP) { this.isPiP = isPiP; changed = true; }
       if (this.isPlaying !== isPlaying) { this.isPlaying = isPlaying; changed = true; }
+
+      const inTheaterMode = !!(this.isTheater && this.isWatchPage && !this.isFullscreen);
+      if (document.documentElement) {
+        document.documentElement.classList.toggle('aura-in-theater', inTheaterMode);
+        document.documentElement.classList.toggle('aura-theater-mode', inTheaterMode);
+      }
 
       if (this.watchFlexy !== watchFlexy) {
         this.watchFlexy = watchFlexy;
@@ -170,6 +218,10 @@
       if (this.searchInterval) {
         clearInterval(this.searchInterval);
         this.searchInterval = null;
+      }
+
+      if (document.documentElement) {
+        document.documentElement.classList.remove('aura-in-theater', 'aura-theater-mode');
       }
 
       // 2. Disconnect observers

@@ -76,6 +76,7 @@
     document.documentElement.classList.toggle('aura-adblock', settings.adblockEnabled);
     document.documentElement.classList.toggle('aura-lights-out', settings.lightsOut);
     document.documentElement.classList.toggle('aura-ultrawide-zoom', settings.ultrawideZoom);
+    updateTheaterMasthead();
     
     updatePlayingState();
 
@@ -112,6 +113,7 @@
     if (!state) return;
     document.documentElement.classList.toggle('aura-watch-page', state.isWatchPage);
     isPiP = state.isPiP;
+    updateTheaterMasthead();
     
     if (state.video !== video || state.videoId !== videoId) {
       if (video) {
@@ -408,27 +410,67 @@
     );
   }
 
+  function updateTheaterMasthead() {
+    if (isKilled || !document.documentElement) return;
+    const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
+    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : document.documentElement.classList.contains('aura-in-theater');
+    const isFullscreen = window.CineGlowPlayer ? window.CineGlowPlayer.isFullscreen : !!document.fullscreenElement;
+    const shouldHide = !!(settings.hideInTheater && isWatch && isTheater && !isFullscreen);
+
+    document.documentElement.classList.toggle('aura-in-theater', shouldHide);
+    document.documentElement.classList.toggle('aura-theater-mode', shouldHide);
+
+    const masthead = document.querySelector('#masthead-container, ytd-masthead');
+    if (masthead) {
+      if (shouldHide && !document.documentElement.classList.contains('aura-theater-reveal-top')) {
+        masthead.style.setProperty('transform', 'translateY(-100%)', 'important');
+        masthead.style.setProperty('opacity', '0', 'important');
+        masthead.style.setProperty('pointer-events', 'none', 'important');
+      } else {
+        masthead.style.removeProperty('transform');
+        masthead.style.removeProperty('opacity');
+        masthead.style.removeProperty('pointer-events');
+      }
+    }
+
+    const pageManager = document.querySelector('ytd-page-manager, #page-manager');
+    if (pageManager) {
+      if (shouldHide) {
+        pageManager.style.setProperty('margin-top', '0px', 'important');
+        pageManager.style.setProperty('padding-top', '0px', 'important');
+      } else {
+        pageManager.style.removeProperty('margin-top');
+        pageManager.style.removeProperty('padding-top');
+      }
+    }
+  }
+
   function handleTheaterHover(e) {
     if (isKilled || !settings.hideInTheater) return;
     const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
-    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : false;
+    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : document.documentElement.classList.contains('aura-in-theater');
     if (!isWatch || !isTheater) {
       if (document.documentElement.classList.contains('aura-theater-reveal-top')) {
         document.documentElement.classList.remove('aura-theater-reveal-top');
+        updateTheaterMasthead();
       }
       return;
     }
 
-    if (e.clientY <= 64) {
+    if (e.clientY <= 50) {
       clearTimeout(theaterHoverTimer);
-      document.documentElement.classList.add('aura-theater-reveal-top');
-    } else if (e.clientY > 80 && !isSearchFocused()) {
+      if (!document.documentElement.classList.contains('aura-theater-reveal-top')) {
+        document.documentElement.classList.add('aura-theater-reveal-top');
+        updateTheaterMasthead();
+      }
+    } else if (e.clientY > 70 && !isSearchFocused()) {
       clearTimeout(theaterHoverTimer);
       theaterHoverTimer = setTimeout(() => {
         if (!isSearchFocused()) {
           document.documentElement.classList.remove('aura-theater-reveal-top');
+          updateTheaterMasthead();
         }
-      }, 1200);
+      }, 500);
     }
   }
 
@@ -485,12 +527,26 @@
         'aura-ultrawide-zoom',
         'aura-hide-scrollbar',
         'aura-hide-theater',
+        'aura-in-theater',
+        'aura-theater-mode',
         'aura-theater-reveal-top'
       );
       if (document.documentElement.style?.removeProperty) {
         document.documentElement.style.removeProperty('--aura-opacity');
         document.documentElement.style.removeProperty('--aura-fade');
       }
+    }
+
+    const masthead = document.querySelector('#masthead-container, ytd-masthead');
+    if (masthead) {
+      masthead.style.removeProperty('transform');
+      masthead.style.removeProperty('opacity');
+      masthead.style.removeProperty('pointer-events');
+    }
+    const pageManager = document.querySelector('ytd-page-manager, #page-manager');
+    if (pageManager) {
+      pageManager.style.removeProperty('margin-top');
+      pageManager.style.removeProperty('padding-top');
     }
 
     // 5. Restore video filters & unregister video listeners

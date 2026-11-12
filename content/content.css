@@ -115,6 +115,12 @@ html.aura-hide-scrollbar {
 }
 
 /* Clean Cinema Theater Mode: Smooth Hover-to-Reveal Masthead / Search Bar */
+html.aura-hide-theater.aura-in-theater #masthead-container,
+html.aura-hide-theater.aura-in-theater ytd-masthead,
+html.aura-hide-theater.aura-in-theater #masthead,
+html.aura-hide-theater.aura-theater-mode #masthead-container,
+html.aura-hide-theater.aura-theater-mode ytd-masthead,
+html.aura-hide-theater.aura-theater-mode #masthead,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container,
@@ -130,7 +136,27 @@ html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen]))
   z-index: 2050 !important;
 }
 
+html.aura-hide-theater.aura-in-theater,
+html.aura-hide-theater.aura-theater-mode,
+html.aura-hide-theater.aura-in-theater ytd-app,
+html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])),
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) {
+  --ytd-masthead-height: 0px !important;
+}
+
 /* Reveal when hovering near top edge, directly over masthead, or when search input is focused */
+html.aura-hide-theater.aura-in-theater #masthead-container:hover,
+html.aura-hide-theater.aura-in-theater ytd-masthead:hover,
+html.aura-hide-theater.aura-in-theater #masthead:hover,
+html.aura-hide-theater.aura-in-theater #masthead-container:focus-within,
+html.aura-hide-theater.aura-in-theater ytd-masthead:focus-within,
+html.aura-hide-theater.aura-in-theater #masthead:focus-within,
+html.aura-hide-theater.aura-theater-mode #masthead-container:hover,
+html.aura-hide-theater.aura-theater-mode ytd-masthead:hover,
+html.aura-hide-theater.aura-theater-mode #masthead:hover,
+html.aura-hide-theater.aura-theater-mode #masthead-container:focus-within,
+html.aura-hide-theater.aura-theater-mode ytd-masthead:focus-within,
+html.aura-hide-theater.aura-theater-mode #masthead:focus-within,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container:hover,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container:hover,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container:hover,
@@ -139,12 +165,18 @@ html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container:focus-within,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container:focus-within,
 html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container:focus-within,
-html.aura-hide-theater.aura-theater-reveal-top #masthead-container {
+html.aura-hide-theater.aura-theater-reveal-top #masthead-container,
+html.aura-hide-theater.aura-theater-reveal-top ytd-masthead,
+html.aura-hide-theater.aura-theater-reveal-top #masthead {
   transform: translateY(0) !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
+html.aura-hide-theater.aura-in-theater ytd-page-manager,
+html.aura-hide-theater.aura-in-theater #page-manager,
+html.aura-hide-theater.aura-theater-mode ytd-page-manager,
+html.aura-hide-theater.aura-theater-mode #page-manager,
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) ytd-page-manager,
 html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) ytd-page-manager,
 html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) ytd-page-manager,
