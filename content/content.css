@@ -79,21 +79,43 @@ html.aura-active #cinematics-container {
 }
 
 /* 
- * AdBlock UI hiding 
+ * AdBlock UI & Right-Side Companion/Sponsored Ad Removal (Brave-level)
  * We hide these globally (not just when Aura is active) since the adblocker 
  * can be on even if the ambient light is off.
  */
-.ad-showing .ytp-ad-player-overlay,
-.ad-showing .ytp-ad-player-overlay-instream-info,
+ytd-companion-slot-renderer,
+ytd-action-companion-ad-renderer,
+ytd-ad-slot-renderer,
 ytd-promoted-sparkles-web-renderer,
+ytd-promoted-video-renderer,
 ytd-banner-promo-renderer,
 ytd-video-masthead-ad-v3-renderer,
-ytd-action-companion-ad-renderer,
 ytd-player-legacy-desktop-watch-ads-renderer,
+ytd-in-feed-ad-layout-renderer,
+ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
+ytd-merch-shelf-renderer,
+#secondary #companion,
+#secondary #player-ads,
+#secondary ytd-ad-slot-renderer,
+#items > ytd-ad-slot-renderer,
+[target-id="engagement-panel-ads"],
 #masthead-ad,
 #player-ads,
-.ytd-in-feed-ad-layout-renderer {
+.ytp-ad-overlay-container,
+.ytp-ad-message-container,
+.ytp-ad-survey,
+.ytp-ad-preview-container,
+.ytp-ad-player-overlay,
+.ytp-ad-player-overlay-layout,
+.ytp-ad-player-overlay-instream-info,
+.ad-showing .ytp-ad-player-overlay,
+.ad-showing .ytp-ad-player-overlay-instream-info,
+ytd-enforcement-message-view-model,
+tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {
   display: none !important;
+  height: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* 

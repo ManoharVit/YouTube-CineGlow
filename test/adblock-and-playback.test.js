@@ -413,4 +413,27 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.strictEqual(video.playbackRate, 1.75, 'Normal playback rate (1.75x) must not be overwritten');
     assert.strictEqual(video.muted, false, 'Unmuted normal video must not be changed');
   });
+
+  test('AD_CSS and content.css contain companion, sidebar, and engagement panel ad selectors', () => {
+    const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const contentCss = fs.readFileSync(path.join(__dirname, '../content/content.css'), 'utf8');
+
+    for (const sel of [
+      'ytd-companion-slot-renderer',
+      '#secondary #companion',
+      '[target-id="engagement-panel-ads"]',
+      'ytd-ad-slot-renderer',
+      'ytd-action-companion-ad-renderer'
+    ]) {
+      assert.ok(adsJs.includes(sel), `youtube-ads.js must include ${sel} in cosmetic ad suppression rules`);
+      assert.ok(contentCss.includes(sel), `content.css must include ${sel} in static stylesheet`);
+    }
+  });
+
+  test('main-world.js prunes adPlacements and playerAds from payload like Brave/uBlock', () => {
+    const mainWorldCode = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    assert.ok(mainWorldCode.includes('adPlacements'), 'main-world.js must neutralize adPlacements');
+    assert.ok(mainWorldCode.includes('playerAds'), 'main-world.js must neutralize playerAds');
+    assert.ok(mainWorldCode.includes('adSlots'), 'main-world.js must neutralize adSlots');
+  });
 });

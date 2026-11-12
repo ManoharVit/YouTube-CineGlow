@@ -4,6 +4,88 @@
 
   let isKilled = false;
 
+  // --- Brave Shields / uBlock-style In-Page YouTube In-Stream Ad Neutralization ---
+  function prunePlayerAds(data) {
+    if (!data || typeof data !== 'object') return data;
+    try {
+      if ('adPlacements' in data) delete data.adPlacements;
+      if ('playerAds' in data) delete data.playerAds;
+      if ('adSlots' in data) delete data.adSlots;
+      if ('adBreakHeartbeatParams' in data) delete data.adBreakHeartbeatParams;
+      if (Array.isArray(data.playerAds)) data.playerAds = [];
+      if (Array.isArray(data.adPlacements)) data.adPlacements = [];
+      if (Array.isArray(data.adSlots)) data.adSlots = [];
+    } catch (_) {}
+    return data;
+  }
+
+  // 1. Intercept and sanitize window.ytInitialPlayerResponse before YouTube player initializes
+  try {
+    if (typeof window !== 'undefined') {
+      let _rawInitial = window.ytInitialPlayerResponse;
+      if (_rawInitial) {
+        prunePlayerAds(_rawInitial);
+      }
+      Object.defineProperty(window, 'ytInitialPlayerResponse', {
+        configurable: true,
+        enumerable: true,
+        get: () => _rawInitial,
+        set: (val) => {
+          _rawInitial = prunePlayerAds(val);
+        }
+      });
+    }
+  } catch (_) {}
+
+  // 2. Intercept window.fetch for /youtubei/v1/player to strip ads before the player receives payload
+  if (typeof window !== 'undefined' && typeof window.fetch === 'function' && typeof Response !== 'undefined') {
+    const origFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const response = await origFetch.apply(this, args);
+      try {
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+        if (url.includes('/youtubei/v1/player')) {
+          const clone = response.clone();
+          const json = await clone.json();
+          if (json && typeof json === 'object') {
+            prunePlayerAds(json);
+            return new Response(JSON.stringify(json), {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers
+            });
+          }
+        }
+      } catch (_) {}
+      return response;
+    };
+  }
+
+  // 3. Instant Main-World Ad-Skip Fallback via HTML5 Player API
+  function skipMainWorldAd() {
+    if (isKilled) return;
+    try {
+      const player = document.getElementById('movie_player');
+      if (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
+        if (typeof player.skipAd === 'function') {
+          player.skipAd();
+        }
+        const video = player.querySelector('video.html5-main-video') || document.querySelector('video.html5-main-video');
+        if (video) {
+          video.muted = true;
+          video.playbackRate = 16.0;
+          if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
+            video.currentTime = video.duration;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('yt-action', skipMainWorldAd, { passive: true });
+  }
+
   function handleQualityMessage(event) {
     if (isKilled) return;
     if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'AURA_SET_QUALITY') return;

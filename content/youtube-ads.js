@@ -28,19 +28,36 @@
   const AD_CSS_ID = 'cineglow-adblock-styles';
   const AD_CSS = `
     #masthead-ad,
+    ytd-companion-slot-renderer,
+    ytd-action-companion-ad-renderer,
     ytd-ad-slot-renderer,
     ytd-promoted-sparkles-web-renderer,
+    ytd-promoted-video-renderer,
     ytd-banner-promo-renderer,
     ytd-video-masthead-ad-v3-renderer,
-    ytd-action-companion-ad-renderer,
     ytd-player-legacy-desktop-watch-ads-renderer,
+    ytd-in-feed-ad-layout-renderer,
+    ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
+    ytd-merch-shelf-renderer,
+    #secondary #companion,
+    #secondary #player-ads,
+    #secondary ytd-ad-slot-renderer,
+    #items > ytd-ad-slot-renderer,
+    [target-id="engagement-panel-ads"],
     #player-ads,
-    .ytd-in-feed-ad-layout-renderer,
     .ytp-ad-overlay-container,
     .ytp-ad-message-container,
+    .ytp-ad-survey,
+    .ytp-ad-preview-container,
+    .ytp-ad-player-overlay,
+    .ytp-ad-player-overlay-layout,
+    .ytp-ad-player-overlay-instream-info,
     ytd-enforcement-message-view-model,
     tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {
       display: none !important;
+      height: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
     }
   `;
 
@@ -100,6 +117,7 @@
     }
     applyAdBlockStyles();
     checkAdState();
+    setupAdObserver();
   }
 
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
@@ -142,7 +160,12 @@
       return true;
     }
 
-    // 2. Fallback: check if an ad text or preview element is explicitly rendered with visible content
+    // 2. Modern ad overlay or skip container presence
+    if (moviePlayer.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-modern, .ytp-skip-ad-button')) {
+      return true;
+    }
+
+    // 3. Fallback: check if an ad text or preview element is explicitly rendered with visible content
     const adText = moviePlayer.querySelector('.ytp-ad-text, .ytp-ad-preview-text');
     if (adText && (adText.offsetParent !== null || adText.offsetWidth > 0) && adText.textContent.trim().length > 0) {
       return true;
@@ -167,6 +190,29 @@
     }
   }
 
+  let adMutationObserver = null;
+
+  function setupAdObserver() {
+    if (isKilled) return;
+    if (adMutationObserver) return;
+    const target = document.querySelector('#movie_player, .html5-video-player') || document.body;
+    if (target && typeof MutationObserver !== 'undefined') {
+      adMutationObserver = new MutationObserver(() => {
+        if (!settings.adblockEnabled) return;
+        const skipBtn = document.querySelector(
+          '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-overlay-close-button'
+        );
+        if (skipBtn) {
+          try { skipBtn.click(); } catch (_) {}
+        }
+        if (isAdActive()) {
+          skipVideoAds();
+        }
+      });
+      adMutationObserver.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+  }
+
   function skipVideoAds() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.adblockEnabled) return;
@@ -176,11 +222,11 @@
 
     const isAd = isAdActive();
 
-    // 1. Click skip buttons if available and visible
+    // 1. Click skip buttons if available
     const skipBtn = document.querySelector(
-      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], .ytp-ad-overlay-close-button'
+      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-overlay-close-button'
     );
-    if (skipBtn && (skipBtn.offsetParent !== null || skipBtn.offsetWidth > 0)) {
+    if (skipBtn) {
       try {
         skipBtn.click();
       } catch (_) {}
@@ -300,6 +346,10 @@
       clearInterval(adSkipTimer);
       adSkipTimer = 0;
     }
+    if (adMutationObserver) {
+      adMutationObserver.disconnect();
+      adMutationObserver = null;
+    }
     if (activeVideo) {
       activeVideo.removeEventListener('timeupdate', checkAdState);
     }
@@ -315,6 +365,10 @@
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
 
     cleanup();
+    if (adMutationObserver) {
+      adMutationObserver.disconnect();
+      adMutationObserver = null;
+    }
     const styleEl = document.getElementById(AD_CSS_ID);
     if (styleEl) styleEl.remove();
   }
