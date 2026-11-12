@@ -1,0 +1,14 @@
+{
+  "name": "CineGlow Pro for YouTube - Enterprise Managed Policy",
+  "description": "Production configuration profile for CineGlow Pro for YouTube v2.3.0 enforcing DLP, bandwidth ceilings, and third-party API restrictions.",
+  "platform": "windows10AndLater",
+  "extensionId": "cineglow_pro_youtube",
+  "omaUri": "./Device/Vendor/MSFT/Policy/Config/Chrome~Policy~googlechrome~3rdparty~extensions~cineglow_pro_youtube/Policy",
+  "policyData": {
+    "DisableAdBlock": false,
+    "DisableRecording": true,
+    "DisableThirdPartyAPIs": true,
+    "ForceDefaultQuality": "hd1080",
+    "KillSwitch": false
+  }
+}

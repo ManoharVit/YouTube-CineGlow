@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; ==============================================================================
+; CineGlow Pro for YouTube - Enterprise Managed Policy (Windows Active Directory / GPO)
+; Target Extension: CineGlow Pro for YouTube (v2.3.0)
+; Lead Architect: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
+; Schema Reference: managed-schema.json
+; ==============================================================================
+
+; 1. Enforce Mandatory Extension Installation via ExtensionInstallForcelist
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist]
+"101"="cineglow_pro_youtube;https://clients2.google.com/service/update2/crx"
+
+; 2. Enforce Managed Storage Configuration Policies
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\3rdparty\extensions\cineglow_pro_youtube\policy]
+"DisableAdBlock"=dword:00000000
+"DisableRecording"=dword:00000001
+"DisableThirdPartyAPIs"=dword:00000001
+"ForceDefaultQuality"="hd1080"
+"KillSwitch"=dword:00000000

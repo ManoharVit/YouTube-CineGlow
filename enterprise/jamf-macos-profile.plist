@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  CineGlow Pro for YouTube - macOS Managed Preferences (Jamf Pro / Intune for Mac)
+  Target Extension: CineGlow Pro for YouTube (v2.3.0)
+  Lead Architect: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
+-->
+<plist version="1.0">
+<dict>
+  <key>DisableAdBlock</key>
+  <false/>
+  <key>DisableRecording</key>
+  <true/>
+  <key>DisableThirdPartyAPIs</key>
+  <true/>
+  <key>ForceDefaultQuality</key>
+  <string>hd1080</string>
+  <key>KillSwitch</key>
+  <false/>
+</dict>
+</plist>
