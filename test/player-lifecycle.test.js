@@ -215,4 +215,23 @@ describe('PlayerManager Lifecycle & State Tracking', () => {
     pm.checkState();
     assert.strictEqual(pm.isAdShowing, false, 'Should revert to false once ad finishes');
   });
+
+  test('detects theater mode on both ytd-watch-flexy and ytd-watch-grid', () => {
+    const pm = loadPlayerManager();
+    const watchGrid = new MockElement('ytd-watch-grid');
+    env.elements.set('ytd-watch-grid', watchGrid);
+
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, false);
+
+    // Set theater attribute
+    watchGrid.setAttribute('theater', '');
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, true);
+
+    // Remove theater attribute
+    watchGrid.removeAttribute('theater');
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, false);
+  });
 });

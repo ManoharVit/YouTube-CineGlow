@@ -72,7 +72,7 @@
       
       const isFullscreen = !!document.fullscreenElement;
       const isMiniplayer = app ? app.hasAttribute('miniplayer-is-active') : false;
-      const watchFlexy = document.querySelector('ytd-watch-flexy');
+      const watchFlexy = document.querySelector('ytd-watch-flexy, ytd-watch-grid');
       const isTheater = watchFlexy ? (watchFlexy.hasAttribute('theater') || watchFlexy.hasAttribute('theater-requested_')) : false;
       const isAdShowing = !!(
         player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))
@@ -89,7 +89,11 @@
       if (this.isTheater !== isTheater) {
         this.isTheater = isTheater;
         changed = true;
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new Event('resize'));
+          }
+        }, 60);
       }
       if (this.isAdShowing !== isAdShowing) { this.isAdShowing = isAdShowing; changed = true; }
       if (this.isPiP !== isPiP) { this.isPiP = isPiP; changed = true; }

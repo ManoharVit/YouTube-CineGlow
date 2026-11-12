@@ -394,6 +394,46 @@
     wake();
   });
 
+  // ---------- Clean Theater Mode: Top Search Bar Hover-to-Reveal ----------
+  let theaterHoverTimer = null;
+
+  function isSearchFocused() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName?.toLowerCase();
+    return (
+      el.id === 'search' ||
+      el.closest?.('#masthead-container, ytd-masthead, #search-form') ||
+      (tag === 'input' && el.getAttribute('name') === 'search_query')
+    );
+  }
+
+  function handleTheaterHover(e) {
+    if (isKilled || !settings.hideInTheater) return;
+    const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
+    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : false;
+    if (!isWatch || !isTheater) {
+      if (document.documentElement.classList.contains('aura-theater-reveal-top')) {
+        document.documentElement.classList.remove('aura-theater-reveal-top');
+      }
+      return;
+    }
+
+    if (e.clientY <= 64) {
+      clearTimeout(theaterHoverTimer);
+      document.documentElement.classList.add('aura-theater-reveal-top');
+    } else if (e.clientY > 80 && !isSearchFocused()) {
+      clearTimeout(theaterHoverTimer);
+      theaterHoverTimer = setTimeout(() => {
+        if (!isSearchFocused()) {
+          document.documentElement.classList.remove('aura-theater-reveal-top');
+        }
+      }, 1200);
+    }
+  }
+
+  window.addEventListener('mousemove', handleTheaterHover, { passive: true });
+
   // ---------- Emergency Kill-Switch Teardown ----------
 
   function teardownKillSwitch() {
@@ -401,6 +441,8 @@
     isKilled = true;
     isActive = false;
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    clearTimeout(theaterHoverTimer);
+    window.removeEventListener('mousemove', handleTheaterHover);
 
     // 1. Cancel active rAF loop
     if (rafId) {
@@ -442,7 +484,8 @@
         'aura-lights-out',
         'aura-ultrawide-zoom',
         'aura-hide-scrollbar',
-        'aura-hide-theater'
+        'aura-hide-theater',
+        'aura-theater-reveal-top'
       );
       if (document.documentElement.style?.removeProperty) {
         document.documentElement.style.removeProperty('--aura-opacity');

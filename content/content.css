@@ -114,20 +114,49 @@ html.aura-hide-scrollbar {
   scrollbar-width: none !important;
 }
 
-/* Clean Cinema Theater Mode (Hide UI & Center Video in Theater Mode) */
+/* Clean Cinema Theater Mode: Smooth Hover-to-Reveal Masthead / Search Bar */
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container,
-html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container {
-  display: none !important;
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container,
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container,
+html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  transform: translateY(-100%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease !important;
+  z-index: 2050 !important;
+}
+
+/* Reveal when hovering near top edge, directly over masthead, or when search input is focused */
+html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container:hover,
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container:hover,
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container:hover,
+html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container:hover,
+html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) #masthead-container:focus-within,
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) #masthead-container:focus-within,
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) #masthead-container:focus-within,
+html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) #masthead-container:focus-within,
+html.aura-hide-theater.aura-theater-reveal-top #masthead-container {
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])) ytd-page-manager,
-html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) ytd-page-manager {
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) ytd-page-manager,
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])) ytd-page-manager,
+html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) ytd-page-manager {
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
 
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]),
-html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) {
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]),
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]),
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) {
   padding-top: 0 !important;
   margin-bottom: 0 !important;
 }
@@ -140,7 +169,15 @@ html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #pl
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #player-container,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #player-container,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #movie_player,
-html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #movie_player {
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #movie_player,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #full-bleed-container,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #full-bleed-container,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #player-full-bleed-container,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #player-full-bleed-container,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #player-container,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #player-container,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #movie_player,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #movie_player {
   height: 100vh !important;
   height: 100% !important;
   max-height: 100vh !important;
@@ -150,7 +187,9 @@ html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #mo
 
 /* Ensure the video container spans 100% of the player in theater mode */
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) .html5-video-container,
-html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container {
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) .html5-video-container,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) .html5-video-container {
   width: 100% !important;
   height: 100% !important;
   position: absolute !important;
@@ -162,7 +201,11 @@ html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .ht
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) .html5-video-container video.html5-main-video,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) .html5-video-container video.html5-main-video,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) video.html5-main-video,
-html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video {
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) .html5-video-container video.html5-main-video,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) .html5-video-container video.html5-main-video,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) video.html5-main-video {
   position: absolute !important;
   top: 50% !important;
   left: 50% !important;
@@ -171,13 +214,17 @@ html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) vid
 }
 
 html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-flexy[theater]:not([fullscreen]) video.html5-main-video,
-html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video {
+html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-flexy[theater-requested_]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-grid[theater]:not([fullscreen]) video.html5-main-video,
+html.aura-hide-theater.aura-ultrawide-zoom ytd-watch-grid[theater-requested_]:not([fullscreen]) video.html5-main-video {
   transform: translate(-50%, -50%) scale(1.34) !important;
 }
 
 /* Prevent unwanted vertical scrolling in Clean Cinema Theater Mode */
 html.aura-hide-theater:has(ytd-watch-flexy[theater]:not([fullscreen])),
-html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])) {
+html.aura-hide-theater:has(ytd-watch-flexy[theater-requested_]:not([fullscreen])),
+html.aura-hide-theater:has(ytd-watch-grid[theater]:not([fullscreen])),
+html.aura-hide-theater:has(ytd-watch-grid[theater-requested_]:not([fullscreen])) {
   overflow-y: hidden !important;
 }
 
@@ -191,8 +238,19 @@ html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #re
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #panels,
 html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #panels,
 html.aura-hide-theater ytd-watch-flexy[theater]:not([fullscreen]) #chat-container,
-html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #chat-container {
+html.aura-hide-theater ytd-watch-flexy[theater-requested_]:not([fullscreen]) #chat-container,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #secondary,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #secondary,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #below,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #below,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #related,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #related,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #panels,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #panels,
+html.aura-hide-theater ytd-watch-grid[theater]:not([fullscreen]) #chat-container,
+html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #chat-container {
   display: none !important;
+}
 }
 
 /* AdBlock UI hiding */
