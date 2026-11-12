@@ -13,9 +13,11 @@
   let updateIntervalId = null;
   let resizeObserver = null;
   let isAdPlaying = false;
+  let isKilled = false;
 
   // --- Settings Management ---
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
       if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
         const stored = await chrome.storage.sync.get('restoreAnnotations');
@@ -45,6 +47,7 @@
 
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       if (area === 'sync' && 'restoreAnnotations' in changes) {
         enabled = !!changes.restoreAnnotations.newValue;
         if (!enabled) {
@@ -355,6 +358,7 @@
 
   // --- Video Initialization & Fetching ---
   async function initForVideo(videoId, video, player) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     teardown();
     if (!enabled || !videoId || !player) return;
 
@@ -445,6 +449,7 @@
 
   // --- Player Manager Hook ---
   function onPlayerState(e) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     const pm = e ? e.detail : window.CineGlowPlayer;
     if (!pm) return;
 
@@ -475,6 +480,46 @@
     }
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    enabled = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    teardown();
+
+    if (window.CineGlowPlayer) {
+      window.CineGlowPlayer.removeEventListener('state-change', onPlayerState);
+    }
+    currentVideo = null;
+    attachedVideo = null;
+    currentPlayer = null;
+    currentVideoId = null;
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'annotations.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', onPlayerState);
     if (window.CineGlowPlayer.isWatchPage && window.CineGlowPlayer.videoId) {
@@ -495,6 +540,7 @@
     loadSettings,
     initForVideo,
     teardown,
+    teardownKillSwitch,
     onPlayerState,
     isEnabled: () => enabled,
     isSettingsLoaded: () => settingsLoaded,

@@ -11,6 +11,8 @@
 (() => {
   'use strict';
 
+  if (typeof window !== 'undefined' && window.CineGlowKilled) return;
+
   const ROOT_CLASS = 'aura-active';
   const CANVAS_ID = 'aura-ambient-canvas';
   const SAMPLE_W = 128;
@@ -35,6 +37,7 @@
   let forceFullDraw = true;
   let lastLayoutKey = '';
   let videoObserver = null;
+  let isKilled = false;
 
   // ---------- Canvas setup ----------
 
@@ -48,14 +51,18 @@
   ctx.imageSmoothingQuality = 'low';
 
   function ensureCanvasMounted() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!canvas.isConnected && document.body) {
       document.body.prepend(canvas);
     }
   }
 
   function applyVisualSettings() {
-    document.documentElement.style.setProperty('--aura-opacity', String(settings.opacity / 100));
-    document.documentElement.style.setProperty('--aura-fade', `${settings.fadeInDuration}s`);
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (document.documentElement?.style?.setProperty) {
+      document.documentElement.style.setProperty('--aura-opacity', String(settings.opacity / 100));
+      document.documentElement.style.setProperty('--aura-fade', `${settings.fadeInDuration}s`);
+    }
     
     canvas.style.filter =
       `blur(${settings.blur}px) ` +
@@ -101,6 +108,7 @@
   let isPiP = false;
 
   function handlePlayerState(state) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!state) return;
     document.documentElement.classList.toggle('aura-watch-page', state.isWatchPage);
     isPiP = state.isPiP;
@@ -123,6 +131,7 @@
       videoId = state.videoId;
       if (video) {
         applyVisualSettings();
+        ensureCanvasMounted();
         for (const type of ['seeked', 'loadeddata', 'emptied']) {
           video.addEventListener(type, onVideoReset, { passive: true });
         }
@@ -144,12 +153,15 @@
     wake();
   }
 
-  window.CineGlowPlayer.addEventListener('state-change', (e) => {
-    handlePlayerState(e.detail);
-  });
-
   if (window.CineGlowPlayer) {
-    handlePlayerState(window.CineGlowPlayer);
+    window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+      handlePlayerState(e.detail);
+    });
+
+    if (!isKilled && (!window || !window.CineGlowKilled)) {
+      handlePlayerState(window.CineGlowPlayer);
+    }
   }
 
   function shouldBeActive() {
@@ -289,6 +301,7 @@
 
   function tick() {
     rafId = 0;
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
 
     const v = shouldBeActive() ? window.CineGlowPlayer.video : null;
     let rect = v ? v.getBoundingClientRect() : null;
@@ -319,19 +332,38 @@
   }
 
   function schedule() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (rafId) return;
     rafId = requestAnimationFrame(tick);
   }
 
   /** Re-check immediately (e.g. after a YouTube SPA navigation). */
   function wake() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     schedule();
   }
 
   // ---------- Settings ----------
 
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        if (chrome.storage.local) {
+          const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
+          if (local && local.auraKillSwitchActive) {
+            teardownKillSwitch();
+            return;
+          }
+        }
+        if (chrome.storage.managed) {
+          const managed = await chrome.storage.managed.get(['KillSwitch']).catch(() => ({}));
+          if (managed && managed.KillSwitch) {
+            teardownKillSwitch();
+            return;
+          }
+        }
+      }
       const stored = await chrome.storage.sync.get(AURA_DEFAULTS);
       settings = { ...AURA_DEFAULTS, ...stored };
     } catch (err) {
@@ -342,6 +374,15 @@
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
     if (area !== 'sync') return;
     for (const [key, { newValue }] of Object.entries(changes)) {
       if (key in AURA_DEFAULTS) {
@@ -352,6 +393,106 @@
     forceFullDraw = true;
     wake();
   });
+
+  // ---------- Emergency Kill-Switch Teardown ----------
+
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    isActive = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    // 1. Cancel active rAF loop
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+
+    // 2. Disconnect ResizeObserver
+    if (videoObserver) {
+      videoObserver.disconnect();
+      videoObserver = null;
+    }
+
+    // 3. Remove ambient canvas from DOM
+    const domCanvas = document.getElementById(CANVAS_ID);
+    if (domCanvas) {
+      if (typeof domCanvas.remove === 'function') {
+        domCanvas.remove();
+      } else if (domCanvas.parentNode && typeof domCanvas.parentNode.removeChild === 'function') {
+        domCanvas.parentNode.removeChild(domCanvas);
+      }
+    }
+    if (canvas) {
+      if (typeof canvas.remove === 'function') {
+        canvas.remove();
+      } else if (canvas.parentNode && typeof canvas.parentNode.removeChild === 'function') {
+        canvas.parentNode.removeChild(canvas);
+      }
+    }
+
+    // 4. Purge root classes & custom properties
+    if (document.documentElement) {
+      document.documentElement.classList.remove(
+        ROOT_CLASS,
+        'aura-active',
+        'aura-playing',
+        'aura-watch-page',
+        'aura-adblock',
+        'aura-lights-out',
+        'aura-ultrawide-zoom',
+        'aura-hide-scrollbar',
+        'aura-hide-theater'
+      );
+      if (document.documentElement.style?.removeProperty) {
+        document.documentElement.style.removeProperty('--aura-opacity');
+        document.documentElement.style.removeProperty('--aura-fade');
+      }
+    }
+
+    // 5. Restore video filters & unregister video listeners
+    const currentVideo = video || (window.CineGlowPlayer ? window.CineGlowPlayer.video : null);
+    if (currentVideo) {
+      currentVideo.style.filter = '';
+      for (const type of ['seeked', 'loadeddata', 'emptied', 'play', 'playing', 'pause', 'waiting', 'ended']) {
+        currentVideo.removeEventListener(type, onVideoReset);
+        currentVideo.removeEventListener(type, updatePlayingState);
+      }
+    }
+    video = null;
+
+    // 6. Unregister document & window listeners
+    document.removeEventListener('visibilitychange', wake);
+
+    // 7. Clear metrics
+    if (window.CineGlowMetrics) {
+      window.CineGlowMetrics.renderCount = 0;
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'content.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowTeardown = teardownKillSwitch;
 
   // ---------- YouTube SPA / page events ----------
 

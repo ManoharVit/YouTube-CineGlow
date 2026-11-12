@@ -13,6 +13,7 @@
   let currentSpeed = 1.0;
   let boundVideo = null;
   let onRateChange = null;
+  let isKilled = false;
 
   function removeExistingButton() {
     closeMenu();
@@ -49,6 +50,7 @@
   }
 
   function setPlaybackSpeed(rate, updateStorage = true) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     rate = Math.min(Math.max(Math.round(rate * 100) / 100, 0.1), 10.0);
     currentSpeed = rate;
 
@@ -420,6 +422,7 @@
   }
 
   async function injectSpeedButton(playerManager) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     const { player, isWatchPage, video } = playerManager;
 
     if (abortController) {
@@ -535,9 +538,61 @@
     }
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+    if (boundVideo && onRateChange) {
+      boundVideo.removeEventListener('ratechange', onRateChange);
+      boundVideo = null;
+      onRateChange = null;
+    }
+    clearTimeout(toastTimeout);
+    if (toastEl) {
+      toastEl.remove();
+      toastEl = null;
+    }
+    removeExistingButton();
+    const toolbar = document.querySelector('.cineglow-floating-toolbar');
+    if (toolbar && (!toolbar.hasChildNodes() || toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button').length === 0)) {
+      toolbar.remove();
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'speed-button.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowSpeedTeardown = teardownKillSwitch;
+
   // Listen to CineGlow centralized player lifecycle
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      if (isKilled) return;
       const state = e.detail;
       if (state.isWatchPage && state.player) {
         if (!currentButton || !state.player.contains(currentButton)) {
@@ -555,6 +610,7 @@
 
   // Storage listener for external popup changes
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (area === 'sync' && changes.preferredSpeed) {
       const newRate = changes.preferredSpeed.newValue;
       if (typeof newRate === 'number' && newRate !== currentSpeed) {

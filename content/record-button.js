@@ -43,6 +43,8 @@
   let hudEl = null;
   let activeMenu = null;
   let toastTimeout = 0;
+  let isKilled = false;
+  let isRecordingDisabled = false;
 
   // Defaults: Genuine Matroska MKV at 30 FPS
   let currentFormat = 'mkv';
@@ -144,6 +146,28 @@
 
   async function loadSettings() {
     try {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        if (chrome.storage.local) {
+          const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
+          if (local && local.auraKillSwitchActive) {
+            teardownKillSwitch();
+            return;
+          }
+        }
+        if (chrome.storage.managed) {
+          const managed = await chrome.storage.managed.get(['DisableRecording', 'KillSwitch']).catch(() => ({}));
+          if (managed) {
+            if (managed.KillSwitch) {
+              teardownKillSwitch();
+              return;
+            }
+            if (managed.DisableRecording) {
+              isRecordingDisabled = true;
+              removeExistingButton();
+            }
+          }
+        }
+      }
       const stored = await chrome.storage.sync.get({ recordFormat: 'mkv', recordFps: 30 });
       if (stored.recordFormat && FORMAT_CONFIGS[stored.recordFormat]) {
         currentFormat = stored.recordFormat;
@@ -170,6 +194,23 @@
       if (changed) {
         updateButtonVisuals();
       }
+    }
+    if (area === 'managed') {
+      if ('DisableRecording' in changes) {
+        isRecordingDisabled = changes.DisableRecording.newValue === true;
+        if (isRecordingDisabled) {
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopRecording();
+          }
+          removeExistingButton();
+        }
+      }
+      if ('KillSwitch' in changes && changes.KillSwitch.newValue === true) {
+        teardownKillSwitch();
+      }
+    }
+    if (area === 'local' && changes.auraKillSwitchActive && changes.auraKillSwitchActive.newValue === true) {
+      teardownKillSwitch();
     }
   });
 
@@ -284,6 +325,7 @@
   }
 
   function openRecMenu(anchorBtn, player) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (activeMenu) {
       closeRecMenu();
       return;
@@ -572,6 +614,12 @@
   }
 
   function startRecording(video) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isRecordingDisabled) {
+      console.warn('[CineGlow Record] Recording is disabled by enterprise DLP policy');
+      removeExistingButton();
+      return;
+    }
     if (mediaRecorder && mediaRecorder.state === 'recording') return;
 
     // 1. Calculate scaled capture dimensions (up to 1080p, maintaining aspect ratio)
@@ -973,6 +1021,10 @@
   }
 
   async function injectRecordButton(playerManager) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || isRecordingDisabled) {
+      removeExistingButton();
+      return;
+    }
     const { player, isWatchPage } = playerManager;
 
     if (abortController) {
@@ -989,10 +1041,17 @@
     // Check enterprise managed policy for DLP compliance
     try {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.managed) {
-        const managed = await chrome.storage.managed.get('DisableRecording').catch(() => null);
-        if (managed && managed.DisableRecording) {
-          removeExistingButton();
-          return;
+        const managed = await chrome.storage.managed.get(['DisableRecording', 'KillSwitch']).catch(() => null);
+        if (managed) {
+          if (managed.KillSwitch) {
+            teardownKillSwitch();
+            return;
+          }
+          if (managed.DisableRecording) {
+            isRecordingDisabled = true;
+            removeExistingButton();
+            return;
+          }
         }
       }
     } catch (_) {}
@@ -1172,12 +1231,89 @@
     setRecordedChunks: (chunks) => { recordedChunks = chunks; },
     setRecordingStartTime: (t) => { recordingStartTime = t; },
     setActiveRecordedMimeType: (m) => { activeRecordedMimeType = m; },
-    setActiveRecordingFormat: (f) => { activeRecordingFormat = f; }
+    setActiveRecordingFormat: (f) => { activeRecordingFormat = f; },
+    isRecording: () => !!(mediaRecorder && mediaRecorder.state === 'recording'),
+    isRecordingDisabled: () => isRecordingDisabled,
+    teardownKillSwitch
   };
+  window.CineGlowRecord = window.CineGlowRecorder;
+
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    // 1. Abort any pending async DOM mount operations
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+
+    // 2. Halt active recording immediately
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = 0;
+    }
+
+    if (canvasPipelineCleanup) {
+      canvasPipelineCleanup();
+      canvasPipelineCleanup = null;
+    }
+
+    if (activeStream) {
+      activeStream.getTracks().forEach(t => t.stop());
+      activeStream = null;
+    }
+
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try {
+        mediaRecorder.ondataavailable = null;
+        mediaRecorder.onstop = null;
+        mediaRecorder.stop();
+      } catch (_) {}
+      mediaRecorder = null;
+    }
+    recordedChunks = [];
+
+    clearTimeout(toastTimeout);
+
+    // 3. Unmount button, HUD, toast, and menu
+    removeExistingButton();
+
+    // 4. Remove floating toolbar if empty
+    const toolbar = document.querySelector('.cineglow-floating-toolbar');
+    if (toolbar && (!toolbar.hasChildNodes() || toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button').length === 0)) {
+      toolbar.remove();
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'record-button.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
 
   // Listen to CineGlow player lifecycle
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      if (isKilled) return;
       const state = e.detail;
       if (state.isWatchPage && state.player) {
         if (!currentButton || !state.player.contains(currentButton)) {

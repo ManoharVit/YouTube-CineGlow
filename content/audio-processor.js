@@ -32,8 +32,10 @@
   let dataArray = null;
   let currentVideo = null;
   const videoSources = new WeakMap();
+  let isKilled = false;
 
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
       const keys = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'audioReactive'];
       const stored = await chrome.storage.sync.get(keys);
@@ -47,6 +49,7 @@
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (area === 'sync') {
       let changed = false;
       const keys = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'audioReactive'];
@@ -63,6 +66,7 @@
   });
 
   function initAudio(video) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!video) return;
     if (currentVideo === video && source) return;
     
@@ -258,6 +262,7 @@
   }
 
   function updateAudioParams() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!audioCtx) return;
     const t = audioCtx.currentTime;
 
@@ -296,6 +301,7 @@
 
   // Hook into the central player manager to find the video element
   function attachToPlayer() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (window.CineGlowPlayer) {
       if (window.CineGlowPlayer.video) {
         initAudio(window.CineGlowPlayer.video);
@@ -307,6 +313,65 @@
         currentVideo = null;
       }
     }
+  }
+
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    // 1. Disconnect active source node
+    if (source) {
+      try { source.disconnect(); } catch (_) {}
+      source = null;
+    }
+
+    // 2. Close AudioContext
+    if (audioCtx) {
+      try {
+        if (audioCtx.state !== 'closed') {
+          audioCtx.close();
+        }
+      } catch (_) {}
+      audioCtx = null;
+    }
+
+    // 3. Clear global window hooks
+    if (typeof window !== 'undefined') {
+      window.CineGlowAudioAnalyser = null;
+      window.CineGlowAudioDataArray = null;
+      window.CineGlowAudioCtx = null;
+      window.CineGlowAudioGainNode = null;
+    }
+
+    // 4. Detach video flags
+    if (currentVideo) {
+      currentVideo.cineGlowAudioAttached = false;
+      currentVideo = null;
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'audio-processor.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
   }
 
   if (window.CineGlowPlayer) {
@@ -322,6 +387,7 @@
   window.CineGlowAudioInit = initAudio;
   window.CineGlowAudioGetActiveSource = () => source;
   window.CineGlowAudioGetVideoSource = (v) => videoSources.get(v);
+  window.CineGlowAudioTeardown = teardownKillSwitch;
 
   loadSettings();
 })();

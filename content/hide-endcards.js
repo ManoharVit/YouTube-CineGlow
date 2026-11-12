@@ -2,6 +2,7 @@
   'use strict';
 
   let enabled = true;
+  let isKilled = false;
   let currentVideoId = null;
   let userRevealed = false;
   let programmaticClick = false;
@@ -10,6 +11,7 @@
 
   // --- Settings Management ---
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
       if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
         const stored = await chrome.storage.sync.get('hideEndCards');
@@ -27,6 +29,7 @@
 
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       if (area === 'sync' && 'hideEndCards' in changes) {
         enabled = !!changes.hideEndCards.newValue;
         if (enabled) {
@@ -39,6 +42,7 @@
 
   // --- Hide Logic ---
   function checkAndHide() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!enabled || userRevealed) return;
     const player = currentPlayer || document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
     if (!player) return;
@@ -137,6 +141,7 @@
 
   // --- Player Manager Hook ---
   function onPlayerState(e) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     const pm = e ? e.detail : window.CineGlowPlayer;
     if (!pm) return;
 
@@ -159,9 +164,49 @@
     }
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    enabled = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    teardown();
+    const player = currentPlayer || document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
+    if (player) {
+      player.querySelectorAll('.ytp-ce-element').forEach(el => {
+        el.style.display = '';
+      });
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'hide-endcards.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowEndCardsTeardown = teardownKillSwitch;
+
   // Hook into video playback ticks as a lightweight safety net
   document.addEventListener('timeupdate', (e) => {
-    if (e.target && e.target.tagName === 'VIDEO' && enabled && !userRevealed) {
+    if (e.target && e.target.tagName === 'VIDEO' && enabled && !userRevealed && !isKilled) {
       checkAndHide();
     }
   }, true);

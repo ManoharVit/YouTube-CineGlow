@@ -34,6 +34,7 @@
   let displayFrames = 0;
   let lastDisplayFrames = 0;
   let lastDisplayFps = 0;
+  let isKilled = false;
 
   // Listen for Stats for Nerds response from MAIN world
   window.addEventListener('message', (event) => {
@@ -67,6 +68,7 @@
   }
 
   function statsLoop(now) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!updateInterval) return;
     
     // Stop the rAF loop if the video is paused/ended and CineGlow rendering has settled.
@@ -453,6 +455,7 @@
   }
 
   function startMonitoring() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (updateInterval) clearInterval(updateInterval);
     if (rafLoopId) cancelAnimationFrame(rafLoopId);
     
@@ -482,6 +485,7 @@
   }
 
   function updateStats() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.statsEnabled || !overlayEl) return;
     
     // Ensure overlay is still in the DOM (YouTube SPA navigation can detach it)
@@ -990,6 +994,7 @@
   }
 
   function applyState() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     const isWatchPage = window.CineGlowPlayer && window.CineGlowPlayer.isWatchPage;
     if (settings.statsEnabled && isWatchPage) {
       createOverlay();
@@ -1000,6 +1005,50 @@
     }
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    settings.statsEnabled = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    // 1. Stop all interval and animation loops (rafLoopId, rvfcId, updateInterval)
+    stopMonitoring();
+
+    // 2. Unmount overlay from DOM
+    removeOverlay();
+
+    // 3. Clear buffers
+    video = null;
+    videoFrameTimes = [];
+    frameTimes = [];
+    nerdStats = null;
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'stats-overlay.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowStatsTeardown = teardownKillSwitch;
+
   if (window.CineGlowPlayer) {
     if (window.CineGlowPlayer.isWatchPage && window.CineGlowPlayer.video) {
       video = window.CineGlowPlayer.video;
@@ -1007,6 +1056,7 @@
     }
     
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      if (isKilled) return;
       const state = e.detail;
       if (!state.isWatchPage) {
         stopMonitoring();
@@ -1027,6 +1077,7 @@
   }
 
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
       const stored = await chrome.storage.sync.get(['statsEnabled', 'enableInPiP']);
       settings.statsEnabled = !!stored.statsEnabled;
@@ -1038,6 +1089,7 @@
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (area === 'sync') {
       if ('statsEnabled' in changes) {
         settings.statsEnabled = changes.statsEnabled.newValue;

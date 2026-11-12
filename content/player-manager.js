@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  if (typeof window !== 'undefined' && window.CineGlowKilled) return;
+
   class PlayerManager extends EventTarget {
     constructor() {
       super();
@@ -15,6 +17,7 @@
       this.isAdShowing = false;
       this.isPiP = false;
       this.isPlaying = false;
+      this.isKilled = false;
       this.watchFlexy = null;
       
       this.handlePiP = (e) => {
@@ -47,6 +50,7 @@
     }
 
     startInitialSearch() {
+      if (this.isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       this.checkState();
     }
 
@@ -59,6 +63,7 @@
     }
 
     checkState() {
+      if (this.isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       const isWatchPage = location.pathname === '/watch';
       const videoId = new URLSearchParams(window.location.search).get('v');
       const player = document.querySelector('#movie_player');
@@ -137,6 +142,9 @@
 
       if (isWatchPage && (!app || !player || !video) && !this.searchInterval) {
         this.searchInterval = setInterval(() => this.checkState(), 500);
+        if (this.searchInterval && typeof this.searchInterval.unref === 'function') {
+          this.searchInterval.unref();
+        }
       } else if ((!isWatchPage || (app && player && video)) && this.searchInterval) {
         clearInterval(this.searchInterval);
         this.searchInterval = null;
@@ -146,7 +154,90 @@
         this.dispatchEvent(new CustomEvent('state-change', { detail: this }));
       }
     }
+
+    teardownKillSwitch() {
+      if (this.isKilled) return;
+      this.isKilled = true;
+      if (typeof window !== 'undefined') {
+        window.CineGlowKilled = true;
+      }
+
+      // 1. Clear search interval
+      if (this.searchInterval) {
+        clearInterval(this.searchInterval);
+        this.searchInterval = null;
+      }
+
+      // 2. Disconnect observers
+      if (this.playerObserver) { this.playerObserver.disconnect(); this.playerObserver = null; }
+      if (this.appObserver) { this.appObserver.disconnect(); this.appObserver = null; }
+      if (this.watchFlexyObserver) { this.watchFlexyObserver.disconnect(); this.watchFlexyObserver = null; }
+
+      // 3. Detach video listeners
+      if (this.video) {
+        this.video.removeEventListener('enterpictureinpicture', this.handlePiP);
+        this.video.removeEventListener('leavepictureinpicture', this.handlePiP);
+        this.video.removeEventListener('play', this.handlePlayState);
+        this.video.removeEventListener('playing', this.handlePlayState);
+        this.video.removeEventListener('pause', this.handlePlayState);
+        this.video.removeEventListener('waiting', this.handlePlayState);
+        this.video.removeEventListener('ended', this.handlePlayState);
+        this.video = null;
+      }
+
+      // 4. Broadcast in-tab event to ensure any uncoupled scripts receive notification
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('cineglow:kill-switch'));
+      }
+    }
   }
 
-  window.CineGlowPlayer = new PlayerManager();
+  const playerManager = new PlayerManager();
+  window.CineGlowPlayer = playerManager;
+
+  // Early startup checks for managed and local kill-switch policies
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    if (chrome.storage.local) {
+      chrome.storage.local.get(['auraKillSwitchActive']).then((local) => {
+        if (local && local.auraKillSwitchActive) {
+          playerManager.teardownKillSwitch();
+        }
+      }).catch(() => {});
+    }
+    if (chrome.storage.managed) {
+      chrome.storage.managed.get(['KillSwitch']).then((managed) => {
+        if (managed && managed.KillSwitch) {
+          playerManager.teardownKillSwitch();
+        }
+      }).catch(() => {});
+    }
+    if (chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+          playerManager.teardownKillSwitch();
+        }
+        if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+          playerManager.teardownKillSwitch();
+        }
+      });
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        playerManager.teardownKillSwitch();
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'player-manager.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      playerManager.teardownKillSwitch();
+    }, { once: true });
+  }
 })();

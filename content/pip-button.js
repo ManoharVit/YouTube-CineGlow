@@ -13,6 +13,7 @@
   let currentButton = null;
   let pathEl = null;
   let abortController = null;
+  let isKilled = false;
 
   function updateButtonState(isActive) {
     if (!currentButton || !pathEl) return;
@@ -146,6 +147,7 @@
   }
 
   async function injectPipButton(playerManager) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     const { player, isWatchPage } = playerManager;
 
     if (abortController) {
@@ -221,8 +223,50 @@
     updateButtonState(!!document.pictureInPictureElement);
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+    removeExistingButton();
+    const toolbar = document.querySelector('.cineglow-floating-toolbar');
+    if (toolbar && (!toolbar.hasChildNodes() || toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button').length === 0)) {
+      toolbar.remove();
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'pip-button.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowPipTeardown = teardownKillSwitch;
+
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      if (isKilled) return;
       const state = e.detail;
       if (state.isWatchPage && state.player) {
         if (!currentButton || !state.player.contains(currentButton)) {

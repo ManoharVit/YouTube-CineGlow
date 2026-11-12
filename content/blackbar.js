@@ -8,6 +8,7 @@
   let video = null;
   let intervalId = null;
   let worker = null;
+  let isKilled = false;
   
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -20,6 +21,7 @@
   let stabilityCount = 0;
 
   function handleCropResult(result) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!video || !settings.removeBlackBars) return;
     
     // Ignore unreasonable crops (no real video has >25% black bars on one side)
@@ -89,6 +91,7 @@
   }
 
   function scanFrame() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.removeBlackBars || !video || video.readyState < 2 || video.paused) {
       return;
     }
@@ -189,6 +192,7 @@
   }
 
   function startScanning() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!intervalId) {
       intervalId = setInterval(scanFrame, 500);
     }
@@ -202,6 +206,7 @@
   }
 
   function handlePlayerState(state) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (state.video !== video) {
       if (video) resetCrop();
       video = state.video;
@@ -215,12 +220,50 @@
     }
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    settings.removeBlackBars = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    stopScanning();
+    resetCrop();
+    window.CineGlowCrop = null;
+    video = null;
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'blackbar.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowCropTeardown = teardownKillSwitch;
+
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => handlePlayerState(e.detail));
     handlePlayerState(window.CineGlowPlayer);
   }
 
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
       const stored = await chrome.storage.sync.get(AURA_DEFAULTS);
       settings = { ...AURA_DEFAULTS, ...stored };
@@ -232,6 +275,7 @@
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (area !== 'sync') return;
     let changed = false;
     for (const [key, { newValue }] of Object.entries(changes)) {

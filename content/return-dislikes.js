@@ -12,6 +12,7 @@
   let domObserver = null;
   let fetchAbortController = null;
   let isUpdating = false;
+  let isKilled = false;
 
   // Compact number formatting (e.g. 521K, 1.4M, 245)
   function formatCount(num) {
@@ -57,6 +58,7 @@
 
   // Fetch votes from Return YouTube Dislike API
   async function fetchVotes(videoId) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return null;
     if (!videoId) return null;
 
     if (votesCache.has(videoId)) {
@@ -337,6 +339,7 @@
 
   // Update dislikes for currently playing video
   async function updateForCurrentVideo() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!isEnabled || isUpdating) return;
     isUpdating = true;
 
@@ -358,9 +361,11 @@
 
   // Watch DOM mutations to ensure dislike counter stays rendered across Polymer updates
   function startObserver() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (domObserver || !isEnabled) return;
 
     domObserver = new MutationObserver(() => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       if (!isEnabled) return;
 
       const vid = getVideoId();
@@ -390,21 +395,58 @@
   }
 
   function initialize() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!isEnabled) return;
     updateForCurrentVideo();
     startObserver();
   }
 
+  // Emergency Kill-Switch Teardown
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    isEnabled = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    teardown();
+    votesCache.clear();
+    document.removeEventListener('yt-navigate-finish', updateForCurrentVideo);
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'return-dislikes.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowDislikesTeardown = teardownKillSwitch;
+
   // YouTube SPA Navigation listeners
   document.addEventListener('yt-navigate-finish', () => {
-    if (isEnabled) {
+    if (isEnabled && !isKilled) {
       updateForCurrentVideo();
     }
   });
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', () => {
-      if (isEnabled) {
+      if (isEnabled && !isKilled) {
         const vid = getVideoId();
         if (vid !== currentVideoId) {
           updateForCurrentVideo();
@@ -416,6 +458,7 @@
   // Load setting from storage (default: false)
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
     chrome.storage.sync.get({ returnDislikes: false }, (items) => {
+      if (isKilled) return;
       isEnabled = !!items.returnDislikes;
       if (isEnabled) {
         initialize();
@@ -423,6 +466,7 @@
     });
 
     chrome.storage.onChanged.addListener((changes, area) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       if (area === 'sync' && 'returnDislikes' in changes) {
         isEnabled = !!changes.returnDislikes.newValue;
         if (isEnabled) {
@@ -437,9 +481,9 @@
   // Initial check when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      if (isEnabled) initialize();
+      if (isEnabled && !isKilled) initialize();
     });
   } else {
-    if (isEnabled) initialize();
+    if (isEnabled && !isKilled) initialize();
   }
 })();

@@ -2,10 +2,10 @@
 (() => {
   'use strict';
 
-  // Codec Blocker moved to codec-blocker.js
+  let isKilled = false;
 
-  // --- 2. Quality Controller API Interceptor ---
-  window.addEventListener('message', (event) => {
+  function handleQualityMessage(event) {
+    if (isKilled) return;
     if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'AURA_SET_QUALITY') return;
     let quality = event.data.quality;
     const player = document.getElementById('movie_player');
@@ -30,10 +30,10 @@
         console.error('[Aura Main World] Quality setting error:', err);
       }
     }
-  });
+  }
 
-  // --- 3. Stats for Nerds / Codec Info Extractor ---
-  window.addEventListener('message', (event) => {
+  function handleStatsMessage(event) {
+    if (isKilled) return;
     if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'CINEGLOW_GET_STATS_NERDS') return;
     try {
       const player = document.getElementById('movie_player');
@@ -81,5 +81,25 @@
         stats: stats
       }, window.location.origin);
     } catch (e) {}
+  }
+
+  function teardownMainWorld() {
+    if (isKilled) return;
+    isKilled = true;
+    window.removeEventListener('message', handleQualityMessage);
+    window.removeEventListener('message', handleStatsMessage);
+  }
+
+  window.addEventListener('message', handleQualityMessage);
+  window.addEventListener('message', handleStatsMessage);
+
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownMainWorld();
+  }, { once: true });
+
+  window.addEventListener('message', (event) => {
+    if (event.source === window && event.data?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      teardownMainWorld();
+    }
   });
 })();

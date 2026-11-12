@@ -3,9 +3,9 @@
 **Release Version:** `2.3.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
 **Package Archive:** [`YouTube-CineGlow-v2.3.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.3.0.zip)  
-**Package Size:** `112 KB`  
-**File Count:** 42 entries (36 files, 6 directories)  
-**SHA-256 Checksum:** `565e5ea223cc6eeb4a4ffbdbbc27706ff8f8fcc92023cc46c50432f9096d54d4`  
+**Package Size:** `125 KB`  
+**File Count:** 43 entries (37 files, 6 directories)  
+**SHA-256 Checksum:** `5f379d7f9ba63f3732fc7a180f533d9244481aabcefc31dca0d8142633f3346b`  
 **Last Updated:** November 12, 2026  
 
 ---
@@ -63,6 +63,7 @@ Version 2.3.0:
 | `storage` | Permission | Required to save user display settings, audio equalizer presets, and ad-skip counters via `chrome.storage.sync` and cache annotation XML locally. |
 | `declarativeNetRequest` | Permission | Required to apply high-efficiency bundled network rules for tracker blocking without inspecting request payloads. |
 | `scripting` | Permission | Required to register dynamic MAIN-world scripts for user-selected video codec preferences (AV1, VP9) and 60 FPS stream limits. |
+| `alarms` | Permission | Required to schedule non-persistent background tasks and periodic state sync in full compliance with MV3 service worker lifecycle. |
 | `https://*.youtube.com/*` | Host Permission | Required to inject the ambient glow rendering canvas, audio processor graph, and player control toolbar into YouTube watch pages. Enforces pure HTTPS transport. |
 | `https://returnyoutubedislikeapi.com/*` | Host Permission | Optional feature: fetches public community dislike counts from the official Return YouTube Dislike API when enabled by the user (subject to enterprise policy override). |
 | `https://biggest_bucket.storage.googleapis.com/*` | Host Permission | Optional feature: fetches archived community annotation XML files from isolated bucket origin when Classic Annotations is enabled (subject to enterprise policy override). |

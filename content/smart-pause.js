@@ -5,6 +5,7 @@
   let pausedByExtension = false;
   let lastVideo = null;
   let blurTimer = null;
+  let isKilled = false;
 
   // Sync mode from extension storage
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
@@ -13,6 +14,7 @@
     });
 
     chrome.storage.onChanged.addListener((changes, area) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       if (area === 'sync' && changes.autoPauseMode) {
         autoPauseMode = changes.autoPauseMode.newValue || 'off';
         // If mode was disabled while extension paused it, resume playback safely
@@ -47,6 +49,7 @@
   }
 
   function checkState() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     const playerManager = window.CineGlowPlayer;
     const video = playerManager ? playerManager.video : null;
     if (!video) return;
@@ -110,8 +113,54 @@
     }
   };
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    autoPauseMode = 'off';
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    if (blurTimer) {
+      clearTimeout(blurTimer);
+      blurTimer = null;
+    }
+    if (pausedByExtension) {
+      resumePlayback();
+    }
+    if (lastVideo) {
+      lastVideo.removeEventListener('play', onUserPlay);
+      lastVideo.removeEventListener('pause', onUserPause);
+      lastVideo = null;
+    }
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'smart-pause.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowSmartPauseTeardown = teardownKillSwitch;
+
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
+      if (isKilled) return;
       const state = e.detail;
       if (state.video !== lastVideo) {
         if (lastVideo) {

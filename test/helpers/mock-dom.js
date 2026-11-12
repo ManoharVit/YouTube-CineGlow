@@ -146,6 +146,25 @@ class MockClassList {
   }
 }
 
+class MockStyle {
+  constructor() {
+    this._properties = new Map();
+  }
+  setProperty(name, value) {
+    this._properties.set(String(name), String(value));
+    this[name] = String(value);
+  }
+  removeProperty(name) {
+    const prev = this.getPropertyValue(name);
+    this._properties.delete(String(name));
+    delete this[name];
+    return prev;
+  }
+  getPropertyValue(name) {
+    return this._properties.get(String(name)) || '';
+  }
+}
+
 class MockElement extends EventTarget {
   constructor(tagName = 'div', attributes = {}) {
     super();
@@ -153,11 +172,31 @@ class MockElement extends EventTarget {
     this.attributes = new Map();
     this.classList = new MockClassList();
     this.children = [];
-    this.style = {};
+    this.style = new MockStyle();
+    this.dataset = {};
+    this.parentNode = null;
+    this.parentElement = null;
 
     for (const [k, v] of Object.entries(attributes)) {
       this.setAttribute(k, v);
     }
+  }
+
+  get id() {
+    return this.getAttribute('id') || '';
+  }
+
+  set id(val) {
+    this.setAttribute('id', val);
+  }
+
+  get isConnected() {
+    let curr = this.parentElement || this.parentNode;
+    while (curr) {
+      if (curr.tagName === 'DOCUMENT' || curr.tagName === 'HTML' || curr.tagName === 'BODY') return true;
+      curr = curr.parentElement || curr.parentNode;
+    }
+    return false;
   }
 
   setAttribute(name, value) {
@@ -184,6 +223,29 @@ class MockElement extends EventTarget {
     this.children.push(child);
     if (child && typeof child === 'object') {
       child.parentElement = this;
+      child.parentNode = this;
+    }
+    return child;
+  }
+
+  prepend(...nodes) {
+    for (const node of nodes) {
+      if (node && typeof node === 'object') {
+        node.parentElement = this;
+        node.parentNode = this;
+      }
+    }
+    this.children.unshift(...nodes);
+  }
+
+  removeChild(child) {
+    const idx = this.children.indexOf(child);
+    if (idx !== -1) {
+      this.children.splice(idx, 1);
+      if (child && typeof child === 'object') {
+        if (child.parentElement === this) child.parentElement = null;
+        if (child.parentNode === this) child.parentNode = null;
+      }
     }
     return child;
   }
@@ -192,15 +254,44 @@ class MockElement extends EventTarget {
     return this;
   }
 
+  matches(selector) {
+    if (!selector || typeof selector !== 'string') return false;
+    if (selector === ':hover' || selector === ':focus-within' || selector === ':focus') return false;
+    if (selector.startsWith('#')) return this.id === selector.slice(1);
+    if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
+    if (selector.toLowerCase() === this.tagName.toLowerCase()) return true;
+    return false;
+  }
+
+  contains(node) {
+    if (!node) return false;
+    if (node === this) return true;
+    if (Array.isArray(this.children)) {
+      for (const child of this.children) {
+        if (child === node || (child.contains && child.contains(node))) return true;
+      }
+    }
+    return false;
+  }
+
   click() {
     this.dispatchEvent(new Event('click'));
   }
 
   remove() {
-    if (this.parentElement && Array.isArray(this.parentElement.children)) {
-      const idx = this.parentElement.children.indexOf(this);
-      if (idx !== -1) this.parentElement.children.splice(idx, 1);
+    const parent = this.parentElement || this.parentNode;
+    if (parent && typeof parent.removeChild === 'function') {
+      parent.removeChild(this);
+    } else if (parent && Array.isArray(parent.children)) {
+      const idx = parent.children.indexOf(this);
+      if (idx !== -1) parent.children.splice(idx, 1);
+      this.parentElement = null;
+      this.parentNode = null;
     }
+  }
+
+  getBoundingClientRect() {
+    return { top: 0, left: 0, width: 640, height: 360, bottom: 360, right: 640 };
   }
 
   querySelector(_selector) {
@@ -301,6 +392,9 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
   MockMutationObserver.instances = [];
   const url = new URL(initialUrl);
 
+  if (!globalThis.MutationObserver) {
+    globalThis.MutationObserver = MockMutationObserver;
+  }
   if (!globalThis.ResizeObserver) {
     globalThis.ResizeObserver = MockResizeObserver;
   }
@@ -330,8 +424,27 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
     if (elements.has(sel)) return [elements.get(sel)];
     return [];
   };
+  function findNodeById(node, id) {
+    if (!node) return null;
+    const actualId = (node.getAttribute && node.getAttribute('id')) || node.id;
+    if (actualId === id) return node;
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        const found = findNodeById(child, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
   mockDocument.getElementById = (id) => {
-    return elements.get(`#${id}`) || elements.get(id) || null;
+    const direct = elements.get(`#${id}`) || elements.get(id);
+    if (direct) return direct;
+    const fromBody = findNodeById(mockDocument.body, id);
+    if (fromBody) return fromBody;
+    const fromDoc = findNodeById(mockDocument.documentElement, id);
+    if (fromDoc) return fromDoc;
+    return findNodeById(mockDocument, id);
   };
   mockDocument.createElement = (tag) => new MockElement(tag);
   mockDocument.head = new MockElement('head');
@@ -442,7 +555,85 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
       }
     },
     runtime: {
-      getManifest: () => ({ version: '2.3.0' })
+      getManifest: () => ({ version: '2.3.0' }),
+      onMessage: {
+        _listeners: [],
+        addListener(fn) { this._listeners.push(fn); },
+        removeListener(fn) {
+          this._listeners = this._listeners.filter(l => l !== fn);
+        },
+        dispatch(message, sender, sendResponse) {
+          for (const l of this._listeners) {
+            try {
+              l(message, sender || {}, sendResponse || (() => {}));
+            } catch (_) {}
+          }
+        }
+      },
+      sendMessage(msg, callback) {
+        if (this.onMessage && typeof this.onMessage.dispatch === 'function') {
+          this.onMessage.dispatch(msg, {}, callback);
+        } else if (callback) {
+          callback({ success: true });
+        }
+      },
+      onInstalled: {
+        _listeners: [],
+        addListener(fn) { this._listeners.push(fn); }
+      },
+      onStartup: {
+        _listeners: [],
+        addListener(fn) { this._listeners.push(fn); }
+      }
+    },
+    tabs: {
+      _messages: [],
+      query: (queryInfo, callback) => {
+        const tabs = [{ id: 1, url: 'https://www.youtube.com/watch?v=mockVideo' }];
+        if (callback) callback(tabs);
+        return Promise.resolve(tabs);
+      },
+      sendMessage: (tabId, message, options, callback) => {
+        mockChrome.tabs._messages.push({ tabId, message });
+        if (typeof options === 'function') callback = options;
+        if (mockChrome.runtime && mockChrome.runtime.onMessage) {
+          mockChrome.runtime.onMessage.dispatch(message, { tab: { id: tabId } }, callback);
+        }
+        if (callback) callback({ success: true });
+        return Promise.resolve({ success: true });
+      }
+    },
+    scripting: {
+      _registered: [],
+      getRegisteredContentScripts: async () => mockChrome.scripting._registered,
+      registerContentScripts: async (scripts) => { mockChrome.scripting._registered.push(...scripts); },
+      unregisterContentScripts: async (filter) => {
+        if (!filter || !filter.ids) {
+          mockChrome.scripting._registered = [];
+        } else {
+          mockChrome.scripting._registered = mockChrome.scripting._registered.filter(s => !filter.ids.includes(s.id));
+        }
+      }
+    },
+    declarativeNetRequest: {
+      _enabledRulesetIds: ['adblock_rules'],
+      updateEnabledRulesets: async (options) => {
+        if (options.disableRulesetIds) {
+          mockChrome.declarativeNetRequest._enabledRulesetIds = mockChrome.declarativeNetRequest._enabledRulesetIds.filter(id => !options.disableRulesetIds.includes(id));
+        }
+        if (options.enableRulesetIds) {
+          mockChrome.declarativeNetRequest._enabledRulesetIds.push(...options.enableRulesetIds);
+        }
+      }
+    },
+    alarms: {
+      _alarms: {},
+      _listeners: [],
+      create: (name, alarmInfo) => { mockChrome.alarms._alarms[name] = alarmInfo; },
+      clear: (name) => { delete mockChrome.alarms._alarms[name]; },
+      onAlarm: {
+        addListener(fn) { mockChrome.alarms._listeners.push(fn); }
+      }
     }
   };
 
@@ -458,6 +649,7 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
 }
 
 module.exports = {
+  MockStyle,
   MockAudioParam,
   MockAudioNode,
   MockGainNode,

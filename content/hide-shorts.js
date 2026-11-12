@@ -2,6 +2,7 @@
   'use strict';
 
   let hideShortsEnabled = false;
+  let isKilled = false;
 
   const SHORTS_SELECTORS = [
     'grid-shelf-view-model',
@@ -33,6 +34,10 @@
   ].join(',');
 
   function updateDomAttribute(enabled) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) {
+      document.documentElement.removeAttribute('cineglow-hide-shorts');
+      return;
+    }
     if (enabled) {
       document.documentElement.setAttribute('cineglow-hide-shorts', 'true');
     } else {
@@ -42,6 +47,7 @@
 
   // If user navigates directly to /shorts, redirect back to YouTube Home
   function checkShortsRedirect() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!hideShortsEnabled) return;
     const path = window.location.pathname;
     if (path.startsWith('/shorts')) {
@@ -49,15 +55,51 @@
     }
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    hideShortsEnabled = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    document.documentElement.removeAttribute('cineglow-hide-shorts');
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'hide-shorts.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
+  window.CineGlowShortsTeardown = teardownKillSwitch;
+
   function init() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
       chrome.storage.sync.get({ hideShorts: false }, (items) => {
+        if (isKilled) return;
         hideShortsEnabled = !!items.hideShorts;
         updateDomAttribute(hideShortsEnabled);
         checkShortsRedirect();
       });
 
       chrome.storage.onChanged.addListener((changes, area) => {
+        if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
         if (area === 'sync' && 'hideShorts' in changes) {
           hideShortsEnabled = !!changes.hideShorts.newValue;
           updateDomAttribute(hideShortsEnabled);
@@ -68,7 +110,7 @@
 
     // Intercept and cancel clicks on any /shorts links when hiding is enabled
     document.addEventListener('click', (e) => {
-      if (!hideShortsEnabled) return;
+      if (!hideShortsEnabled || isKilled) return;
       const anchor = e.target.closest && e.target.closest('a[href*="/shorts"]');
       if (anchor) {
         e.preventDefault();

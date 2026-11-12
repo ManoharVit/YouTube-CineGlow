@@ -10,6 +10,8 @@
   let lastAdSkipTime = 0;
   let adSkipTimer = 0;
   let activeVideo = null;
+  let isKilled = false;
+  let isAdBlockPolicyDisabled = false;
 
   function safeSendMessage(msg) {
     try {
@@ -43,6 +45,11 @@
   `;
 
   function applyAdBlockStyles() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) {
+      const el = document.getElementById(AD_CSS_ID);
+      if (el) el.remove();
+      return;
+    }
     let el = document.getElementById(AD_CSS_ID);
     if (settings.adblockEnabled) {
       if (!el) {
@@ -57,24 +64,71 @@
   }
 
   async function loadSettings() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        const stored = await chrome.storage.sync.get(['adblockEnabled']);
-        if (stored.adblockEnabled !== undefined) {
-          settings.adblockEnabled = stored.adblockEnabled;
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        if (chrome.storage.local) {
+          const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
+          if (local && local.auraKillSwitchActive) {
+            teardownKillSwitch();
+            return;
+          }
+        }
+        if (chrome.storage.managed) {
+          const managed = await chrome.storage.managed.get(['DisableAdBlock', 'KillSwitch']).catch(() => ({}));
+          if (managed) {
+            if (managed.KillSwitch) {
+              teardownKillSwitch();
+              return;
+            }
+            if (managed.DisableAdBlock) {
+              isAdBlockPolicyDisabled = true;
+            }
+          }
+        }
+        if (chrome.storage.sync) {
+          const stored = await chrome.storage.sync.get(['adblockEnabled']);
+          if (stored.adblockEnabled !== undefined) {
+            settings.adblockEnabled = stored.adblockEnabled;
+          }
         }
       }
     } catch (_) {}
+
+    if (isAdBlockPolicyDisabled) {
+      settings.adblockEnabled = false;
+    }
     applyAdBlockStyles();
     checkAdState();
   }
 
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+      if (area === 'managed') {
+        if ('DisableAdBlock' in changes) {
+          isAdBlockPolicyDisabled = changes.DisableAdBlock.newValue === true;
+          if (isAdBlockPolicyDisabled) {
+            settings.adblockEnabled = false;
+          } else {
+            settings.adblockEnabled = true;
+          }
+          applyAdBlockStyles();
+          checkAdState();
+        }
+        if ('KillSwitch' in changes && changes.KillSwitch.newValue === true) {
+          teardownKillSwitch();
+        }
+      }
+      if (area === 'local' && changes.auraKillSwitchActive && changes.auraKillSwitchActive.newValue === true) {
+        teardownKillSwitch();
+      }
       if (area === 'sync' && changes.adblockEnabled) {
-        settings.adblockEnabled = changes.adblockEnabled.newValue;
-        applyAdBlockStyles();
-        checkAdState();
+        if (!isAdBlockPolicyDisabled) {
+          settings.adblockEnabled = changes.adblockEnabled.newValue;
+          applyAdBlockStyles();
+          checkAdState();
+        }
       }
     });
   }
@@ -114,6 +168,7 @@
   }
 
   function skipVideoAds() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.adblockEnabled) return;
 
     // Dismiss YouTube Anti-Adblock popup if it ever appears
@@ -180,6 +235,7 @@
   }
 
   function checkAdState() {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.adblockEnabled) {
       if (adSkipTimer) {
         clearInterval(adSkipTimer);
@@ -251,14 +307,51 @@
     activeVideo = null;
   }
 
+  // --- Emergency Kill-Switch Teardown ---
+  function teardownKillSwitch() {
+    if (isKilled) return;
+    isKilled = true;
+    settings.adblockEnabled = false;
+    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    cleanup();
+    const styleEl = document.getElementById(AD_CSS_ID);
+    if (styleEl) styleEl.remove();
+  }
+
+  // Dual listener registration: Direct runtime message + In-tab fallback event
+  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+        teardownKillSwitch();
+        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
+        if (typeof sendResponse === 'function') {
+          sendResponse({ success: true, script: 'youtube-ads.js' });
+        }
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('cineglow:kill-switch', () => {
+      teardownKillSwitch();
+    }, { once: true });
+  }
+
   // Expose for testing and external diagnostics if needed
   window.CineGlowAdBlock = {
+    settings,
+    isAdBlockPolicyDisabled: () => isAdBlockPolicyDisabled,
     isAdActive,
     skipVideoAds,
     checkAdState,
     dismissEnforcementModal,
     restoreModifiedPlaybackState,
-    cleanup
+    cleanup,
+    teardownKillSwitch
   };
 
   loadSettings();

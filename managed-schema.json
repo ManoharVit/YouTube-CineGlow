@@ -21,6 +21,11 @@
       "title": "Force Default Video Quality",
       "description": "Enforces a default video playback quality (e.g., hd720 or hd1080) to conserve corporate network bandwidth.",
       "type": "string"
+    },
+    "KillSwitch": {
+      "title": "Emergency Kill Switch",
+      "description": "Emergency kill-switch to immediately disable and tear down extension functionality across all active YouTube tabs within 5 minutes.",
+      "type": "boolean"
     }
   }
 }
