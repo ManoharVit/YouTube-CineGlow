@@ -85,7 +85,10 @@
     'adFeedbackRenderer', 'adSurveyRenderer',
     'playerLegacyDesktopWatchAdsRenderer',
     'desktopWatchAdsRenderer',
-    'bannerPromoRenderer'
+    'bannerPromoRenderer',
+    'cards',
+    'cardCollectionRenderer',
+    'cardsRenderer'
   ];
 
   function prunePlayerAds(data) {
@@ -394,14 +397,18 @@
           }
         }
 
-        // D. Force-remove ad overlay elements from DOM
+        // D. Force-remove ad overlay and info card elements from DOM
         try {
           const overlays = document.querySelectorAll(
             '.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, ' +
             '.ytp-ad-player-overlay-instream-info, .ytp-ad-message-container, ' +
-            '.ytp-ad-overlay-container, .ytp-ad-survey, .ytp-ad-preview-container'
+            '.ytp-ad-overlay-container, .ytp-ad-survey, .ytp-ad-preview-container, ' +
+            '.ytp-cards-button, .ytp-cards-button-icon, .ytp-cards-teaser'
           );
-          overlays.forEach(el => { el.style.display = 'none'; });
+          overlays.forEach(el => {
+            el.style.display = 'none';
+            try { el.remove(); } catch (_) {}
+          });
         } catch (_) {}
 
       } else {

@@ -418,7 +418,7 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.strictEqual(video.muted, false, 'Unmuted normal video must not be changed');
   });
 
-  test('AD_CSS and content.css contain companion, sidebar, and engagement panel ad selectors', () => {
+  test('AD_CSS and content.css contain companion, sidebar, engagement panel, and info card selectors', () => {
     const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
     const contentCss = fs.readFileSync(path.join(__dirname, '../content/content.css'), 'utf8');
 
@@ -427,7 +427,10 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
       '#secondary #companion',
       '[target-id="engagement-panel-ads"]',
       'ytd-ad-slot-renderer',
-      'ytd-action-companion-ad-renderer'
+      'ytd-action-companion-ad-renderer',
+      '.ytp-cards-button',
+      '.ytp-cards-button-icon',
+      '.ytp-cards-teaser'
     ]) {
       assert.ok(adsJs.includes(sel), `youtube-ads.js must include ${sel} in cosmetic ad suppression rules`);
       assert.ok(contentCss.includes(sel), `content.css must include ${sel} in static stylesheet`);

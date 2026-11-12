@@ -101,6 +101,14 @@ ytd-merch-shelf-renderer,
 [target-id="engagement-panel-ads"],
 #masthead-ad,
 #player-ads,
+.ytp-cards-button,
+.ytp-cards-button-icon,
+.ytp-cards-button-icon-default,
+.ytp-cards-button-icon-shopping,
+.ytp-cards-teaser,
+.ytp-cards-teaser-text,
+.ytp-cards-teaser-box,
+.ytp-suggested-action-badge,
 .ytp-ad-overlay-container,
 .ytp-ad-message-container,
 .ytp-ad-survey,
@@ -377,11 +385,24 @@ html.aura-hide-theater ytd-watch-grid[theater-requested_]:not([fullscreen]) #cha
 }
 }
 
-/* AdBlock UI hiding */
+/* AdBlock UI hiding & Info Cards removal */
+.ytp-cards-button,
+.ytp-cards-button-icon,
+.ytp-cards-button-icon-default,
+.ytp-cards-button-icon-shopping,
+.ytp-cards-teaser,
+.ytp-cards-teaser-text,
+.ytp-cards-teaser-box,
+.ytp-suggested-action-badge,
 html.aura-adblock .ytp-cards-button,
+html.aura-adblock .ytp-cards-button-icon,
 html.aura-adblock .ytp-cards-teaser,
 html.aura-adblock .ytp-suggested-action-badge {
   display: none !important;
+  height: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
 }
 html.aura-adblock ytd-shopping-shopping-module-renderer,
 html.aura-adblock .ytd-merch-shelf-renderer,

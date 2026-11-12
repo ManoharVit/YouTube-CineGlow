@@ -28,6 +28,14 @@
   const AD_CSS_ID = 'cineglow-adblock-styles';
   const AD_CSS = `
     #masthead-ad,
+    .ytp-cards-button,
+    .ytp-cards-button-icon,
+    .ytp-cards-button-icon-default,
+    .ytp-cards-button-icon-shopping,
+    .ytp-cards-teaser,
+    .ytp-cards-teaser-text,
+    .ytp-cards-teaser-box,
+    .ytp-suggested-action-badge,
     ytd-companion-slot-renderer,
     ytd-action-companion-ad-renderer,
     ytd-ad-slot-renderer,
