@@ -33,11 +33,33 @@
       if (Array.isArray(data.playerAds)) data.playerAds = [];
       if (Array.isArray(data.adPlacements)) data.adPlacements = [];
       if (Array.isArray(data.adSlots)) data.adSlots = [];
+      if (data.playerResponse && typeof data.playerResponse === 'object') {
+        prunePlayerAds(data.playerResponse);
+      }
+      if (data.raw_player_response && typeof data.raw_player_response === 'object') {
+        prunePlayerAds(data.raw_player_response);
+      }
+      if (data.adSlotRenderer) delete data.adSlotRenderer;
+      if (data.companionSlot) delete data.companionSlot;
     } catch (_) {}
     return data;
   }
 
-  // 1. Intercept and sanitize window.ytInitialPlayerResponse before YouTube player initializes
+  // Intercept JSON.parse globally in MAIN world (Brave Shields / uBlock core technique)
+  try {
+    if (typeof JSON !== 'undefined' && typeof JSON.parse === 'function') {
+      const origJSONParse = JSON.parse;
+      JSON.parse = function(...args) {
+        const result = origJSONParse.apply(this, args);
+        if (result && typeof result === 'object') {
+          prunePlayerAds(result);
+        }
+        return result;
+      };
+    }
+  } catch (_) {}
+
+  // 1. Intercept and sanitize window.ytInitialPlayerResponse, ytInitialData, and ytplayer before YouTube player initializes
   try {
     if (typeof window !== 'undefined') {
       let _rawInitial = window.ytInitialPlayerResponse;
@@ -50,6 +72,35 @@
         get: () => _rawInitial,
         set: (val) => {
           _rawInitial = prunePlayerAds(val);
+        }
+      });
+
+      let _rawInitialData = window.ytInitialData;
+      if (_rawInitialData) {
+        prunePlayerAds(_rawInitialData);
+      }
+      Object.defineProperty(window, 'ytInitialData', {
+        configurable: true,
+        enumerable: true,
+        get: () => _rawInitialData,
+        set: (val) => {
+          _rawInitialData = prunePlayerAds(val);
+        }
+      });
+
+      let _rawYtPlayer = window.ytplayer;
+      if (_rawYtPlayer && _rawYtPlayer.config && _rawYtPlayer.config.args) {
+        prunePlayerAds(_rawYtPlayer.config.args.raw_player_response);
+      }
+      Object.defineProperty(window, 'ytplayer', {
+        configurable: true,
+        enumerable: true,
+        get: () => _rawYtPlayer,
+        set: (val) => {
+          if (val && val.config && val.config.args) {
+            prunePlayerAds(val.config.args.raw_player_response);
+          }
+          _rawYtPlayer = val;
         }
       });
     }
@@ -159,10 +210,14 @@
           }
         }
 
-        // C. Click the active skip button (debounced, without bubbling synthetic pointer events)
+        // C. Click the active skip button (resolving to child button if container element is matched)
         const now = Date.now();
-        if (now - lastMainWorldSkipClickTime > 300) {
-          const btn = document.querySelector(MAIN_SKIP_BUTTON_SELECTOR);
+        if (now - lastMainWorldSkipClickTime > 200) {
+          let btn = document.querySelector(MAIN_SKIP_BUTTON_SELECTOR);
+          if (btn && btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
+            const childBtn = btn.querySelector('button, [role="button"]');
+            if (childBtn) btn = childBtn;
+          }
           if (btn) {
             lastMainWorldSkipClickTime = now;
             try {

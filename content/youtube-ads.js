@@ -249,10 +249,14 @@
 
       const isAd = isAdActive();
 
-      // 1. Click the active skip button (debounced, without bubbling synthetic pointer events that cause recursion)
+      // 1. Click the active skip button (resolving to child button if container element is matched)
       const now = Date.now();
-      if (now - lastSkipButtonClickTime > 300) {
-        const btn = document.querySelector(SKIP_BUTTON_SELECTOR);
+      if (now - lastSkipButtonClickTime > 200) {
+        let btn = document.querySelector(SKIP_BUTTON_SELECTOR);
+        if (btn && btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
+          const childBtn = btn.querySelector('button, [role="button"]');
+          if (childBtn) btn = childBtn;
+        }
         if (btn) {
           lastSkipButtonClickTime = now;
           try {
