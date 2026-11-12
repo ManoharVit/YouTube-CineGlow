@@ -7,6 +7,20 @@
   let adMutationObserver = null;
   let preAdSpeed = 1.0;
   let adMuted = false;
+  let isSkippingMainWorld = false;
+  let lastMainWorldSkipClickTime = 0;
+
+  const MAIN_SKIP_BUTTON_SELECTOR = [
+    '.ytp-ad-skip-button-modern',
+    '.ytp-ad-skip-button',
+    '.ytp-skip-ad-button',
+    '.ytp-ad-skip-button-slot button',
+    '[id^="skip-button:"] button',
+    'button.ytp-ad-skip-button-modern',
+    '.ytp-ad-skip-button-container button',
+    'button[aria-label*="Skip"]',
+    '.ytp-ad-overlay-close-button'
+  ].join(', ');
 
   // --- Brave Shields / uBlock-style In-Page YouTube In-Stream Ad Neutralization ---
   function prunePlayerAds(data) {
@@ -107,6 +121,9 @@
   // 4. Zero-Latency Main-World Ad Skipping via Direct Player API & Instant Acceleration
   function skipMainWorldAd() {
     if (isKilled) return;
+    if (isSkippingMainWorld) return;
+    isSkippingMainWorld = true;
+
     try {
       const player = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
       const isAd = !!(
@@ -142,28 +159,14 @@
           }
         }
 
-        // C. Synthetically click and trigger pointer events on all skip buttons
-        const skipSelectors = [
-          '.ytp-ad-skip-button',
-          '.ytp-ad-skip-button-modern',
-          '.ytp-skip-ad-button',
-          '.ytp-ad-skip-button-slot button',
-          '.ytp-ad-skip-button-slot',
-          '[id^="skip-button:"] button',
-          '[id^="skip-button:"]',
-          'button.ytp-ad-skip-button-modern',
-          'div.ytp-ad-skip-button-modern',
-          '.ytp-ad-skip-button-container button',
-          'button[aria-label*="Skip"]',
-          'button[aria-label*="skip"]',
-          '.ytp-ad-overlay-close-button'
-        ];
-        for (const sel of skipSelectors) {
-          const btn = document.querySelector(sel);
+        // C. Click the active skip button (debounced, without bubbling synthetic pointer events)
+        const now = Date.now();
+        if (now - lastMainWorldSkipClickTime > 300) {
+          const btn = document.querySelector(MAIN_SKIP_BUTTON_SELECTOR);
           if (btn) {
+            lastMainWorldSkipClickTime = now;
             try {
               btn.click();
-              btn.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, view: window }));
             } catch (_) {}
           }
         }
@@ -180,7 +183,10 @@
           }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      isSkippingMainWorld = false;
+    }
   }
 
   // Active continuous monitoring loop (100ms interval for immediate responsiveness)

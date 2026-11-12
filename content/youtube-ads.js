@@ -202,6 +202,20 @@
   }
 
   let adMutationObserver = null;
+  let isSkipping = false;
+  let lastSkipButtonClickTime = 0;
+
+  const SKIP_BUTTON_SELECTOR = [
+    '.ytp-ad-skip-button-modern',
+    '.ytp-ad-skip-button',
+    '.ytp-skip-ad-button',
+    '.ytp-ad-skip-button-slot button',
+    '[id^="skip-button:"] button',
+    'button.ytp-ad-skip-button-modern',
+    '.ytp-ad-skip-button-container button',
+    'button[aria-label*="Skip"]',
+    '.ytp-ad-overlay-close-button'
+  ].join(', ');
 
   function setupAdObserver() {
     if (isKilled) return;
@@ -210,15 +224,6 @@
     if (target && typeof MutationObserver !== 'undefined') {
       adMutationObserver = new MutationObserver(() => {
         if (!settings.adblockEnabled) return;
-        const skipBtn = document.querySelector(
-          '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-skip-button-container button, button[aria-label*="Skip"], button[aria-label*="skip"], .ytp-ad-overlay-close-button'
-        );
-        if (skipBtn) {
-          try {
-            skipBtn.click();
-            skipBtn.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, view: window }));
-          } catch (_) {}
-        }
         if (isAdActive()) {
           skipVideoAds();
         }
@@ -230,75 +235,67 @@
   function skipVideoAds() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.adblockEnabled) return;
+    if (isSkipping) return;
+    isSkipping = true;
 
-    // Dismiss YouTube Anti-Adblock popup if it ever appears
-    dismissEnforcementModal();
-
-    // Trigger MAIN world privileged skipAd() engine
     try {
-      window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
-    } catch (_) {}
+      // Dismiss YouTube Anti-Adblock popup if it ever appears
+      dismissEnforcementModal();
 
-    const isAd = isAdActive();
+      // Trigger MAIN world privileged skipAd() engine
+      try {
+        window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
+      } catch (_) {}
 
-    // 1. Click skip buttons if available
-    const skipSelectors = [
-      '.ytp-ad-skip-button',
-      '.ytp-ad-skip-button-modern',
-      '.ytp-skip-ad-button',
-      '.ytp-ad-skip-button-slot',
-      '.ytp-ad-skip-button-slot button',
-      '[id^="skip-button:"] button',
-      '[id^="skip-button:"]',
-      'button.ytp-ad-skip-button-modern',
-      'div.ytp-ad-skip-button-modern',
-      '.ytp-ad-skip-button-container button',
-      'button[aria-label*="Skip"]',
-      'button[aria-label*="skip"]',
-      '.ytp-ad-overlay-close-button'
-    ];
-    for (const sel of skipSelectors) {
-      const btn = document.querySelector(sel);
-      if (btn) {
-        try {
-          btn.click();
-          btn.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, view: window }));
-        } catch (_) {}
-      }
-    }
+      const isAd = isAdActive();
 
-    // 2. Fast-forward video ad ONLY if an ad is actively confirmed
-    const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-    if (isAd && video) {
-      if (!adMutedByUs) {
-        if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
-          preAdSpeed = video.playbackRate;
+      // 1. Click the active skip button (debounced, without bubbling synthetic pointer events that cause recursion)
+      const now = Date.now();
+      if (now - lastSkipButtonClickTime > 300) {
+        const btn = document.querySelector(SKIP_BUTTON_SELECTOR);
+        if (btn) {
+          lastSkipButtonClickTime = now;
+          try {
+            btn.click();
+          } catch (_) {}
         }
-        userWasMuted = video.muted;
-        if (!video.muted) {
+      }
+
+      // 2. Fast-forward video ad ONLY if an ad is actively confirmed
+      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+      if (isAd && video) {
+        if (!adMutedByUs) {
+          if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
+            preAdSpeed = video.playbackRate;
+          }
+          userWasMuted = video.muted;
+          if (!video.muted) {
+            video.muted = true;
+            adMutedByUs = true;
+            mutedVideoElement = video;
+          }
+        } else if (!userWasMuted && !video.muted) {
+          // Handle video element swap mid-ad
           video.muted = true;
-          adMutedByUs = true;
           mutedVideoElement = video;
         }
-      } else if (!userWasMuted && !video.muted) {
-        // Handle video element swap mid-ad
-        video.muted = true;
-        mutedVideoElement = video;
-      }
-      video.playbackRate = 16.0;
-      if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
-        video.currentTime = video.duration;
-      } else {
-        video.currentTime = 99999;
-      }
+        video.playbackRate = 16.0;
+        if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
+          video.currentTime = video.duration;
+        } else {
+          video.currentTime = 99999;
+        }
 
-      if (Date.now() - lastAdSkipTime > 2500) {
-        safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
-        lastAdSkipTime = Date.now();
+        if (Date.now() - lastAdSkipTime > 2500) {
+          safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
+          lastAdSkipTime = Date.now();
+        }
+      } else if (!isAd && video) {
+        // Ad finished — restore audio and user's playback speed ONLY on the element we modified
+        restoreModifiedPlaybackState(video);
       }
-    } else if (!isAd && video) {
-      // Ad finished — restore audio and user's playback speed ONLY on the element we modified
-      restoreModifiedPlaybackState(video);
+    } finally {
+      isSkipping = false;
     }
   }
 
