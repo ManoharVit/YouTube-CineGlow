@@ -1,5 +1,6 @@
 /*
  * Aura - Black Bar Detection and Removal (Auto-Crop)
+ * Production Architecture: OffscreenCanvas + Web Worker Async Frame Analysis
  */
 (() => {
   'use strict';
@@ -10,15 +11,110 @@
   let worker = null;
   let isKilled = false;
   
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  // Milestone 3 Item 2: Downsampled OffscreenCanvas (64x64) eliminates GPU readback stalls
+  const SCAN_WIDTH = 64;
+  const SCAN_HEIGHT = 64;
+  let offscreenCanvas = null;
+  let offscreenCtx = null;
+
+  if (typeof OffscreenCanvas !== 'undefined') {
+    try {
+      offscreenCanvas = new OffscreenCanvas(SCAN_WIDTH, SCAN_HEIGHT);
+      offscreenCtx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+    } catch (_) {
+      offscreenCanvas = null;
+    }
+  }
+
+  const canvas = offscreenCanvas || document.createElement('canvas');
+  canvas.width = SCAN_WIDTH;
+  canvas.height = SCAN_HEIGHT;
+  const ctx = offscreenCtx || (canvas.getContext && canvas.getContext('2d', { willReadFrequently: true }));
+
+  // Initialize Web Worker for non-blocking asynchronous pixel analysis
+  if (typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+    try {
+      const workerBlob = new Blob([`
+        self.onmessage = function(e) {
+          const { buffer, width, height } = e.data;
+          const data = new Uint8ClampedArray(buffer);
+          const threshold = 15;
+          function isBlack(x, y) {
+            const i = (y * width + x) * 4;
+            return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
+          }
+          function isRowBlack(y) {
+            const startX = Math.floor(width * 0.25);
+            const endX = Math.floor(width * 0.75);
+            const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
+            let nonBlack = 0;
+            for (let x = startX; x < endX; x++) {
+              if (!isBlack(x, y)) {
+                nonBlack++;
+                if (nonBlack > tolerance) return false;
+              }
+            }
+            return true;
+          }
+          function isColBlack(x) {
+            const startY = Math.floor(height * 0.25);
+            const endY = Math.floor(height * 0.75);
+            const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
+            let nonBlack = 0;
+            for (let y = startY; y < endY; y++) {
+              if (!isBlack(x, y)) {
+                nonBlack++;
+                if (nonBlack > tolerance) return false;
+              }
+            }
+            return true;
+          }
+          let topBar = height;
+          for (let y = 0; y < height; y++) {
+            if (!isRowBlack(y)) { topBar = y; break; }
+          }
+          let bottomBar = height;
+          for (let y = height - 1; y >= 0; y--) {
+            if (!isRowBlack(y)) { bottomBar = height - 1 - y; break; }
+          }
+          let leftBar = width;
+          for (let x = 0; x < width; x++) {
+            if (!isColBlack(x)) { leftBar = x; break; }
+          }
+          let rightBar = width;
+          for (let x = width - 1; x >= 0; x--) {
+            if (!isColBlack(x)) { rightBar = width - 1 - x; break; }
+          }
+          self.postMessage({ topBar, bottomBar, leftBar, rightBar, width, height });
+        };
+      `], { type: 'application/javascript' });
+      worker = new Worker(URL.createObjectURL(workerBlob));
+      worker.onmessage = (e) => {
+        const { topBar, bottomBar, leftBar, rightBar, width, height } = e.data;
+        calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height);
+      };
+    } catch (_) {
+      worker = null;
+    }
+  }
 
   const STABILITY_REQUIRED = 4;
   let stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let stabilityCount = 0;
+
+  function calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height) {
+    if (topBar === height || leftBar === width) return;
+    const overscanY = (topBar > 0 || bottomBar > 0) ? 0.006 : 0;
+    const overscanX = (leftBar > 0 || rightBar > 0) ? 0.006 : 0;
+
+    const cropTop = topBar > 0 ? (topBar / height) + overscanY : 0;
+    const cropBottom = bottomBar > 0 ? (bottomBar / height) + overscanY : 0;
+    const cropLeft = leftBar > 0 ? (leftBar / width) + overscanX : 0;
+    const cropRight = rightBar > 0 ? (rightBar / width) + overscanX : 0;
+
+    handleCropResult({ cropTop, cropBottom, cropLeft, cropRight });
+  }
 
   function handleCropResult(result) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
@@ -90,6 +186,57 @@
     }
   }
 
+  function processScanFallback(data, width, height) {
+    const threshold = 15;
+    function isBlack(x, y) {
+      const i = (y * width + x) * 4;
+      return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
+    }
+    function isRowBlack(y) {
+      const startX = Math.floor(width * 0.25);
+      const endX = Math.floor(width * 0.75);
+      const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
+      let nonBlack = 0;
+      for (let x = startX; x < endX; x++) {
+        if (!isBlack(x, y)) {
+          nonBlack++;
+          if (nonBlack > tolerance) return false;
+        }
+      }
+      return true;
+    }
+    function isColBlack(x) {
+      const startY = Math.floor(height * 0.25);
+      const endY = Math.floor(height * 0.75);
+      const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
+      let nonBlack = 0;
+      for (let y = startY; y < endY; y++) {
+        if (!isBlack(x, y)) {
+          nonBlack++;
+          if (nonBlack > tolerance) return false;
+        }
+      }
+      return true;
+    }
+    let topBar = height;
+    for (let y = 0; y < height; y++) {
+      if (!isRowBlack(y)) { topBar = y; break; }
+    }
+    let bottomBar = height;
+    for (let y = height - 1; y >= 0; y--) {
+      if (!isRowBlack(y)) { bottomBar = height - 1 - y; break; }
+    }
+    let leftBar = width;
+    for (let x = 0; x < width; x++) {
+      if (!isColBlack(x)) { leftBar = x; break; }
+    }
+    let rightBar = width;
+    for (let x = width - 1; x >= 0; x--) {
+      if (!isColBlack(x)) { rightBar = width - 1 - x; break; }
+    }
+    calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height);
+  }
+
   function scanFrame() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!settings.removeBlackBars || !video || video.readyState < 2 || video.paused) {
@@ -97,95 +244,17 @@
     }
     
     try {
+      if (!ctx) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      const width = canvas.width;
-      const height = canvas.height;
-      const data = imageData.data;
-      
-      // Lower threshold to avoid treating dark scenes as black bars
-      const threshold = 15;
-      
-      function isBlack(x, y) {
-        const i = (y * width + x) * 4;
-        return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
-      }
-      
-      function isRowBlack(y) {
-        const startX = Math.floor(width * 0.25);
-        const endX = Math.floor(width * 0.75);
-        const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
-        let nonBlack = 0;
-        for (let x = startX; x < endX; x++) {
-          if (!isBlack(x, y)) {
-            nonBlack++;
-            if (nonBlack > tolerance) return false;
-          }
-        }
-        return true;
-      }
-      
-      function isColBlack(x) {
-        const startY = Math.floor(height * 0.25);
-        const endY = Math.floor(height * 0.75);
-        const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
-        let nonBlack = 0;
-        for (let y = startY; y < endY; y++) {
-          if (!isBlack(x, y)) {
-            nonBlack++;
-            if (nonBlack > tolerance) return false;
-          }
-        }
-        return true;
-      }
-      
-      let topBar = height;
-      for (let y = 0; y < height; y++) {
-        if (!isRowBlack(y)) {
-          topBar = y;
-          break;
-        }
-      }
-      
-      let bottomBar = height;
-      for (let y = height - 1; y >= 0; y--) {
-        if (!isRowBlack(y)) {
-          bottomBar = height - 1 - y;
-          break;
-        }
-      }
-      
-      let leftBar = width;
-      for (let x = 0; x < width; x++) {
-        if (!isColBlack(x)) {
-          leftBar = x;
-          break;
-        }
-      }
-      
-      let rightBar = width;
-      for (let x = width - 1; x >= 0; x--) {
-        if (!isColBlack(x)) {
-          rightBar = width - 1 - x;
-          break;
-        }
-      }
-      
-      if (topBar === height || leftBar === width) {
-        return;
-      }
-      
-      // Add a tiny 0.6% overscan margin when bars are detected to clean up the anti-aliased edge
-      const overscanY = (topBar > 0 || bottomBar > 0) ? 0.006 : 0;
-      const overscanX = (leftBar > 0 || rightBar > 0) ? 0.006 : 0;
+      if (!imageData || !imageData.data) return;
 
-      const cropTop = topBar > 0 ? (topBar / height) + overscanY : 0;
-      const cropBottom = bottomBar > 0 ? (bottomBar / height) + overscanY : 0;
-      const cropLeft = leftBar > 0 ? (leftBar / width) + overscanX : 0;
-      const cropRight = rightBar > 0 ? (rightBar / width) + overscanX : 0;
-      
-      handleCropResult({ cropTop, cropBottom, cropLeft, cropRight });
+      if (worker) {
+        const bufferCopy = imageData.data.buffer.slice(0);
+        worker.postMessage({ buffer: bufferCopy, width: canvas.width, height: canvas.height }, [bufferCopy]);
+      } else {
+        processScanFallback(imageData.data, canvas.width, canvas.height);
+      }
     } catch (err) {
       console.debug('[Aura] BlackBar drawImage failed:', err);
     }
@@ -231,6 +300,13 @@
     resetCrop();
     window.CineGlowCrop = null;
     video = null;
+
+    if (worker) {
+      try {
+        worker.terminate();
+      } catch (_) {}
+      worker = null;
+    }
   }
 
   // Dual listener registration: Direct runtime message + In-tab fallback event

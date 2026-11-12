@@ -2,6 +2,8 @@
   'use strict';
 
   let settings = { statsEnabled: false, enableInPiP: false };
+  let hostEl = null;
+  let shadowRoot = null;
   let overlayEl = null;
   let video = null;
   let updateInterval = 0;
@@ -121,11 +123,28 @@
   function createOverlay() {
     const container = document.body;
     if (overlayEl) {
-      if (overlayEl.parentElement !== container) {
+      if (hostEl && hostEl.parentElement !== container) {
+        container.appendChild(hostEl);
+      } else if (!hostEl && overlayEl.parentElement !== container) {
         container.appendChild(overlayEl);
       }
       return;
     }
+
+    // Shadow DOM Isolation Host to prevent corporate LMS / iframe CSS contamination
+    hostEl = document.createElement('div');
+    hostEl.id = 'cineglow-stats-host';
+    hostEl.className = 'cineglow-stats-host';
+    if (typeof hostEl.attachShadow === 'function') {
+      try {
+        shadowRoot = hostEl.attachShadow({ mode: 'open' });
+      } catch (_) {
+        shadowRoot = hostEl;
+      }
+    } else {
+      shadowRoot = hostEl;
+    }
+
     overlayEl = document.createElement('div');
     overlayEl.id = 'aura-stats-overlay';
     
@@ -376,12 +395,17 @@
     });
     closeBtn.addEventListener('mousedown', e => e.stopPropagation());
 
-    // Assemble Overlay
+    // Assemble Overlay inside Shadow DOM
     overlayEl.appendChild(header);
     overlayEl.appendChild(grid);
     overlayEl.appendChild(graphSection);
     
-    container.appendChild(overlayEl);
+    if (shadowRoot && shadowRoot !== hostEl) {
+      shadowRoot.appendChild(overlayEl);
+      container.appendChild(hostEl);
+    } else {
+      container.appendChild(overlayEl);
+    }
 
     makeDraggable(overlayEl);
     
@@ -393,7 +417,7 @@
 
   function clampOverlayPosition() {
     if (!overlayEl) return;
-    const parent = overlayEl.parentElement;
+    const parent = (hostEl && hostEl.parentElement) || overlayEl.parentElement;
     if (!parent) return;
     
     const pWidth = parent === document.body ? window.innerWidth : parent.clientWidth;
@@ -433,6 +457,11 @@
       overlayEl = null;
       refs = {};
     }
+    if (hostEl) {
+      hostEl.remove();
+      hostEl = null;
+    }
+    shadowRoot = null;
   }
 
   function resetStats() {
@@ -490,7 +519,9 @@
     
     // Ensure overlay is still in the DOM (YouTube SPA navigation can detach it)
     const container = document.body;
-    if (overlayEl.parentElement !== container || !document.contains(overlayEl)) {
+    if (hostEl && (hostEl.parentElement !== container || !document.contains(hostEl))) {
+      container.appendChild(hostEl);
+    } else if (!hostEl && (overlayEl.parentElement !== container || !document.contains(overlayEl))) {
       container.appendChild(overlayEl);
     }
 

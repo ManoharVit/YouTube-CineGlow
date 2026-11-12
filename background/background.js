@@ -375,6 +375,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
+/**
+ * Out-of-band HTTPS Remote Endpoint Polling for Emergency Kill-Switch (CAB Milestone 2 Item 2).
+ */
+async function checkRemoteKillSwitch() {
+  if (isKillSwitchActive) return;
+  if (typeof fetch === 'function') {
+    try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 2000) : null;
+      const res = await fetch('https://biggest_bucket.storage.googleapis.com/cineglow-policy.json', {
+        signal: controller ? controller.signal : undefined,
+        cache: 'no-store'
+      }).catch(() => null);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && (data.killSwitch === true || data.KillSwitch === true)) {
+          await activateKillSwitch('Remote HTTPS KillSwitch active');
+        }
+      }
+    } catch (_) {}
+  }
+}
+
 // 5-Minute Periodic Backup Sync for Emergency Kill-Switch
 if (typeof chrome !== 'undefined' && chrome.alarms) {
   try {
@@ -382,6 +406,7 @@ if (typeof chrome !== 'undefined' && chrome.alarms) {
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm && alarm.name === 'AURA_KILL_SWITCH_SYNC') {
         checkKillSwitchPolicy();
+        checkRemoteKillSwitch();
       }
     });
   } catch (err) {

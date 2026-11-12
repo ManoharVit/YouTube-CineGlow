@@ -294,6 +294,13 @@ class MockElement extends EventTarget {
     return { top: 0, left: 0, width: 640, height: 360, bottom: 360, right: 640 };
   }
 
+  attachShadow(options = { mode: 'open' }) {
+    const shadowRoot = new MockElement('shadow-root', { 'data-mode': options.mode });
+    shadowRoot.host = this;
+    this.shadowRoot = shadowRoot;
+    return shadowRoot;
+  }
+
   querySelector(_selector) {
     return null;
   }
@@ -433,6 +440,10 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
         const found = findNodeById(child, id);
         if (found) return found;
       }
+    }
+    if (node.shadowRoot) {
+      const found = findNodeById(node.shadowRoot, id);
+      if (found) return found;
     }
     return null;
   }

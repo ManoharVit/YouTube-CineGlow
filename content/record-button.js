@@ -41,6 +41,8 @@
   let activeRecordingFormat = null;
   let activeRecordingFps = null;
   let hudEl = null;
+  let hudHost = null;
+  let hudShadow = null;
   let activeMenu = null;
   let toastTimeout = 0;
   let isKilled = false;
@@ -228,6 +230,11 @@
       hudEl.remove();
       hudEl = null;
     }
+    if (hudHost) {
+      hudHost.remove();
+      hudHost = null;
+    }
+    hudShadow = null;
   }
 
   function formatTime(seconds) {
@@ -267,9 +274,28 @@
     if (!hudEl) {
       const player = window.CineGlowPlayer ? window.CineGlowPlayer.player : document.getElementById('movie_player');
       if (player) {
+        hudHost = document.createElement('div');
+        hudHost.id = 'cineglow-hud-host';
+        hudHost.className = 'cineglow-hud-host';
+        if (typeof hudHost.attachShadow === 'function') {
+          try {
+            hudShadow = hudHost.attachShadow({ mode: 'open' });
+          } catch (_) {
+            hudShadow = hudHost;
+          }
+        } else {
+          hudShadow = hudHost;
+        }
+
         hudEl = document.createElement('div');
         hudEl.className = 'cineglow-rec-hud';
-        player.appendChild(hudEl);
+
+        if (hudShadow && hudShadow !== hudHost) {
+          hudShadow.appendChild(hudEl);
+          player.appendChild(hudHost);
+        } else {
+          player.appendChild(hudEl);
+        }
       }
     }
     if (hudEl) {
@@ -292,10 +318,20 @@
             hudEl.remove();
             hudEl = null;
           }
+          if (hudHost) {
+            hudHost.remove();
+            hudHost = null;
+          }
+          hudShadow = null;
         }, 2500);
       } else {
         hudEl.remove();
         hudEl = null;
+        if (hudHost) {
+          hudHost.remove();
+          hudHost = null;
+        }
+        hudShadow = null;
       }
     }
   }
@@ -802,9 +838,22 @@
       activeRecordedMimeType = mediaRecorder.mimeType;
     }
 
+    let totalRecordedBytes = 0;
+    const MAX_RECORDING_BYTES = 500 * 1024 * 1024; // 500 MB RAM budget ceiling
+    const MAX_RECORDING_SECONDS = 3600; // 60 minutes safety ceiling
+
     mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
+        totalRecordedBytes += e.data.size;
         recordedChunks.push(e.data);
+
+        // Memory budget ceiling: cap RAM allocation to prevent heap exhaustion
+        if (totalRecordedBytes >= MAX_RECORDING_BYTES) {
+          console.warn('[CineGlow Record] Buffer ceiling reached (500MB). Finalizing recording.');
+          const p = window.CineGlowPlayer ? window.CineGlowPlayer.player : document.getElementById('movie_player');
+          if (p) showToast('Memory ceiling reached (500MB). Auto-saving.', p);
+          stopRecording();
+        }
       }
     };
 
@@ -824,6 +873,13 @@
       const badge = currentButton ? currentButton.querySelector('.cineglow-record-badge') : null;
       if (badge) badge.textContent = formatTime(elapsed);
       updateHUD(elapsed);
+
+      if (elapsed >= MAX_RECORDING_SECONDS) {
+        console.warn('[CineGlow Record] Max duration reached (60m). Finalizing recording.');
+        const p = window.CineGlowPlayer ? window.CineGlowPlayer.player : document.getElementById('movie_player');
+        if (p) showToast('Max recording duration reached (60m). Auto-saving.', p);
+        stopRecording();
+      }
     }, 1000);
     if (timerInterval && typeof timerInterval === 'object' && typeof timerInterval.unref === 'function') {
       timerInterval.unref();
