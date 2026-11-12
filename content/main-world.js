@@ -3,6 +3,10 @@
   'use strict';
 
   let isKilled = false;
+  let mainWorldAdInterval = null;
+  let adMutationObserver = null;
+  let preAdSpeed = 1.0;
+  let adMuted = false;
 
   // --- Brave Shields / uBlock-style In-Page YouTube In-Stream Ad Neutralization ---
   function prunePlayerAds(data) {
@@ -37,10 +41,21 @@
     }
   } catch (_) {}
 
-  // 2. Intercept window.fetch for /youtubei/v1/player to strip ads before the player receives payload
+  // 2. Intercept window.fetch for /youtubei/v1/player and /ad_break to strip ads before the player receives payload
   if (typeof window !== 'undefined' && typeof window.fetch === 'function' && typeof Response !== 'undefined') {
     const origFetch = window.fetch;
     window.fetch = async function(...args) {
+      try {
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+        if (url.includes('/youtubei/v1/player/ad_break')) {
+          return new Response('{}', {
+            status: 200,
+            statusText: 'OK',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (_) {}
+
       const response = await origFetch.apply(this, args);
       try {
         const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
@@ -61,30 +76,149 @@
     };
   }
 
-  // 3. Instant Main-World Ad-Skip Fallback via HTML5 Player API
+  // 3. Intercept XMLHttpRequest for YouTube ad requests
+  if (typeof window !== 'undefined' && typeof window.XMLHttpRequest !== 'undefined') {
+    const origOpen = XMLHttpRequest.prototype.open;
+    const origSend = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+      this._cineglowUrl = typeof url === 'string' ? url : String(url);
+      return origOpen.call(this, method, url, ...rest);
+    };
+
+    XMLHttpRequest.prototype.send = function(...args) {
+      if (this._cineglowUrl && this._cineglowUrl.includes('/youtubei/v1/player/ad_break')) {
+        try {
+          Object.defineProperty(this, 'responseText', { value: '{}', writable: false });
+          Object.defineProperty(this, 'response', { value: '{}', writable: false });
+          Object.defineProperty(this, 'status', { value: 200, writable: false });
+          Object.defineProperty(this, 'readyState', { value: 4, writable: false });
+          setTimeout(() => {
+            this.dispatchEvent(new Event('readystatechange'));
+            this.dispatchEvent(new Event('load'));
+          }, 0);
+          return;
+        } catch (_) {}
+      }
+      return origSend.apply(this, args);
+    };
+  }
+
+  // 4. Zero-Latency Main-World Ad Skipping via Direct Player API & Instant Acceleration
   function skipMainWorldAd() {
     if (isKilled) return;
     try {
-      const player = document.getElementById('movie_player');
-      if (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
-        if (typeof player.skipAd === 'function') {
-          player.skipAd();
+      const player = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
+      const isAd = !!(
+        player && (
+          player.classList.contains('ad-showing') ||
+          player.classList.contains('ad-interrupting')
+        )
+      ) || !!document.querySelector('.ytp-ad-player-overlay, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-player-overlay-layout');
+
+      if (isAd) {
+        // A. Call YouTube's own internal player skipAd() method in MAIN world (bypasses isTrusted checks)
+        if (player && typeof player.skipAd === 'function') {
+          try { player.skipAd(); } catch (_) {}
         }
-        const video = player.querySelector('video.html5-main-video') || document.querySelector('video.html5-main-video');
+
+        // B. Fast-forward and mute HTML5 video
+        const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
         if (video) {
-          video.muted = true;
+          if (!adMuted) {
+            if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
+              preAdSpeed = video.playbackRate;
+            }
+            if (!video.muted) {
+              video.muted = true;
+              adMuted = true;
+            }
+          }
           video.playbackRate = 16.0;
-          if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
-            video.currentTime = video.duration;
+          if (isFinite(video.duration) && video.duration > 0.1) {
+            video.currentTime = video.duration - 0.1;
+          } else {
+            video.currentTime = 999999;
+          }
+        }
+
+        // C. Synthetically click and trigger pointer events on all skip buttons
+        const skipSelectors = [
+          '.ytp-ad-skip-button',
+          '.ytp-ad-skip-button-modern',
+          '.ytp-skip-ad-button',
+          '.ytp-ad-skip-button-slot button',
+          '.ytp-ad-skip-button-slot',
+          '[id^="skip-button:"] button',
+          '[id^="skip-button:"]',
+          'button.ytp-ad-skip-button-modern',
+          'div.ytp-ad-skip-button-modern',
+          '.ytp-ad-skip-button-container button',
+          'button[aria-label*="Skip"]',
+          'button[aria-label*="skip"]',
+          '.ytp-ad-overlay-close-button'
+        ];
+        for (const sel of skipSelectors) {
+          const btn = document.querySelector(sel);
+          if (btn) {
+            try {
+              btn.click();
+              btn.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, view: window }));
+            } catch (_) {}
+          }
+        }
+      } else {
+        // Ad finished — restore audio and playback rate
+        const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
+        if (video) {
+          if (adMuted) {
+            video.muted = false;
+            adMuted = false;
+          }
+          if (video.playbackRate === 16.0) {
+            video.playbackRate = preAdSpeed || 1.0;
           }
         }
       }
     } catch (_) {}
   }
 
+  // Active continuous monitoring loop (100ms interval for immediate responsiveness)
+  if (typeof window !== 'undefined') {
+    mainWorldAdInterval = setInterval(skipMainWorldAd, 100);
+    if (mainWorldAdInterval && typeof mainWorldAdInterval === 'object' && typeof mainWorldAdInterval.unref === 'function') {
+      mainWorldAdInterval.unref();
+    }
+  }
+
+  // Zero-latency MutationObserver targeting class changes on player
+  if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+    adMutationObserver = new MutationObserver(() => {
+      skipMainWorldAd();
+    });
+    const attachObserver = () => {
+      const p = document.getElementById('movie_player') || document.querySelector('.html5-video-player') || document.documentElement;
+      if (p) {
+        adMutationObserver.observe(p, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attachObserver, { once: true });
+    } else {
+      attachObserver();
+    }
+  }
+
   if (typeof document !== 'undefined') {
     document.addEventListener('yt-action', skipMainWorldAd, { passive: true });
+    document.addEventListener('yt-navigate-finish', skipMainWorldAd, { passive: true });
   }
+
+  window.addEventListener('message', (event) => {
+    if (event.source === window && event.data?.type === 'CINEGLOW_FORCE_SKIP_AD') {
+      skipMainWorldAd();
+    }
+  });
 
   function handleQualityMessage(event) {
     if (isKilled) return;
@@ -190,10 +324,20 @@
   function teardownMainWorld() {
     if (isKilled) return;
     isKilled = true;
+    if (mainWorldAdInterval) {
+      clearInterval(mainWorldAdInterval);
+      mainWorldAdInterval = null;
+    }
+    if (adMutationObserver) {
+      adMutationObserver.disconnect();
+      adMutationObserver = null;
+    }
     window.removeEventListener('message', handleQualityMessage);
     window.removeEventListener('message', handleStatsMessage);
     document.removeEventListener('yt-action', syncTheaterState);
     document.removeEventListener('yt-navigate-finish', syncTheaterState);
+    document.removeEventListener('yt-action', skipMainWorldAd);
+    document.removeEventListener('yt-navigate-finish', skipMainWorldAd);
   }
 
   window.addEventListener('message', handleQualityMessage);

@@ -436,4 +436,12 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.ok(mainWorldCode.includes('playerAds'), 'main-world.js must neutralize playerAds');
     assert.ok(mainWorldCode.includes('adSlots'), 'main-world.js must neutralize adSlots');
   });
+
+  test('main-world.js neutralizes ad_break and provides continuous unproxied skipAd execution', () => {
+    const mainWorldCode = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    assert.ok(mainWorldCode.includes('/youtubei/v1/player/ad_break'), 'main-world.js must intercept ad_break endpoint');
+    assert.ok(mainWorldCode.includes('player.skipAd()'), 'main-world.js must invoke unproxied player.skipAd');
+    assert.ok(mainWorldCode.includes('CINEGLOW_FORCE_SKIP_AD'), 'main-world.js must listen for force skip messages');
+    assert.ok(mainWorldCode.includes('mainWorldAdInterval'), 'main-world.js must run active interval loop');
+  });
 });

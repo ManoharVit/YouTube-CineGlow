@@ -52,6 +52,17 @@
     .ytp-ad-player-overlay,
     .ytp-ad-player-overlay-layout,
     .ytp-ad-player-overlay-instream-info,
+    .ad-showing .ytp-ad-player-overlay,
+    .ad-showing .ytp-ad-player-overlay-layout,
+    .ad-showing .ytp-ad-player-overlay-instream-info,
+    .ad-showing .ytp-ad-text,
+    .ad-showing .ytp-ad-preview-text,
+    .ad-showing .ytp-ad-preview-container,
+    .ad-showing .ytp-ad-message-container,
+    .ad-showing .ytp-ad-survey,
+    .ad-showing .ytp-ad-image-overlay,
+    .ad-showing ytd-action-companion-ad-renderer,
+    .ad-showing ytd-companion-slot-renderer,
     ytd-enforcement-message-view-model,
     tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {
       display: none !important;
@@ -200,10 +211,13 @@
       adMutationObserver = new MutationObserver(() => {
         if (!settings.adblockEnabled) return;
         const skipBtn = document.querySelector(
-          '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-overlay-close-button'
+          '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-skip-button-container button, button[aria-label*="Skip"], button[aria-label*="skip"], .ytp-ad-overlay-close-button'
         );
         if (skipBtn) {
-          try { skipBtn.click(); } catch (_) {}
+          try {
+            skipBtn.click();
+            skipBtn.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, view: window }));
+          } catch (_) {}
         }
         if (isAdActive()) {
           skipVideoAds();
@@ -220,16 +234,37 @@
     // Dismiss YouTube Anti-Adblock popup if it ever appears
     dismissEnforcementModal();
 
+    // Trigger MAIN world privileged skipAd() engine
+    try {
+      window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
+    } catch (_) {}
+
     const isAd = isAdActive();
 
     // 1. Click skip buttons if available
-    const skipBtn = document.querySelector(
-      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, [id^="skip-button:"], button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-overlay-close-button'
-    );
-    if (skipBtn) {
-      try {
-        skipBtn.click();
-      } catch (_) {}
+    const skipSelectors = [
+      '.ytp-ad-skip-button',
+      '.ytp-ad-skip-button-modern',
+      '.ytp-skip-ad-button',
+      '.ytp-ad-skip-button-slot',
+      '.ytp-ad-skip-button-slot button',
+      '[id^="skip-button:"] button',
+      '[id^="skip-button:"]',
+      'button.ytp-ad-skip-button-modern',
+      'div.ytp-ad-skip-button-modern',
+      '.ytp-ad-skip-button-container button',
+      'button[aria-label*="Skip"]',
+      'button[aria-label*="skip"]',
+      '.ytp-ad-overlay-close-button'
+    ];
+    for (const sel of skipSelectors) {
+      const btn = document.querySelector(sel);
+      if (btn) {
+        try {
+          btn.click();
+          btn.dispatchEvent(new PointerEvent('click', { bubbles: true, cancelable: true, view: window }));
+        } catch (_) {}
+      }
     }
 
     // 2. Fast-forward video ad ONLY if an ad is actively confirmed
@@ -253,6 +288,8 @@
       video.playbackRate = 16.0;
       if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
         video.currentTime = video.duration;
+      } else {
+        video.currentTime = 99999;
       }
 
       if (Date.now() - lastAdSkipTime > 2500) {
