@@ -429,4 +429,17 @@
       }
     });
   }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+  }
 })();

@@ -76,7 +76,6 @@
     document.documentElement.classList.toggle('aura-adblock', settings.adblockEnabled);
     document.documentElement.classList.toggle('aura-lights-out', settings.lightsOut);
     document.documentElement.classList.toggle('aura-ultrawide-zoom', settings.ultrawideZoom);
-    updateTheaterMasthead();
     
     updatePlayingState();
 
@@ -113,7 +112,6 @@
     if (!state) return;
     document.documentElement.classList.toggle('aura-watch-page', state.isWatchPage);
     isPiP = state.isPiP;
-    updateTheaterMasthead();
     
     if (state.video !== video || state.videoId !== videoId) {
       if (video) {
@@ -410,88 +408,27 @@
     );
   }
 
-  function updateTheaterMasthead() {
-    if (isKilled || !document.documentElement) return;
-    const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
-    const isTheater = window.CineGlowPlayer
-      ? window.CineGlowPlayer.isTheater
-      : (document.documentElement.classList.contains('aura-in-theater') || document.documentElement.hasAttribute('data-cineglow-theater'));
-    const isFullscreen = window.CineGlowPlayer ? window.CineGlowPlayer.isFullscreen : !!document.fullscreenElement;
-    const shouldHide = !!(settings.hideInTheater && isWatch && isTheater && !isFullscreen);
-
-    document.documentElement.classList.toggle('aura-in-theater', shouldHide);
-    document.documentElement.classList.toggle('aura-theater-mode', shouldHide);
-
-    const mastheads = document.querySelectorAll('#masthead-container, ytd-masthead, #masthead');
-    mastheads.forEach((el) => {
-      if (shouldHide && !document.documentElement.classList.contains('aura-theater-reveal-top')) {
-        el.style.setProperty('transform', 'translateY(-100%)', 'important');
-        el.style.setProperty('opacity', '0', 'important');
-        el.style.setProperty('visibility', 'hidden', 'important');
-        el.style.setProperty('pointer-events', 'none', 'important');
-      } else {
-        el.style.removeProperty('transform');
-        el.style.removeProperty('opacity');
-        el.style.removeProperty('visibility');
-        el.style.removeProperty('pointer-events');
-      }
-    });
-
-    const pageManagers = document.querySelectorAll('ytd-page-manager, #page-manager');
-    pageManagers.forEach((el) => {
-      if (shouldHide) {
-        el.style.setProperty('margin-top', '0px', 'important');
-        el.style.setProperty('padding-top', '0px', 'important');
-      } else {
-        el.style.removeProperty('margin-top');
-        el.style.removeProperty('padding-top');
-      }
-    });
-
-    const app = document.querySelector('ytd-app');
-    if (app?.style) {
-      if (shouldHide) {
-        app.style.setProperty('--ytd-masthead-height', '0px', 'important');
-      } else {
-        app.style.removeProperty('--ytd-masthead-height');
-      }
-    }
-
-    if (document.documentElement?.style) {
-      if (shouldHide) {
-        document.documentElement.style.setProperty('--ytd-masthead-height', '0px', 'important');
-      } else {
-        document.documentElement.style.removeProperty('--ytd-masthead-height');
-      }
-    }
-  }
-
   function handleTheaterHover(e) {
     if (isKilled || !settings.hideInTheater) return;
     const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
-    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : document.documentElement.classList.contains('aura-in-theater');
+    const isTheater = window.CineGlowPlayer ? window.CineGlowPlayer.isTheater : false;
     if (!isWatch || !isTheater) {
       if (document.documentElement.classList.contains('aura-theater-reveal-top')) {
         document.documentElement.classList.remove('aura-theater-reveal-top');
-        updateTheaterMasthead();
       }
       return;
     }
 
-    if (e.clientY <= 50) {
+    if (e.clientY <= 64) {
       clearTimeout(theaterHoverTimer);
-      if (!document.documentElement.classList.contains('aura-theater-reveal-top')) {
-        document.documentElement.classList.add('aura-theater-reveal-top');
-        updateTheaterMasthead();
-      }
-    } else if (e.clientY > 70 && !isSearchFocused()) {
+      document.documentElement.classList.add('aura-theater-reveal-top');
+    } else if (e.clientY > 80 && !isSearchFocused()) {
       clearTimeout(theaterHoverTimer);
       theaterHoverTimer = setTimeout(() => {
         if (!isSearchFocused()) {
           document.documentElement.classList.remove('aura-theater-reveal-top');
-          updateTheaterMasthead();
         }
-      }, 500);
+      }, 1200);
     }
   }
 
@@ -548,34 +485,13 @@
         'aura-ultrawide-zoom',
         'aura-hide-scrollbar',
         'aura-hide-theater',
-        'aura-in-theater',
-        'aura-theater-mode',
         'aura-theater-reveal-top'
       );
       if (document.documentElement.style?.removeProperty) {
         document.documentElement.style.removeProperty('--aura-opacity');
         document.documentElement.style.removeProperty('--aura-fade');
-        document.documentElement.style.removeProperty('--ytd-masthead-height');
       }
     }
-
-    const app = document.querySelector('ytd-app');
-    if (app?.style?.removeProperty) {
-      app.style.removeProperty('--ytd-masthead-height');
-    }
-
-    const mastheads = document.querySelectorAll('#masthead-container, ytd-masthead, #masthead');
-    mastheads.forEach((el) => {
-      el.style.removeProperty('transform');
-      el.style.removeProperty('opacity');
-      el.style.removeProperty('visibility');
-      el.style.removeProperty('pointer-events');
-    });
-    const pageManagers = document.querySelectorAll('ytd-page-manager, #page-manager');
-    pageManagers.forEach((el) => {
-      el.style.removeProperty('margin-top');
-      el.style.removeProperty('padding-top');
-    });
 
     // 5. Restore video filters & unregister video listeners
     const currentVideo = video || (window.CineGlowPlayer ? window.CineGlowPlayer.video : null);
@@ -625,6 +541,19 @@
 
   document.addEventListener('visibilitychange', wake);
   window.addEventListener('resize', () => { lastLayoutKey = ''; }, { passive: true });
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+  }
 
   loadSettings();
 })();

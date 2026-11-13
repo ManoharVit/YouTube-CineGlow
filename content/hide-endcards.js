@@ -171,6 +171,18 @@
     enabled = false;
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
 
+    if (typeof document !== 'undefined') {
+      try {
+        document.removeEventListener('timeupdate', onTimeUpdate, true);
+      } catch (_) {}
+    }
+
+    if (window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
+      try {
+        window.CineGlowPlayer.removeEventListener('state-change', onPlayerState);
+      } catch (_) {}
+    }
+
     teardown();
     const player = currentPlayer || document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
     if (player) {
@@ -205,11 +217,12 @@
   window.CineGlowEndCardsTeardown = teardownKillSwitch;
 
   // Hook into video playback ticks as a lightweight safety net
-  document.addEventListener('timeupdate', (e) => {
+  const onTimeUpdate = (e) => {
     if (e.target && e.target.tagName === 'VIDEO' && enabled && !userRevealed && !isKilled) {
       checkAndHide();
     }
-  }, true);
+  };
+  document.addEventListener('timeupdate', onTimeUpdate, true);
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', onPlayerState);
@@ -222,6 +235,19 @@
   const existingPlayer = document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
   if (existingPlayer) {
     setupPlayer(existingPlayer);
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
   }
 
   loadSettings();

@@ -98,21 +98,13 @@
                     watchFlexy.hasAttribute('theater-requested_') ||
                     watchFlexy.hasAttribute('full-bleed-player') ||
                     watchFlexy.hasAttribute('full-bleed') ||
-                    watchFlexy.classList.contains('theater') ||
-                    watchFlexy.classList.contains('theater-mode') ||
-                    watchFlexy.classList.contains('full-bleed-player');
+                    Boolean(watchFlexy.theater);
       }
       if (!isTheater && isWatchPage && !isFullscreen) {
         const fullBleed = document.querySelector(
           '#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player'
         );
         if (fullBleed) {
-          isTheater = true;
-        }
-      }
-      if (!isTheater && isWatchPage && !isFullscreen && !isMiniplayer && player) {
-        const columns = document.querySelector('#columns');
-        if (columns && !columns.contains(player)) {
           isTheater = true;
         }
       }
@@ -125,13 +117,11 @@
           }
         }
       }
-      if (!isTheater && isWatchPage && !isFullscreen && player && typeof window !== 'undefined' && window.innerWidth > 0) {
-        try {
-          const rect = player.getBoundingClientRect();
-          if (rect.width >= window.innerWidth * 0.90) {
-            isTheater = true;
-          }
-        } catch (_) {}
+      if (!isTheater && isWatchPage && !isFullscreen && !isMiniplayer && player) {
+        const columns = document.querySelector('#columns');
+        if (columns && typeof columns.contains === 'function' && !columns.contains(player)) {
+          isTheater = true;
+        }
       }
       const isAdShowing = !!(
         player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))
@@ -173,10 +163,7 @@
         this.watchFlexy = watchFlexy;
         this.watchFlexyObserver.disconnect();
         if (watchFlexy) {
-          this.watchFlexyObserver.observe(watchFlexy, {
-            attributes: true,
-            attributeFilter: ['theater', 'theater-requested_', 'full-bleed-player', 'full-bleed', 'class', 'style', 'default-layout']
-          });
+          this.watchFlexyObserver.observe(watchFlexy, { attributes: true, attributeFilter: ['theater', 'theater-requested_', 'full-bleed-player', 'full-bleed', 'default-layout', 'class'] });
         }
       }
       
@@ -186,15 +173,6 @@
         if (app) {
           this.appObserver.observe(app, { attributes: true, attributeFilter: ['miniplayer-is-active'] });
         }
-      }
-
-      if (typeof ResizeObserver !== 'undefined' && player && this.playerResizeTarget !== player) {
-        if (this.playerResizeObserver) {
-          this.playerResizeObserver.disconnect();
-        }
-        this.playerResizeTarget = player;
-        this.playerResizeObserver = new ResizeObserver(() => this.checkState());
-        this.playerResizeObserver.observe(player);
       }
 
       if (this.player !== player || this.video !== video) {
@@ -248,21 +226,21 @@
         window.CineGlowKilled = true;
       }
 
+      if (document.documentElement) {
+        document.documentElement.classList.remove('aura-in-theater', 'aura-theater-mode');
+        document.documentElement.removeAttribute('data-cineglow-theater');
+      }
+
       // 1. Clear search interval
       if (this.searchInterval) {
         clearInterval(this.searchInterval);
         this.searchInterval = null;
       }
 
-      if (document.documentElement) {
-        document.documentElement.classList.remove('aura-in-theater', 'aura-theater-mode');
-      }
-
       // 2. Disconnect observers
       if (this.playerObserver) { this.playerObserver.disconnect(); this.playerObserver = null; }
       if (this.appObserver) { this.appObserver.disconnect(); this.appObserver = null; }
       if (this.watchFlexyObserver) { this.watchFlexyObserver.disconnect(); this.watchFlexyObserver = null; }
-      if (this.playerResizeObserver) { this.playerResizeObserver.disconnect(); this.playerResizeObserver = null; this.playerResizeTarget = null; }
 
       // 3. Detach video listeners
       if (this.video) {

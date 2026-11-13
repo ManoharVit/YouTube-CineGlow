@@ -324,6 +324,33 @@ function render(settings) {
   checkMatchingGlowPreset();
 }
 
+function renderDeactivatedBanner() {
+  const controls = document.getElementById('controls');
+  if (controls) {
+    controls.style.display = 'none';
+  }
+  let banner = document.getElementById('cineglow-killswitch-banner');
+  if (!banner && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    banner = document.createElement('div');
+    banner.id = 'cineglow-killswitch-banner';
+    banner.className = 'cineglow-deactivated-banner';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'margin: 16px; padding: 16px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #fca5a5; font-size: 13px; line-height: 1.5; text-align: center; font-weight: 500;';
+    banner.textContent = 'CineGlow Pro Disabled: Deactivated by enterprise policy or emergency kill-switch';
+    const header = document.querySelector('.app-header');
+    if (header && header.parentNode) {
+      header.parentNode.insertBefore(banner, header.nextSibling);
+    } else if (document.body) {
+      document.body.appendChild(banner);
+    }
+  }
+  const masterTag = document.getElementById('masterStatusTag');
+  if (masterTag) {
+    masterTag.textContent = 'DISABLED';
+    masterTag.classList.add('disabled');
+  }
+}
+
 async function init() {
   let settings = { ...AURA_DEFAULTS };
   let managedPolicies = null;
@@ -332,6 +359,25 @@ async function init() {
       managedPolicies = await chrome.storage.managed.get(null).catch(() => null);
     }
   } catch (_) {}
+
+  // Check if extension is killed by emergency kill-switch or enterprise policy (CG-FIND-14)
+  let isKillSwitchActive = false;
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
+      if (local && local.auraKillSwitchActive === true) {
+        isKillSwitchActive = true;
+      }
+    }
+    if (managedPolicies && (managedPolicies.KillSwitch === true || managedPolicies.killSwitch === true)) {
+      isKillSwitchActive = true;
+    }
+  } catch (_) {}
+
+  if (isKillSwitchActive) {
+    renderDeactivatedBanner();
+    return;
+  }
 
   try {
     settings = { ...AURA_DEFAULTS, ...(await chrome.storage.sync.get(AURA_DEFAULTS)) };
@@ -376,10 +422,16 @@ async function init() {
     }
   } catch (_) {}
 
-  // Keep counter updated if ads are blocked while popup is open
+  // Keep counter updated if ads are blocked while popup is open, and watch kill switch
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.adblockCount) {
+    if ((area === 'sync' || area === 'local') && changes.adblockCount) {
       adblockCountEl.textContent = changes.adblockCount.newValue;
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      renderDeactivatedBanner();
+    }
+    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+      renderDeactivatedBanner();
     }
   });
 

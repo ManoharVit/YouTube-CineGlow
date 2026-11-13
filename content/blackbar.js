@@ -175,6 +175,9 @@
     if (!settings.removeBlackBars || !video || video.readyState < 2 || video.paused) {
       return;
     }
+    if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
+      return;
+    }
     
     try {
       if (!ctx) return;
@@ -191,7 +194,13 @@
   function startScanning() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!intervalId) {
-      intervalId = setInterval(scanFrame, 500);
+      intervalId = setInterval(() => {
+        if (!video || video.paused) return;
+        if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
+          return;
+        }
+        scanFrame();
+      }, 500);
     }
   }
 
@@ -271,20 +280,35 @@
     }
   }
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (area !== 'sync') return;
-    let changed = false;
-    for (const [key, { newValue }] of Object.entries(changes)) {
-      if (key in AURA_DEFAULTS) {
-        settings[key] = newValue ?? AURA_DEFAULTS[key];
-        changed = true;
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+      if (area !== 'sync') return;
+      let changed = false;
+      for (const [key, { newValue }] of Object.entries(changes)) {
+        if (key in AURA_DEFAULTS) {
+          settings[key] = newValue ?? AURA_DEFAULTS[key];
+          changed = true;
+        }
       }
-    }
-    if (changed && !settings.removeBlackBars) {
-      resetCrop();
-    }
-  });
+      if (changed && !settings.removeBlackBars) {
+        resetCrop();
+      }
+    });
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+  }
 
   loadSettings();
 })();

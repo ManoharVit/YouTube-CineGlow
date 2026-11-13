@@ -17,12 +17,27 @@
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
         chrome.runtime.sendMessage(msg, () => {
-          if (chrome.runtime.lastError) {}
+          try {
+            if (chrome.runtime?.lastError) {}
+          } catch (_) {}
         });
       }
     } catch (_) {
       // Extension context invalidated (e.g. extension was reloaded in chrome://extensions)
     }
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
   }
 
   const AD_CSS_ID = 'cineglow-adblock-styles';
@@ -99,6 +114,18 @@
     }
   }
 
+  function syncAdBlockStateToMainWorld() {
+    try {
+      if (typeof window !== 'undefined' && typeof window.postMessage === 'function') {
+        const origin = (window.location && window.location.origin) ? window.location.origin : 'https://www.youtube.com';
+        window.postMessage({
+          type: 'CINEGLOW_SET_ADBLOCK_STATE',
+          enabled: settings.adblockEnabled
+        }, origin);
+      }
+    } catch (_) {}
+  }
+
   async function loadSettings() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
@@ -137,6 +164,7 @@
     applyAdBlockStyles();
     checkAdState();
     setupAdObserver();
+    syncAdBlockStateToMainWorld();
   }
 
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
@@ -152,6 +180,7 @@
           }
           applyAdBlockStyles();
           checkAdState();
+          syncAdBlockStateToMainWorld();
         }
         if ('KillSwitch' in changes && changes.KillSwitch.newValue === true) {
           teardownKillSwitch();
@@ -165,6 +194,7 @@
           settings.adblockEnabled = changes.adblockEnabled.newValue;
           applyAdBlockStyles();
           checkAdState();
+          syncAdBlockStateToMainWorld();
         }
       }
     });
@@ -179,8 +209,11 @@
       return true;
     }
 
-    // 2. Modern ad overlay or skip container presence
-    if (moviePlayer.querySelector('.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, .ytp-ad-skip-button-slot, .ytp-ad-skip-button-modern, .ytp-skip-ad-button')) {
+    // 2. Visible skip button or active ad overlay (not static hidden containers)
+    const skipBtn = moviePlayer.querySelector(
+      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-skip-button-container button'
+    );
+    if (skipBtn && (skipBtn.offsetParent !== null || skipBtn.offsetWidth > 0 || (skipBtn.getClientRects && skipBtn.getClientRects().length > 0))) {
       return true;
     }
 
@@ -286,20 +319,14 @@
             adMutedByUs = true;
             mutedVideoElement = video;
           }
+          safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
+          lastAdSkipTime = Date.now();
         } else if (!userWasMuted && !video.muted) {
           // Handle video element swap mid-ad
           video.muted = true;
           mutedVideoElement = video;
         }
         video.playbackRate = 16.0;
-        if (!isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
-          video.currentTime = video.duration;
-        } else {
-          video.currentTime = 99999;
-        }
-
-        safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
-          lastAdSkipTime = Date.now();
       } else if (!isAd && video) {
         // Ad finished — restore audio and user's playback speed ONLY on the element we modified
         restoreModifiedPlaybackState(video);
@@ -320,7 +347,11 @@
     }
     userWasMuted = false;
     if (targetVideo && targetVideo.playbackRate === 16.0) {
-      targetVideo.playbackRate = preAdSpeed || 1.0;
+      const restoreSpeed = (typeof window !== 'undefined' && window.CineGlowSpeed && typeof window.CineGlowSpeed.preferredSpeed === 'number')
+        ? window.CineGlowSpeed.preferredSpeed
+        : (preAdSpeed || 1.0);
+      targetVideo.playbackRate = restoreSpeed;
+      try { targetVideo.defaultPlaybackRate = restoreSpeed; } catch (_) {}
     }
   }
 
@@ -407,6 +438,7 @@
     isKilled = true;
     settings.adblockEnabled = false;
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    syncAdBlockStateToMainWorld();
 
     cleanup();
     if (adMutationObserver) {
@@ -448,6 +480,7 @@
     checkAdState,
     dismissEnforcementModal,
     restoreModifiedPlaybackState,
+    syncAdBlockStateToMainWorld,
     cleanup,
     teardownKillSwitch
   };

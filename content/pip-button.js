@@ -34,6 +34,18 @@
     document.querySelectorAll(`.${PIP_BUTTON_CLASS}`).forEach(el => el.remove());
     currentButton = null;
     pathEl = null;
+
+    const toolbar = document.querySelector('.cineglow-floating-toolbar');
+    if (toolbar) {
+      const remaining = toolbar.querySelectorAll ? toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button') : [];
+      const hasChildren = typeof toolbar.hasChildNodes === 'function' ? toolbar.hasChildNodes() : (toolbar.children && toolbar.children.length > 0);
+      if (!hasChildren || remaining.length === 0) {
+        if (typeof toolbar._autohideTeardown === 'function') {
+          toolbar._autohideTeardown();
+        }
+        toolbar.remove();
+      }
+    }
   }
 
   function initToolbarAutohide(player, toolbar) {
@@ -78,26 +90,50 @@
       observer.observe(chromeBottom, { attributes: true, attributeFilter: ['style', 'class'] });
     }
 
-    toolbar.addEventListener('mouseenter', () => {
+    const onToolbarMouseEnter = () => {
       toolbar.classList.remove('cineglow-toolbar-hidden');
-    });
+    };
 
-    toolbar.addEventListener('mousemove', () => {
+    const onToolbarMouseMove = () => {
       toolbar.classList.remove('cineglow-toolbar-hidden');
-    });
+    };
 
-    toolbar.addEventListener('mouseleave', () => {
+    const onToolbarMouseLeave = () => {
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(syncVisibility, 200);
-    });
+    };
 
-    player.addEventListener('mouseenter', () => {
+    const onPlayerMouseEnter = () => {
       toolbar.classList.remove('cineglow-toolbar-hidden');
-    });
+    };
 
-    player.addEventListener('mousemove', () => {
+    const onPlayerMouseMove = () => {
       toolbar.classList.remove('cineglow-toolbar-hidden');
-    });
+    };
+
+    toolbar.addEventListener('mouseenter', onToolbarMouseEnter);
+    toolbar.addEventListener('mousemove', onToolbarMouseMove);
+    toolbar.addEventListener('mouseleave', onToolbarMouseLeave);
+    player.addEventListener('mouseenter', onPlayerMouseEnter);
+    player.addEventListener('mousemove', onPlayerMouseMove);
+
+    const teardownAutohide = () => {
+      clearTimeout(hideTimeout);
+      if (observer) {
+        try { observer.disconnect(); } catch (_) {}
+      }
+      try { toolbar.removeEventListener('mouseenter', onToolbarMouseEnter); } catch (_) {}
+      try { toolbar.removeEventListener('mousemove', onToolbarMouseMove); } catch (_) {}
+      try { toolbar.removeEventListener('mouseleave', onToolbarMouseLeave); } catch (_) {}
+      try { player.removeEventListener('mouseenter', onPlayerMouseEnter); } catch (_) {}
+      try { player.removeEventListener('mousemove', onPlayerMouseMove); } catch (_) {}
+      toolbar._autohideInitialized = false;
+      delete toolbar._autohideTeardown;
+      delete toolbar._teardownAutohide;
+    };
+
+    toolbar._autohideTeardown = teardownAutohide;
+    toolbar._teardownAutohide = teardownAutohide;
 
     syncVisibility();
   }
@@ -235,8 +271,15 @@
     }
     removeExistingButton();
     const toolbar = document.querySelector('.cineglow-floating-toolbar');
-    if (toolbar && (!toolbar.hasChildNodes() || toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button').length === 0)) {
-      toolbar.remove();
+    if (toolbar) {
+      if (typeof toolbar._autohideTeardown === 'function') {
+        toolbar._autohideTeardown();
+      }
+      const remaining = toolbar.querySelectorAll ? toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button') : [];
+      const hasChildren = typeof toolbar.hasChildNodes === 'function' ? toolbar.hasChildNodes() : (toolbar.children && toolbar.children.length > 0);
+      if (!hasChildren || remaining.length === 0) {
+        toolbar.remove();
+      }
     }
   }
 
@@ -279,5 +322,18 @@
     });
 
     injectPipButton(window.CineGlowPlayer);
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
   }
 })();

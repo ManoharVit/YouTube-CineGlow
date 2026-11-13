@@ -673,6 +673,17 @@ describe('Enterprise Co-existence & InfoSec VAPT Suite', () => {
       0,
       'When DisableRecording is active in managed storage, zero recording elements should be mounted'
     );
+
+    // Also verify screenshot-button suppresses mounting under DisableRecording (CG-FIND-11)
+    const screenshotScript = fs.readFileSync(path.join(rootDir, 'content/screenshot-button.js'), 'utf8');
+    new Function(screenshotScript)();
+    await new Promise(r => setTimeout(r, 40));
+    const screenshotBtns = player.querySelectorAll('.cineglow-screenshot-button');
+    assert.strictEqual(
+      screenshotBtns.length,
+      0,
+      'When DisableRecording is active in managed storage, zero screenshot buttons should be mounted'
+    );
   });
 
   // ---------------------------------------------------------------------------

@@ -79,6 +79,9 @@ async function activateKillSwitch(reason = 'Managed Policy KillSwitch activated'
   isKillSwitchActive = true;
   console.warn(`[Aura Emergency] Kill-switch activated: ${reason}`);
 
+  // Flush any pending throttled adblock count writes
+  flushAdBlockCount();
+
   // 1. Set persistent local flag for new tabs / re-initializations
   try {
     if (chrome.storage && chrome.storage.local) {
@@ -277,6 +280,108 @@ async function updateCodecBlockers() {
   }
 }
 
+// --- Throttled Adblock Count Persistence (CG-FIND-04) ---
+let pendingAdBlockIncrement = 0;
+let lastAdBlockWriteTime = 0;
+let adBlockThrottleTimer = null;
+const ADBLOCK_WRITE_INTERVAL_MS = 500; // Cap writes to max 120/min
+
+async function flushAdBlockCount() {
+  if (adBlockThrottleTimer) {
+    clearTimeout(adBlockThrottleTimer);
+    adBlockThrottleTimer = null;
+  }
+  if (pendingAdBlockIncrement === 0) return;
+  const toAdd = pendingAdBlockIncrement;
+  pendingAdBlockIncrement = 0;
+  lastAdBlockWriteTime = Date.now();
+
+  try {
+    if (chrome.storage && chrome.storage.local) {
+      let { adblockCount } = await chrome.storage.local.get('adblockCount');
+      if (typeof adblockCount !== 'number') {
+        const syncData = await chrome.storage.sync?.get('adblockCount').catch(() => ({}));
+        adblockCount = typeof syncData?.adblockCount === 'number' ? syncData.adblockCount : 0;
+      }
+      await chrome.storage.local.set({ adblockCount: adblockCount + toAdd });
+    }
+  } catch (err) {
+    console.error('[Aura] Failed to update adblock count in storage.local:', err);
+  }
+}
+
+function recordAdBlocked(count = 1) {
+  pendingAdBlockIncrement += count;
+  const now = Date.now();
+  const timeSinceLastWrite = now - lastAdBlockWriteTime;
+
+  if (timeSinceLastWrite >= ADBLOCK_WRITE_INTERVAL_MS && !adBlockThrottleTimer) {
+    // Leading-edge: execute immediately if quiet period elapsed
+    flushAdBlockCount();
+  } else if (!adBlockThrottleTimer) {
+    // Trailing-edge: schedule after remaining throttle delay
+    const delay = Math.max(0, ADBLOCK_WRITE_INTERVAL_MS - timeSinceLastWrite);
+    adBlockThrottleTimer = setTimeout(() => {
+      adBlockThrottleTimer = null;
+      flushAdBlockCount();
+    }, delay);
+    if (adBlockThrottleTimer && typeof adBlockThrottleTimer.unref === 'function') {
+      adBlockThrottleTimer.unref();
+    }
+  }
+}
+
+// --- LRU Annotations Cache (CG-FIND-03) ---
+const MAX_ANNOTATION_CACHE_ENTRIES = 5;
+
+async function getCachedAnnotation(cacheKey) {
+  try {
+    if (!chrome.storage || !chrome.storage.local) return null;
+    const data = await chrome.storage.local.get([cacheKey, 'ar_cache_keys']);
+    if (data && data[cacheKey]) {
+      // Refresh LRU order: move cacheKey to most-recent position
+      let keys = Array.isArray(data.ar_cache_keys) ? data.ar_cache_keys.filter(k => k !== cacheKey) : [];
+      keys.push(cacheKey);
+      await chrome.storage.local.set({ ar_cache_keys: keys }).catch(() => {});
+      return data[cacheKey];
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function setCachedAnnotation(cacheKey, xml) {
+  try {
+    if (!chrome.storage || !chrome.storage.local) return;
+    const data = await chrome.storage.local.get('ar_cache_keys');
+    let keys = Array.isArray(data?.ar_cache_keys) ? data.ar_cache_keys.filter(k => k !== cacheKey) : null;
+    if (!keys) {
+      const allLocal = await chrome.storage.local.get(null).catch(() => ({}));
+      keys = Object.keys(allLocal).filter(k => k.startsWith('ar_') && k !== 'ar_cache_keys' && k !== cacheKey);
+    }
+    keys.push(cacheKey);
+
+    // Evict oldest entries exceeding maximum cache size (LRU)
+    const keysToRemove = [];
+    while (keys.length > MAX_ANNOTATION_CACHE_ENTRIES) {
+      const oldestKey = keys.shift();
+      if (oldestKey && oldestKey !== cacheKey) {
+        keysToRemove.push(oldestKey);
+      }
+    }
+
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove).catch(() => {});
+    }
+
+    await chrome.storage.local.set({
+      [cacheKey]: xml,
+      ar_cache_keys: keys
+    });
+  } catch (err) {
+    console.error('[Aura] Failed to cache annotation in storage.local:', err);
+  }
+}
+
 // Increment counter when content scripts report blocked/skipped ads.
 // (DNR network block counts require 'declarativeNetRequestFeedback' which is dev-only,
 // so we rely on content scripts for counts).
@@ -288,14 +393,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'AD_BLOCKED') {
-    (async () => {
-      try {
-        const { adblockCount = 0 } = await chrome.storage.sync.get('adblockCount');
-        await chrome.storage.sync.set({ adblockCount: adblockCount + (message.count || 1) });
-      } catch (err) {
-        console.error('[Aura] Failed to update adblock count:', err);
-      }
-    })();
+    recordAdBlocked(message.count || 1);
   }
   if (message.type === 'FETCH_DISLIKES') {
     (async () => {
@@ -344,9 +442,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         }
         const cacheKey = `ar_${videoId}`;
-        const cached = await chrome.storage.local.get(cacheKey);
-        if (cached && cached[cacheKey]) {
-          sendResponse({ success: true, xml: cached[cacheKey], cached: true });
+        const cachedXml = await getCachedAnnotation(cacheKey);
+        if (cachedXml) {
+          sendResponse({ success: true, xml: cachedXml, cached: true });
           return;
         }
 
@@ -363,7 +461,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const xml = await resp.text();
         if (xml && xml.length < 1000000) {
-          await chrome.storage.local.set({ [cacheKey]: xml }).catch(() => {});
+          await setCachedAnnotation(cacheKey, xml);
         }
         sendResponse({ success: true, xml, cached: false });
       } catch (err) {

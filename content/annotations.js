@@ -388,6 +388,9 @@
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       try {
         chrome.runtime.sendMessage({ type: 'FETCH_ANNOTATIONS', videoId }, (response) => {
+          try {
+            if (chrome.runtime?.lastError) return;
+          } catch (_) { return; }
           if (!response || !response.success || !response.xml) {
             console.debug('[CineGlow Annotations] No archived annotations available for:', videoId);
             return;
@@ -546,6 +549,19 @@
     isSettingsLoaded: () => settingsLoaded,
     createAnnotationElement
   };
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+  }
 
   loadSettings();
 })();

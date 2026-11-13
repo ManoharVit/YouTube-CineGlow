@@ -5,6 +5,7 @@
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||doubleclick.net",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
@@ -14,6 +15,7 @@
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||google-analytics.com",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "ping"]
     }
   },
@@ -23,6 +25,7 @@
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||googlesyndication.com",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
@@ -32,6 +35,7 @@
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||pagead2.googlesyndication.com",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
@@ -68,6 +72,7 @@
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||googleadservices.com",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
@@ -95,6 +100,7 @@
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||ad.youtube.com",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },

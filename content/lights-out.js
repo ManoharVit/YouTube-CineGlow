@@ -110,6 +110,15 @@
     video = null;
   }
 
+  // Handle extension context invalidation gracefully
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event?.reason?.message?.includes('Extension context invalidated')) {
+        event.preventDefault();
+      }
+    });
+  }
+
   // Register Event Handlers
   window.addEventListener('mousemove', handleMouseMove, { passive: true });
   window.addEventListener('keydown', onKeyDown, { passive: false });

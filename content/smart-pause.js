@@ -71,17 +71,16 @@
     }
   }
 
-  // Handle tab switching & window minimize
-  document.addEventListener('visibilitychange', () => {
+  // Named listeners for tab switching & window minimize / focus
+  const onVisibilityChange = () => {
     if (blurTimer) {
       clearTimeout(blurTimer);
       blurTimer = null;
     }
     checkState();
-  });
+  };
 
-  // Handle switching apps (window blur/focus)
-  window.addEventListener('blur', () => {
+  const onWindowBlur = () => {
     if (autoPauseMode === 'app') {
       // Debounce slightly to avoid false positives on quick in-page clicks or iframe focus
       if (blurTimer) clearTimeout(blurTimer);
@@ -90,15 +89,19 @@
         checkState();
       }, 150);
     }
-  });
+  };
 
-  window.addEventListener('focus', () => {
+  const onWindowFocus = () => {
     if (blurTimer) {
       clearTimeout(blurTimer);
       blurTimer = null;
     }
     checkState();
-  });
+  };
+
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('blur', onWindowBlur);
+  window.addEventListener('focus', onWindowFocus);
 
   // Reset extension pause flag if user manually interacts with playback controls
   const onUserPlay = () => {
@@ -113,12 +116,32 @@
     }
   };
 
+  const onPlayerStateChange = (e) => {
+    if (isKilled) return;
+    const state = e.detail;
+    if (state.video !== lastVideo) {
+      if (lastVideo) {
+        lastVideo.removeEventListener('play', onUserPlay);
+        lastVideo.removeEventListener('pause', onUserPause);
+      }
+      lastVideo = state.video;
+      if (lastVideo) {
+        lastVideo.addEventListener('play', onUserPlay);
+        lastVideo.addEventListener('pause', onUserPause);
+      }
+    }
+  };
+
   // --- Emergency Kill-Switch Teardown ---
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     autoPauseMode = 'off';
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
+
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('blur', onWindowBlur);
+    window.removeEventListener('focus', onWindowFocus);
 
     if (blurTimer) {
       clearTimeout(blurTimer);
@@ -131,6 +154,9 @@
       lastVideo.removeEventListener('play', onUserPlay);
       lastVideo.removeEventListener('pause', onUserPause);
       lastVideo = null;
+    }
+    if (window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
+      window.CineGlowPlayer.removeEventListener('state-change', onPlayerStateChange);
     }
   }
 
@@ -159,19 +185,18 @@
   window.CineGlowSmartPauseTeardown = teardownKillSwitch;
 
   if (window.CineGlowPlayer) {
-    window.CineGlowPlayer.addEventListener('state-change', (e) => {
-      if (isKilled) return;
-      const state = e.detail;
-      if (state.video !== lastVideo) {
-        if (lastVideo) {
-          lastVideo.removeEventListener('play', onUserPlay);
-          lastVideo.removeEventListener('pause', onUserPause);
-        }
-        lastVideo = state.video;
-        if (lastVideo) {
-          lastVideo.addEventListener('play', onUserPlay);
-          lastVideo.addEventListener('pause', onUserPause);
-        }
+    window.CineGlowPlayer.addEventListener('state-change', onPlayerStateChange);
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
       }
     });
   }

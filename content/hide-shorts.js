@@ -3,6 +3,12 @@
 
   let hideShortsEnabled = false;
   let isKilled = false;
+  let onShortsClick = null;
+  let onYtNavigateFinish = null;
+  let onYtPageDataUpdated = null;
+  let onPopstate = null;
+  let onPlayerStateChange = null;
+  let onDomContentLoaded = null;
 
   const SHORTS_SELECTORS = [
     'grid-shelf-view-model',
@@ -61,7 +67,34 @@
     isKilled = true;
     hideShortsEnabled = false;
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
-    document.documentElement.removeAttribute('cineglow-hide-shorts');
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.removeAttribute('cineglow-hide-shorts');
+    }
+
+    if (onShortsClick && typeof document !== 'undefined') {
+      try { document.removeEventListener('click', onShortsClick, true); } catch (_) {}
+      onShortsClick = null;
+    }
+    if (onYtNavigateFinish && typeof document !== 'undefined') {
+      try { document.removeEventListener('yt-navigate-finish', onYtNavigateFinish); } catch (_) {}
+      onYtNavigateFinish = null;
+    }
+    if (onYtPageDataUpdated && typeof document !== 'undefined') {
+      try { document.removeEventListener('yt-page-data-updated', onYtPageDataUpdated); } catch (_) {}
+      onYtPageDataUpdated = null;
+    }
+    if (onPopstate && typeof window !== 'undefined') {
+      try { window.removeEventListener('popstate', onPopstate); } catch (_) {}
+      onPopstate = null;
+    }
+    if (onPlayerStateChange && window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
+      try { window.CineGlowPlayer.removeEventListener('state-change', onPlayerStateChange); } catch (_) {}
+      onPlayerStateChange = null;
+    }
+    if (onDomContentLoaded && typeof document !== 'undefined') {
+      try { document.removeEventListener('DOMContentLoaded', onDomContentLoaded); } catch (_) {}
+      onDomContentLoaded = null;
+    }
   }
 
   // Dual listener registration: Direct runtime message + In-tab fallback event
@@ -109,38 +142,57 @@
     }
 
     // Intercept and cancel clicks on any /shorts links when hiding is enabled
-    document.addEventListener('click', (e) => {
+    onShortsClick = (e) => {
       if (!hideShortsEnabled || isKilled) return;
       const anchor = e.target.closest && e.target.closest('a[href*="/shorts"]');
       if (anchor) {
         e.preventDefault();
         e.stopPropagation();
       }
-    }, true);
+    };
+    document.addEventListener('click', onShortsClick, true);
 
     // YouTube SPA navigation listeners
-    document.addEventListener('yt-navigate-finish', () => {
+    onYtNavigateFinish = () => {
       checkShortsRedirect();
-    });
+    };
+    document.addEventListener('yt-navigate-finish', onYtNavigateFinish);
 
-    document.addEventListener('yt-page-data-updated', () => {
+    onYtPageDataUpdated = () => {
       checkShortsRedirect();
-    });
+    };
+    document.addEventListener('yt-page-data-updated', onYtPageDataUpdated);
 
-    window.addEventListener('popstate', () => {
+    onPopstate = () => {
       checkShortsRedirect();
-    });
+    };
+    window.addEventListener('popstate', onPopstate);
 
     if (window.CineGlowPlayer) {
-      window.CineGlowPlayer.addEventListener('state-change', () => {
+      onPlayerStateChange = () => {
         checkShortsRedirect();
-      });
+      };
+      window.CineGlowPlayer.addEventListener('state-change', onPlayerStateChange);
     }
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    onDomContentLoaded = init;
+    document.addEventListener('DOMContentLoaded', onDomContentLoaded);
   } else {
     init();
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
   }
 })();

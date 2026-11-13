@@ -169,6 +169,7 @@ class MockElement extends EventTarget {
   constructor(tagName = 'div', attributes = {}) {
     super();
     this.tagName = tagName.toUpperCase();
+    this.nodeName = this.tagName;
     this.attributes = new Map();
     this.classList = new MockClassList();
     this.children = [];
@@ -190,6 +191,22 @@ class MockElement extends EventTarget {
     this.setAttribute('id', val);
   }
 
+  get className() {
+    if (this._className && typeof this._className === 'object') {
+      return this._className;
+    }
+    return this.getAttribute('class') || '';
+  }
+
+  set className(val) {
+    if (typeof val === 'string') {
+      this._className = val;
+      this.setAttribute('class', val);
+    } else {
+      this._className = val;
+    }
+  }
+
   get isConnected() {
     let curr = this.parentElement || this.parentNode;
     while (curr) {
@@ -199,10 +216,52 @@ class MockElement extends EventTarget {
     return false;
   }
 
+  setAttributeNS(_ns, name, value) {
+    this.setAttribute(name, value);
+  }
+
   setAttribute(name, value) {
     this.attributes.set(name, String(value));
     if (name === 'class') {
       String(value).split(/\s+/).filter(Boolean).forEach(c => this.classList.add(c));
+    }
+  }
+
+  get innerHTML() {
+    return this._innerHTML || '';
+  }
+
+  set innerHTML(html) {
+    this._innerHTML = String(html || '');
+    this.children = [];
+    if (!this._innerHTML.trim()) return;
+
+    const tagRegex = /<([a-zA-Z0-9\-]+)([^>]*?)(?:\/?>([\s\S]*?)<\/\1>|\/?>)/g;
+    let match;
+    while ((match = tagRegex.exec(this._innerHTML)) !== null) {
+      const tagName = match[1];
+      const rawAttrs = match[2] || '';
+      const content = match[3] || '';
+
+      const child = new MockElement(tagName);
+      const attrRegex = /([a-zA-Z0-9\-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+      let attrMatch;
+      while ((attrMatch = attrRegex.exec(rawAttrs)) !== null) {
+        const attrName = attrMatch[1];
+        if (!attrName || attrName === '/') continue;
+        const attrVal = attrMatch[2] !== undefined ? attrMatch[2] : (attrMatch[3] !== undefined ? attrMatch[3] : (attrMatch[4] !== undefined ? attrMatch[4] : ''));
+        child.setAttribute(attrName, attrVal);
+        if (attrName === 'value') child.value = attrVal;
+      }
+
+      if (content.trim()) {
+        if (content.includes('<')) {
+          child.innerHTML = content;
+        } else {
+          child.textContent = content.trim();
+        }
+      }
+      this.appendChild(child);
     }
   }
 
@@ -251,7 +310,12 @@ class MockElement extends EventTarget {
   }
 
   closest(selector) {
-    return this;
+    let curr = this;
+    while (curr) {
+      if (curr.matches && curr.matches(selector)) return curr;
+      curr = curr.parentElement || curr.parentNode;
+    }
+    return null;
   }
 
   matches(selector) {
@@ -294,6 +358,19 @@ class MockElement extends EventTarget {
     return { top: 0, left: 0, width: 640, height: 360, bottom: 360, right: 640 };
   }
 
+  dispatchEvent(evt) {
+    if (evt && !evt.target) {
+      try { Object.defineProperty(evt, 'target', { value: this, configurable: true }); } catch (_) { evt.target = this; }
+    }
+    const res = super.dispatchEvent(evt);
+    if (!evt.cancelBubble && this.tagName !== 'DOCUMENT' && globalThis.document && typeof globalThis.document.dispatchEvent === 'function') {
+      try {
+        globalThis.document.dispatchEvent(evt);
+      } catch (_) {}
+    }
+    return res;
+  }
+
   attachShadow(options = { mode: 'open' }) {
     const shadowRoot = new MockElement('shadow-root', { 'data-mode': options.mode });
     shadowRoot.host = this;
@@ -302,7 +379,27 @@ class MockElement extends EventTarget {
   }
 
   querySelector(_selector) {
+    if (!_selector || !Array.isArray(this.children)) return null;
+    for (const child of this.children) {
+      if (child && child.matches && child.matches(_selector)) return child;
+      if (child && typeof child.querySelector === 'function') {
+        const found = child.querySelector(_selector);
+        if (found) return found;
+      }
+    }
     return null;
+  }
+
+  querySelectorAll(selector) {
+    if (!selector || !Array.isArray(this.children)) return [];
+    let results = [];
+    for (const child of this.children) {
+      if (child && child.matches && child.matches(selector)) results.push(child);
+      if (child && typeof child.querySelectorAll === 'function') {
+        results = results.concat(child.querySelectorAll(selector));
+      }
+    }
+    return results;
   }
 
   getContext() {
@@ -458,6 +555,11 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
     return findNodeById(mockDocument, id);
   };
   mockDocument.createElement = (tag) => new MockElement(tag);
+  mockDocument.createElementNS = (_ns, tag) => {
+    const el = new MockElement(tag);
+    el.className = { baseVal: '' };
+    return el;
+  };
   mockDocument.head = new MockElement('head');
   mockDocument.body = new MockElement('body');
   mockDocument.documentElement = new MockElement('html');
@@ -566,6 +668,7 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
       }
     },
     runtime: {
+      id: 'mock-extension-id',
       getManifest: () => ({ version: '2.3.0' }),
       onMessage: {
         _listeners: [],

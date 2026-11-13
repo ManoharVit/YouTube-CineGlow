@@ -1941,7 +1941,7 @@ describe('Tier 2: Boundary & Corner Cases (70 Tests)', () => {
       const zipPath = path.join(REPO_ROOT, 'YouTube-CineGlow-v2.4.0.zip');
       const buffer = fs.readFileSync(zipPath);
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      assert.strictEqual(hash, 'cae397f43f353f0b4eb5d434280d6a6f50945056f7f84f77c734eef6b554904b');
+      assert.strictEqual(hash, 'b5aad013dbd275120ef0179486848955f8da841bf4bf8c173ab6095f37cbd77c');
     });
 
     test('T2-F11-05: Production Code Console Log Sanitization', () => {

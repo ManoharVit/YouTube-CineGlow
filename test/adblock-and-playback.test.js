@@ -52,6 +52,17 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
       'rules/adblock.json must block googlesyndication.com'
     );
 
+    // Verify third-party ad rules are scoped with initiatorDomains: ["youtube.com"] to avoid cross-site blocking (CG-FIND-02)
+    const scopedRuleIds = [1, 2, 3, 4, 8, 11];
+    for (const rule of rules) {
+      if (scopedRuleIds.includes(rule.id)) {
+        assert.ok(
+          Array.isArray(rule.condition.initiatorDomains) && rule.condition.initiatorDomains.includes('youtube.com'),
+          `Rule ${rule.id} (${rule.condition.urlFilter}) must specify initiatorDomains: ["youtube.com"]`
+        );
+      }
+    }
+
     // Verify all rules have valid structure
     for (const rule of rules) {
       assert.strictEqual(rule.action.type, 'block');
@@ -149,10 +160,10 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
 
     adBlock.skipVideoAds();
 
-    // Ad should be muted, sped up to 16.0, and fast-forwarded to duration
+    // Ad should be muted and accelerated to 16x without jumping the main video currentTime
     assert.strictEqual(video.muted, true, 'Ad must be muted');
     assert.strictEqual(video.playbackRate, 16.0, 'Ad must be accelerated to 16x');
-    assert.strictEqual(video.currentTime, 15.0, 'Ad must be skipped to duration');
+    assert.strictEqual(video.currentTime, 2.0, 'Ad must not skip main video currentTime');
 
     // Simulate ad finishing
     player.classList.remove('ad-showing');
@@ -450,5 +461,33 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.ok(mainWorldCode.includes('player.skipAd()'), 'main-world.js must invoke unproxied player.skipAd');
     assert.ok(mainWorldCode.includes('CINEGLOW_FORCE_SKIP_AD'), 'main-world.js must listen for force skip messages');
     assert.ok(mainWorldCode.includes('mainWorldAdInterval'), 'main-world.js must run active interval loop');
+  });
+
+  test('main-world.js eliminates Object.prototype pollution and binds evasion flags to window/yt (CG-FIND-05)', () => {
+    const mainWorldCode = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    assert.strictEqual(
+      mainWorldCode.includes('Object.defineProperty(Object.prototype'),
+      false,
+      'main-world.js must NOT pollute Object.prototype'
+    );
+    assert.ok(mainWorldCode.includes("Object.defineProperty(window, 'adBlocksFound'"), 'must define adBlocksFound on window');
+    assert.ok(mainWorldCode.includes("Object.defineProperty(window, 'hasAllowedInstreamAd'"), 'must define hasAllowedInstreamAd on window');
+  });
+
+  test('main-world.js respects CINEGLOW_SET_ADBLOCK_STATE and restores native APIs on kill switch (CG-FIND-01, CG-FIND-12)', () => {
+    const mainWorldCode = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    assert.ok(mainWorldCode.includes('CINEGLOW_SET_ADBLOCK_STATE'), 'must listen for CINEGLOW_SET_ADBLOCK_STATE');
+    assert.ok(mainWorldCode.includes('window.fetch = origFetch'), 'must restore window.fetch on kill');
+    assert.ok(mainWorldCode.includes('XMLHttpRequest.prototype.open = origOpen'), 'must restore XHR open on kill');
+    assert.ok(mainWorldCode.includes('XMLHttpRequest.prototype.send = origSend'), 'must restore XHR send on kill');
+    assert.ok(mainWorldCode.includes('JSON.parse = origJSONParse'), 'must restore JSON.parse on kill');
+  });
+
+  test('main-world.js camouflages patched methods with native [native code] toString and zero own-property detection leaks', () => {
+    const mainWorldCode = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    assert.strictEqual(mainWorldCode.includes('JSON.parse.toString ='), false, 'must not define own toString on JSON.parse');
+    assert.strictEqual(mainWorldCode.includes('window.fetch.toString ='), false, 'must not define own toString on window.fetch');
+    assert.strictEqual(mainWorldCode.includes('customFnToString.toString ='), false, 'must not define own toString on Function.prototype.toString');
+    assert.ok(mainWorldCode.includes('Function.prototype.toString = customFnToString'), 'must replace Function.prototype.toString');
   });
 });

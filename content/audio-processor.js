@@ -33,6 +33,9 @@
   let currentVideo = null;
   const videoSources = new WeakMap();
   let isKilled = false;
+  let onUserInteractionResume = null;
+  let onVideoPlaybackResume = null;
+  let boundResumeVideo = null;
 
   async function loadSettings() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
@@ -178,15 +181,17 @@
         analyser.connect(audioCtx.destination);
 
         // Auto-resume AudioContext on user interaction to comply with autoplay policy
-        const tryResume = () => {
-          if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
-          }
-        };
-        window.addEventListener('click', tryResume, { passive: true });
-        window.addEventListener('keydown', tryResume, { passive: true });
-        window.addEventListener('pointerdown', tryResume, { passive: true });
-        window.addEventListener('touchstart', tryResume, { passive: true });
+        if (!onUserInteractionResume) {
+          onUserInteractionResume = () => {
+            if (audioCtx && audioCtx.state === 'suspended') {
+              audioCtx.resume();
+            }
+          };
+          window.addEventListener('click', onUserInteractionResume, { passive: true });
+          window.addEventListener('keydown', onUserInteractionResume, { passive: true });
+          window.addEventListener('pointerdown', onUserInteractionResume, { passive: true });
+          window.addEventListener('touchstart', onUserInteractionResume, { passive: true });
+        }
       }
 
       if (source) {
@@ -216,15 +221,17 @@
       
       // Auto-resume AudioContext on playback to comply with autoplay policy
       if (!video._cineGlowResumeAttached) {
-        const tryResume = () => {
+        onVideoPlaybackResume = () => {
           if (audioCtx && audioCtx.state === 'suspended') {
             audioCtx.resume();
           }
         };
-        video.addEventListener('play', tryResume);
-        video.addEventListener('playing', tryResume);
-        video.addEventListener('volumechange', tryResume);
+        video.addEventListener('play', onVideoPlaybackResume);
+        video.addEventListener('playing', onVideoPlaybackResume);
+        video.addEventListener('volumechange', onVideoPlaybackResume);
         video._cineGlowResumeAttached = true;
+        video._cineGlowResumeHandler = onVideoPlaybackResume;
+        boundResumeVideo = video;
       }
       if (!video.paused && audioCtx.state === 'suspended') {
         audioCtx.resume();
@@ -350,6 +357,43 @@
       currentVideo.cineGlowAudioAttached = false;
       currentVideo = null;
     }
+
+    // 5. Remove window interaction listeners
+    if (onUserInteractionResume && typeof window !== 'undefined') {
+      try {
+        window.removeEventListener('click', onUserInteractionResume, { passive: true });
+        window.removeEventListener('keydown', onUserInteractionResume, { passive: true });
+        window.removeEventListener('pointerdown', onUserInteractionResume, { passive: true });
+        window.removeEventListener('touchstart', onUserInteractionResume, { passive: true });
+      } catch (_) {}
+      onUserInteractionResume = null;
+    }
+
+    // 6. Remove video playback resume listeners
+    const videosToClean = [];
+    if (currentVideo) videosToClean.push(currentVideo);
+    if (boundResumeVideo && !videosToClean.includes(boundResumeVideo)) videosToClean.push(boundResumeVideo);
+    for (const v of videosToClean) {
+      const handler = v._cineGlowResumeHandler || onVideoPlaybackResume;
+      if (handler && typeof v.removeEventListener === 'function') {
+        try {
+          v.removeEventListener('play', handler);
+          v.removeEventListener('playing', handler);
+          v.removeEventListener('volumechange', handler);
+        } catch (_) {}
+      }
+      v._cineGlowResumeAttached = false;
+      delete v._cineGlowResumeHandler;
+    }
+    onVideoPlaybackResume = null;
+    boundResumeVideo = null;
+
+    // 7. Remove player state listener
+    if (window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
+      try {
+        window.CineGlowPlayer.removeEventListener('state-change', attachToPlayer);
+      } catch (_) {}
+    }
   }
 
   // Dual listener registration: Direct runtime message + In-tab fallback event
@@ -388,6 +432,19 @@
   window.CineGlowAudioGetActiveSource = () => source;
   window.CineGlowAudioGetVideoSource = (v) => videoSources.get(v);
   window.CineGlowAudioTeardown = teardownKillSwitch;
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+  }
 
   loadSettings();
 })();

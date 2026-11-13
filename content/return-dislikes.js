@@ -72,17 +72,25 @@
 
     try {
       const result = await new Promise((resolve) => {
-        if (!chrome.runtime?.id) {
-          resolve(null);
-          return;
-        }
-        chrome.runtime.sendMessage({ type: 'FETCH_DISLIKES', videoId }, (res) => {
-          if (chrome.runtime.lastError || !res || !res.success) {
+        try {
+          if (!chrome.runtime?.id) {
             resolve(null);
-          } else {
-            resolve(res.data);
+            return;
           }
-        });
+          chrome.runtime.sendMessage({ type: 'FETCH_DISLIKES', videoId }, (res) => {
+            try {
+              if (chrome.runtime?.lastError || !res || !res.success) {
+                resolve(null);
+              } else {
+                resolve(res.data);
+              }
+            } catch (_) {
+              resolve(null);
+            }
+          });
+        } catch (_) {
+          resolve(null);
+        }
       });
 
       if (!result || typeof result.dislikes !== 'number') return null;
@@ -261,48 +269,60 @@
 
   // Optimistic click feedback for like and dislike buttons
   function attachVoteListeners(dislikeBtn, likeBtn, voteRecord) {
-    if (dislikeBtn && !dislikeBtn._cineglowDislikeBound) {
-      dislikeBtn._cineglowDislikeBound = true;
-      dislikeBtn.addEventListener('click', () => {
-        if (!isEnabled || !voteRecord) return;
+    if (dislikeBtn) {
+      dislikeBtn._currentVoteRecord = voteRecord;
+      if (!dislikeBtn._cineglowDislikeBound) {
+        const dislikeHandler = () => {
+          const record = dislikeBtn._currentVoteRecord || voteRecord;
+          if (!isEnabled || !record) return;
 
-        setTimeout(() => {
-          const isPressed = dislikeBtn.getAttribute('aria-pressed') === 'true';
-          if (isPressed && voteRecord.userVote !== -1) {
-            if (voteRecord.userVote === 1) {
-              voteRecord.likes = Math.max(0, voteRecord.likes - 1);
+          setTimeout(() => {
+            const isPressed = dislikeBtn.getAttribute('aria-pressed') === 'true';
+            if (isPressed && record.userVote !== -1) {
+              if (record.userVote === 1) {
+                record.likes = Math.max(0, record.likes - 1);
+              }
+              record.dislikes += 1;
+              record.userVote = -1;
+            } else if (!isPressed && record.userVote === -1) {
+              record.dislikes = Math.max(0, record.dislikes - 1);
+              record.userVote = 0;
             }
-            voteRecord.dislikes += 1;
-            voteRecord.userVote = -1;
-          } else if (!isPressed && voteRecord.userVote === -1) {
-            voteRecord.dislikes = Math.max(0, voteRecord.dislikes - 1);
-            voteRecord.userVote = 0;
-          }
-          renderDislikes(voteRecord);
-        }, 50);
-      });
+            renderDislikes(record);
+          }, 50);
+        };
+        dislikeBtn._cineglowDislikeHandler = dislikeHandler;
+        dislikeBtn._cineglowDislikeBound = true;
+        dislikeBtn.addEventListener('click', dislikeHandler);
+      }
     }
 
-    if (likeBtn && !likeBtn._cineglowLikeBound) {
-      likeBtn._cineglowLikeBound = true;
-      likeBtn.addEventListener('click', () => {
-        if (!isEnabled || !voteRecord) return;
+    if (likeBtn) {
+      likeBtn._currentVoteRecord = voteRecord;
+      if (!likeBtn._cineglowLikeBound) {
+        const likeHandler = () => {
+          const record = likeBtn._currentVoteRecord || voteRecord;
+          if (!isEnabled || !record) return;
 
-        setTimeout(() => {
-          const isPressed = likeBtn.getAttribute('aria-pressed') === 'true';
-          if (isPressed && voteRecord.userVote !== 1) {
-            if (voteRecord.userVote === -1) {
-              voteRecord.dislikes = Math.max(0, voteRecord.dislikes - 1);
+          setTimeout(() => {
+            const isPressed = likeBtn.getAttribute('aria-pressed') === 'true';
+            if (isPressed && record.userVote !== 1) {
+              if (record.userVote === -1) {
+                record.dislikes = Math.max(0, record.dislikes - 1);
+              }
+              record.likes += 1;
+              record.userVote = 1;
+            } else if (!isPressed && record.userVote === 1) {
+              record.likes = Math.max(0, record.likes - 1);
+              record.userVote = 0;
             }
-            voteRecord.likes += 1;
-            voteRecord.userVote = 1;
-          } else if (!isPressed && voteRecord.userVote === 1) {
-            voteRecord.likes = Math.max(0, voteRecord.likes - 1);
-            voteRecord.userVote = 0;
-          }
-          renderDislikes(voteRecord);
-        }, 50);
-      });
+            renderDislikes(record);
+          }, 50);
+        };
+        likeBtn._cineglowLikeHandler = likeHandler;
+        likeBtn._cineglowLikeBound = true;
+        likeBtn.addEventListener('click', likeHandler);
+      }
     }
   }
 
@@ -329,10 +349,29 @@
       btn.classList.remove(HAS_DISLIKES_CLASS);
       btn.removeAttribute('title');
       btn.setAttribute('aria-label', 'Dislike this video');
+      if (typeof btn.removeEventListener === 'function' && btn._cineglowDislikeHandler) {
+        btn.removeEventListener('click', btn._cineglowDislikeHandler);
+      }
+      delete btn._cineglowDislikeHandler;
+      delete btn._currentVoteRecord;
+      delete btn._cineglowDislikeBound;
+    });
+
+    document.querySelectorAll('dislike-button-view-model button, #dislike-button button').forEach(btn => {
+      if (typeof btn.removeEventListener === 'function' && btn._cineglowDislikeHandler) {
+        btn.removeEventListener('click', btn._cineglowDislikeHandler);
+      }
+      delete btn._cineglowDislikeHandler;
+      delete btn._currentVoteRecord;
       delete btn._cineglowDislikeBound;
     });
 
     document.querySelectorAll('like-button-view-model button, #like-button button').forEach(btn => {
+      if (typeof btn.removeEventListener === 'function' && btn._cineglowLikeHandler) {
+        btn.removeEventListener('click', btn._cineglowLikeHandler);
+      }
+      delete btn._cineglowLikeHandler;
+      delete btn._currentVoteRecord;
       delete btn._cineglowLikeBound;
     });
   }
@@ -485,5 +524,18 @@
     });
   } else {
     if (isEnabled && !isKilled) initialize();
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
+    window.addEventListener('error', (event) => {
+      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
+        try { event.preventDefault(); } catch (_) {}
+      }
+    });
   }
 })();
