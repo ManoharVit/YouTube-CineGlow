@@ -1106,7 +1106,7 @@ describe('Tier 1: Feature Coverage (70 Tests)', () => {
         timestamp: Date.now()
       });
 
-      assert.strictEqual(initialCtx.state, 'closed', 'AudioContext must be closed upon kill switch');
+      assert.strictEqual(initialCtx.state, 'running', 'AudioContext must remain running to bypass DSP without severing audio (FP-6.3)');
       assert.strictEqual(globalThis.window.CineGlowAudioCtx, null, 'Global AudioContext reference must be cleared');
     });
 
@@ -1941,7 +1941,7 @@ describe('Tier 2: Boundary & Corner Cases (70 Tests)', () => {
       const zipPath = path.join(REPO_ROOT, 'YouTube-CineGlow-v2.4.0.zip');
       const buffer = fs.readFileSync(zipPath);
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      assert.strictEqual(hash, 'b5aad013dbd275120ef0179486848955f8da841bf4bf8c173ab6095f37cbd77c');
+      assert.strictEqual(hash, '31065db6f34cd233bd04790ed7395e1c1d7087dcc8c7c6c9c7b82e3b059b7832');
     });
 
     test('T2-F11-05: Production Code Console Log Sanitization', () => {
@@ -2080,7 +2080,7 @@ describe('Tier 2: Boundary & Corner Cases (70 Tests)', () => {
         timestamp: Date.now()
       });
 
-      assert.strictEqual(ctx.state, 'closed');
+      assert.strictEqual(ctx.state, 'running', 'AudioContext must remain running to bypass DSP (FP-6.3)');
       assert.strictEqual(globalThis.window.CineGlowAudioCtx, null);
     });
 

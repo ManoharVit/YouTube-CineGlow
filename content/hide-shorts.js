@@ -51,13 +51,19 @@
     }
   }
 
-  // If user navigates directly to /shorts, redirect back to YouTube Home
+  // If user navigates directly to /shorts, redirect to standard video view or YouTube Home
   function checkShortsRedirect() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!hideShortsEnabled) return;
     const path = window.location.pathname;
     if (path.startsWith('/shorts')) {
-      window.location.replace('/');
+      const match = path.match(/^\/shorts\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        const shortId = match[1];
+        window.location.replace(`/watch?v=${encodeURIComponent(shortId)}`);
+      } else {
+        window.location.replace('/');
+      }
     }
   }
 
@@ -144,10 +150,25 @@
     // Intercept and cancel clicks on any /shorts links when hiding is enabled
     onShortsClick = (e) => {
       if (!hideShortsEnabled || isKilled) return;
-      const anchor = e.target.closest && e.target.closest('a[href*="/shorts"]');
+      const anchor = e.target.closest ? (e.target.closest('a[href*="/shorts"]') || (e.target.closest('a') && (e.target.closest('a').getAttribute('href') || e.target.closest('a').href || '').includes('/shorts') ? e.target.closest('a') : null)) : null;
       if (anchor) {
-        e.preventDefault();
-        e.stopPropagation();
+        let hostname = anchor.hostname;
+        if (!hostname && anchor.href) {
+          try {
+            hostname = new URL(anchor.href, window.location.href).hostname;
+          } catch (_) {
+            hostname = window.location.hostname;
+          }
+        }
+        const h = (hostname || '').toLowerCase();
+        const isYouTube = h === 'youtube.com' ||
+                          h.endsWith('.youtube.com') ||
+                          h === 'youtu.be' ||
+                          h.endsWith('.youtu.be');
+        if (isYouTube) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }
     };
     document.addEventListener('click', onShortsClick, true);

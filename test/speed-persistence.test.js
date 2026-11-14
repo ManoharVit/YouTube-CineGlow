@@ -365,16 +365,53 @@ describe('Speed Button & Playback Speed Persistence Across Navigation', () => {
     assert.strictEqual(closedMenu, null, 'Speed menu must close on second click (toggle)');
   });
 
-  test('double clicking speed button immediately resets playback speed to 1.0x', async () => {
+  test('speed menu stays open on internal clicks and closes on outside click', async () => {
+    loadSpeedButton();
+    await new Promise(r => setTimeout(r, 25));
+
+    const btn = player.querySelector('.cineglow-speed-button');
+    btn.dispatchEvent(new Event('click'));
+
+    let menu = player.querySelector('.cineglow-speed-menu');
+    assert.ok(menu, 'Speed menu must open on click');
+
+    // Wait for outside-click listener to attach
+    await new Promise(r => setTimeout(r, 10));
+
+    // Clicking inside menu must NOT close it
+    const pill = menu.querySelector('.cineglow-preset-pill');
+    if (pill) {
+      pill.dispatchEvent(new Event('click'));
+    }
+    menu = player.querySelector('.cineglow-speed-menu');
+    assert.ok(menu, 'Speed menu must remain open when clicking internal elements');
+
+    // Clicking outside on document must close it
+    const outsideEl = new MockElement('div');
+    player.appendChild(outsideEl);
+    const outsideClickEvent = new Event('click');
+    outsideEl.dispatchEvent(outsideClickEvent);
+
+    menu = player.querySelector('.cineglow-speed-menu');
+    assert.strictEqual(menu, null, 'Speed menu must close on outside click');
+  });
+
+  test('double clicking speed button immediately resets playback speed to 1.0x without closing menu', async () => {
     loadSpeedButton();
     await new Promise(r => setTimeout(r, 25));
 
     const speedApi = globalThis.window.CineGlowSpeed;
     speedApi.setPlaybackSpeed(2.5);
     assert.strictEqual(speedApi.preferredSpeed, 2.5);
+    await new Promise(r => setTimeout(r, 90));
 
     const btn = player.querySelector('.cineglow-speed-button');
     assert.ok(btn, 'Speed button must be mounted');
+
+    // Open menu first
+    btn.dispatchEvent(new Event('click'));
+    let menu = player.querySelector('.cineglow-speed-menu');
+    assert.ok(menu, 'Speed menu must open on click');
 
     // Double click button
     btn.dispatchEvent(new Event('dblclick'));
@@ -382,6 +419,10 @@ describe('Speed Button & Playback Speed Persistence Across Navigation', () => {
     assert.strictEqual(speedApi.currentSpeed, 1.0, 'currentSpeed must be 1.0 after double click');
     assert.strictEqual(speedApi.preferredSpeed, 1.0, 'preferredSpeed must be 1.0 after double click');
     assert.strictEqual(video.playbackRate, 1.0, 'video.playbackRate must be 1.0 after double click');
+
+    // Menu should still be open
+    menu = player.querySelector('.cineglow-speed-menu');
+    assert.ok(menu, 'Speed menu must stay open after double click reset');
 
     const stored = await env.chrome.storage.sync.get('preferredSpeed');
     assert.strictEqual(stored.preferredSpeed, 1.0, 'preferredSpeed 1.0 must be persisted to storage');
@@ -411,5 +452,32 @@ describe('Speed Button & Playback Speed Persistence Across Navigation', () => {
 
     const valDisplay = menu.querySelector('.cineglow-speed-current-val');
     assert.strictEqual(valDisplay.textContent, '1.75×', 'Current speed readout must display 1.75×');
+  });
+
+  test('post-ad reset guard preserves preferred speed when mid-roll ad concludes at 1.0x', async () => {
+    loadSpeedButton();
+    await new Promise(r => setTimeout(r, 15));
+
+    const speedApi = globalThis.window.CineGlowSpeed;
+    speedApi.setPlaybackSpeed(2.5);
+    assert.strictEqual(speedApi.preferredSpeed, 2.5);
+    await new Promise(r => setTimeout(r, 90));
+
+    // Simulate mid-roll playback (30s in, navigated 25s ago)
+    video.currentTime = 30.0;
+    speedApi.lastNavigatedTime = Date.now() - 25000;
+
+    // Mid-roll ad plays (accelerated or active)
+    video.playbackRate = 16.0;
+    video.dispatchEvent(new Event('ratechange'));
+    assert.strictEqual(speedApi.preferredSpeed, 2.5);
+
+    // Mid-roll ad concludes and native player resets rate to 1.0 within 1500ms of ad
+    video.playbackRate = 1.0;
+    video.dispatchEvent(new Event('ratechange'));
+
+    // Post-ad reset guard must NOT treat this as manual user reset to 1.0x
+    assert.strictEqual(speedApi.preferredSpeed, 2.5, 'preferredSpeed must remain 2.5 after mid-roll ad conclusion');
+    assert.strictEqual(video.playbackRate, 2.5, 'playbackRate must be re-applied to 2.5x');
   });
 });

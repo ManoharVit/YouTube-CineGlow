@@ -13,6 +13,7 @@
   let fetchAbortController = null;
   let isUpdating = false;
   let isKilled = false;
+  let onPopstate = null;
 
   // Compact number formatting (e.g. 521K, 1.4M, 245)
   function formatCount(num) {
@@ -169,9 +170,36 @@
       };
     }
 
-    // YouTube Shorts dislike button
+    // YouTube Shorts dislike button (keyed to active slide's video ID)
     if (window.location.pathname.startsWith('/shorts/')) {
-      const activeReel = document.querySelector('ytd-reel-video-renderer[is-active]') || document.querySelector('ytd-reel-video-renderer');
+      const activeVideoId = getVideoId();
+      let activeReel = null;
+
+      if (activeVideoId) {
+        const reels = document.querySelectorAll('ytd-reel-video-renderer');
+        const reelList = reels && reels.length > 0 ? reels : (document.body?.querySelectorAll ? document.body.querySelectorAll('ytd-reel-video-renderer') : []);
+        for (const reel of reelList) {
+          const reelVid = reel.getAttribute('data-video-id') ||
+                          reel.dataset?.videoId ||
+                          reel.videoId;
+          if (reelVid === activeVideoId) {
+            activeReel = reel;
+            break;
+          }
+          const link = reel.querySelector && reel.querySelector(`a[href*="${activeVideoId}"]`);
+          if (link) {
+            activeReel = reel;
+            break;
+          }
+        }
+      }
+
+      if (!activeReel) {
+        activeReel = document.querySelector('ytd-reel-video-renderer[is-active]') ||
+                     document.querySelector('ytd-reel-video-renderer') ||
+                     (document.body?.querySelector ? (document.body.querySelector('ytd-reel-video-renderer[is-active]') || document.body.querySelector('ytd-reel-video-renderer')) : null);
+      }
+
       if (activeReel) {
         const shortsDislike = activeReel.querySelector('#dislike-button');
         if (shortsDislike) {
@@ -181,7 +209,8 @@
             dislikeBtn: shortsBtn,
             likeBtn: shortsLike ? (shortsLike.querySelector('button') || shortsLike) : null,
             wrapper: shortsDislike,
-            isShorts: true
+            isShorts: true,
+            videoId: activeVideoId
           };
         }
       }
@@ -222,6 +251,10 @@
         dislikeBtn.appendChild(countEl);
       }
     }
+
+    // Key dislike button and count element to video ID to prevent stale display on recycled nodes
+    dislikeBtn.setAttribute('data-cineglow-video-id', voteRecord.id);
+    countEl.setAttribute('data-cineglow-video-id', voteRecord.id);
 
     if (countEl.textContent !== formattedCompact) {
       countEl.textContent = formattedCompact;
@@ -348,6 +381,7 @@
     document.querySelectorAll(`.${HAS_DISLIKES_CLASS}`).forEach(btn => {
       btn.classList.remove(HAS_DISLIKES_CLASS);
       btn.removeAttribute('title');
+      btn.removeAttribute('data-cineglow-video-id');
       btn.setAttribute('aria-label', 'Dislike this video');
       if (typeof btn.removeEventListener === 'function' && btn._cineglowDislikeHandler) {
         btn.removeEventListener('click', btn._cineglowDislikeHandler);
@@ -358,6 +392,7 @@
     });
 
     document.querySelectorAll('dislike-button-view-model button, #dislike-button button').forEach(btn => {
+      btn.removeAttribute('data-cineglow-video-id');
       if (typeof btn.removeEventListener === 'function' && btn._cineglowDislikeHandler) {
         btn.removeEventListener('click', btn._cineglowDislikeHandler);
       }
@@ -414,10 +449,13 @@
         return;
       }
 
-      // Check if dislike button exists but is missing our counter
+      // Check if dislike button exists but is missing our counter or has stale count from recycled node
       const elements = findDislikeElements();
       if (elements && elements.dislikeBtn) {
-        if (!elements.dislikeBtn.querySelector(`.${DISLIKE_COUNT_CLASS}`)) {
+        const existingCount = elements.dislikeBtn.querySelector(`.${DISLIKE_COUNT_CLASS}`);
+        const renderedVid = elements.dislikeBtn.getAttribute('data-cineglow-video-id');
+        const isStale = currentVideoId && renderedVid !== currentVideoId;
+        if (!existingCount || isStale) {
           if (currentVideoId && votesCache.has(currentVideoId)) {
             renderDislikes(votesCache.get(currentVideoId));
           } else {
@@ -450,6 +488,10 @@
     teardown();
     votesCache.clear();
     document.removeEventListener('yt-navigate-finish', updateForCurrentVideo);
+    if (onPopstate && typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+      window.removeEventListener('popstate', onPopstate);
+      onPopstate = null;
+    }
   }
 
   // Dual listener registration: Direct runtime message + In-tab fallback event
@@ -482,6 +524,18 @@
       updateForCurrentVideo();
     }
   });
+
+  onPopstate = () => {
+    if (isEnabled && !isKilled) {
+      const vid = getVideoId();
+      if (vid && vid !== currentVideoId) {
+        updateForCurrentVideo();
+      }
+    }
+  };
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('popstate', onPopstate);
+  }
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', () => {

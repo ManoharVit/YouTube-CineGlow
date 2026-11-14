@@ -512,6 +512,31 @@
 
         <div class="control-row">
           <div class="row-info">
+            <div class="title-with-badge">
+              <span class="row-title" id="sponsorBlockTitle">Sponsor & Branded Content</span>
+              <div id="sponsorStats" class="adblock-counter-pill" title="Sponsor segments skipped">
+                <span class="status-dot"></span>
+                <span class="status-text"><strong id="sponsorBlockCount">0</strong> skipped</span>
+              </div>
+            </div>
+            <span class="row-desc">Skip creator sponsorships & endorsements</span>
+          </div>
+          <label class="switch modern-switch" for="sponsorBlockEnabled">
+            <input type="checkbox" id="sponsorBlockEnabled" aria-labelledby="sponsorBlockTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+        <div class="select-row inset">
+          <div class="select-container full-width">
+            <select id="sponsorBlockMode" class="modern-select" aria-label="Sponsor skip mode">
+              <option value="skip">Auto-skip sponsor segments</option>
+              <option value="fastforward">Fast-forward sponsor segments (16x)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
             <span class="row-title" id="statsTitle">Quality Stats HUD</span>
             <span class="row-desc">Show live rendering & frame timing overlay</span>
           </div>

@@ -239,48 +239,71 @@ describe('PlayerManager Lifecycle & State Tracking', () => {
     assert.strictEqual(globalThis.document.documentElement.hasAttribute('data-cineglow-theater'), false);
   });
 
-  test('detects theater mode via full-bleed and theater containers, size button, and structural columns check', () => {
+  test('FP-3.1 to FP-3.4: theater detection excludes full-bleed, tooltips, columns heuristic, and guards input on t/T hotkey', () => {
     const pm = loadPlayerManager();
     const watchFlexy = new MockElement('ytd-watch-flexy');
     const player = new MockElement('div', { id: 'movie_player' });
-    const fullBleed = new MockElement('div', { id: 'full-bleed-container' });
-    const theaterContainer = new MockElement('div', { id: 'player-theater-container' });
     const sizeBtn = new MockElement('button', { class: 'ytp-size-button' });
     const columns = new MockElement('div', { id: 'columns' });
 
     env.elements.set('ytd-watch-flexy', watchFlexy);
     env.elements.set('#movie_player', player);
 
-    // 1. Full bleed container holding movie_player
-    env.elements.set('#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player', player);
+    // 1. FP-3.2: Full-bleed container or attribute does NOT trigger theater mode
+    watchFlexy.setAttribute('full-bleed-player', '');
+    watchFlexy.setAttribute('full-bleed', '');
+    env.elements.set('#full-bleed-container #movie_player', player);
     pm.checkState();
-    assert.strictEqual(pm.isTheater, true);
+    assert.strictEqual(pm.isTheater, false, 'full-bleed container/attribute must not trigger theater mode');
+    watchFlexy.removeAttribute('full-bleed-player');
+    watchFlexy.removeAttribute('full-bleed');
+    env.elements.delete('#full-bleed-container #movie_player');
 
-    // Reset container
-    env.elements.delete('#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player');
+    // Genuine theater container DOES trigger theater mode
+    env.elements.set('#player-theater-container #movie_player, [id*="theater-container"] #movie_player', player);
+    pm.checkState();
+    assert.strictEqual(pm.isTheater, true, 'theater container must trigger theater mode');
+    env.elements.delete('#player-theater-container #movie_player, [id*="theater-container"] #movie_player');
     pm.checkState();
     assert.strictEqual(pm.isTheater, false);
 
-    // 2. Size button tooltip indicating default view (theater mode active)
+    // 2. FP-3.3: Size button tooltip indicating default view/exit theater does NOT trigger theater mode
     sizeBtn.setAttribute('title', 'Default view (t)');
     env.elements.set('.ytp-size-button', sizeBtn);
     pm.checkState();
-    assert.strictEqual(pm.isTheater, true);
-
-    // Reset size button
+    assert.strictEqual(pm.isTheater, false, 'tooltip heuristic must not trigger theater mode');
     env.elements.delete('.ytp-size-button');
-    pm.checkState();
-    assert.strictEqual(pm.isTheater, false);
 
-    // 3. Structural column exclusion check (player is outside #columns)
+    // 3. FP-3.1: Structural column exclusion check (player outside #columns) does NOT trigger theater mode
     columns.contains = (el) => el !== player;
     env.elements.set('#columns', columns);
     pm.checkState();
-    assert.strictEqual(pm.isTheater, true);
+    assert.strictEqual(pm.isTheater, false, 'player outside columns during SPA render must not trigger theater mode');
 
-    // Inside columns -> standard layout
-    columns.contains = (el) => el === player;
-    pm.checkState();
-    assert.strictEqual(pm.isTheater, false);
+    // 4. FP-3.4: 't'/'T' keydown listener ignores keydown events when focus is on input/textarea/editable/searchbox
+    let checkStateCalls = 0;
+    const origCheckState = pm.checkState.bind(pm);
+    pm.checkState = () => {
+      checkStateCalls++;
+      return origCheckState();
+    };
+
+    // Focused on input: should return early without scheduling checkState timers
+    const inputEl = new MockElement('input');
+    const inputEvent = new Event('keydown');
+    inputEvent.key = 't';
+    Object.defineProperty(inputEvent, 'target', { value: inputEl });
+    globalThis.document.dispatchEvent(inputEvent);
+    assert.strictEqual(checkStateCalls, 0, 't keydown on input must not trigger checkState timers');
+
+    // Focused inside comment box: should return early
+    const commentBox = new MockElement('ytd-commentbox');
+    const innerCommentEl = new MockElement('div');
+    commentBox.appendChild(innerCommentEl);
+    const commentEvent = new Event('keydown');
+    commentEvent.key = 'T';
+    Object.defineProperty(commentEvent, 'target', { value: innerCommentEl });
+    globalThis.document.dispatchEvent(commentEvent);
+    assert.strictEqual(checkStateCalls, 0, 'T keydown inside ytd-commentbox must not trigger checkState timers');
   });
 });

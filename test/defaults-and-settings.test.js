@@ -88,7 +88,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(d.returnDislikes, false);
     assert.strictEqual(d.restoreAnnotations, false);
     assert.strictEqual(d.hideShorts, false);
-    assert.strictEqual(d.hideEndCards, true);
+    assert.strictEqual(d.hideEndCards, false);
     assert.strictEqual(d.autoPauseMode, 'off');
     assert.strictEqual(d.recordFormat, 'mkv');
     assert.strictEqual(d.recordFps, 30);

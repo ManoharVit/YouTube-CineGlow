@@ -374,6 +374,7 @@
     // Create overlay container
     overlayContainer = document.createElement('div');
     overlayContainer.className = 'cineglow-annotations-overlay';
+    overlayContainer.style.pointerEvents = 'none';
     if (isAdPlaying) overlayContainer.style.display = 'none';
 
     // Insert into movie_player above video

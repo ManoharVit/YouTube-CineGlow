@@ -46,6 +46,7 @@
   canvas.width = SAMPLE_W;
   canvas.height = SAMPLE_H;
   canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.pointerEvents = 'none';
   const ctx = canvas.getContext('2d', { alpha: false });
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'low';
@@ -188,6 +189,8 @@
     if (!isActive) return;
     isActive = false;
     document.documentElement.classList.remove(ROOT_CLASS);
+    canvas.style.opacity = '';
+    canvas.dataset.beat = '0';
     lastLayoutKey = '';
   }
 

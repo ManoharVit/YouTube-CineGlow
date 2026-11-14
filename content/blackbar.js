@@ -8,6 +8,8 @@
 
   let settings = { ...AURA_DEFAULTS };
   let video = null;
+  let videoId = null;
+  let isAdShowing = false;
   let intervalId = null;
   let isKilled = false;
   
@@ -31,10 +33,12 @@
   canvas.height = SCAN_HEIGHT;
   const ctx = offscreenCtx || (canvas.getContext && canvas.getContext('2d', { willReadFrequently: true }));
 
-  const STABILITY_REQUIRED = 4;
+  const STABLE_THRESHOLD = 8;
+  const STABILITY_REQUIRED = STABLE_THRESHOLD;
   let stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let stabilityCount = 0;
+  let lastUnfocusedScan = 0;
 
   function calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height) {
     if (topBar === height || leftBar === width) return;
@@ -70,7 +74,7 @@
       
     if (isSameCandidate) {
       stabilityCount++;
-      if (stabilityCount === STABILITY_REQUIRED) {
+      if (stabilityCount === STABLE_THRESHOLD) {
         applyCrop(candidateCrop);
       }
     } else {
@@ -94,15 +98,9 @@
     if (isDifferent) {
       stableCrop = { ...crop };
       
-      let scale = Math.max(
-        1 / (1 - crop.top - crop.bottom),
-        1 / (1 - crop.left - crop.right)
-      );
-      
-      if (scale > 1.01) {
+      if (crop.top || crop.right || crop.bottom || crop.left) {
         window.CineGlowCrop = stableCrop;
         video.style.clipPath = `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`;
-        video.style.transition = 'clip-path 0.5s ease';
       } else {
         resetCrop();
       }
@@ -126,8 +124,8 @@
       return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
     }
     function isRowBlack(y) {
-      const startX = Math.floor(width * 0.25);
-      const endX = Math.floor(width * 0.75);
+      const startX = Math.floor(width * 0.05);
+      const endX = Math.floor(width * 0.95);
       const tolerance = Math.max(1, Math.floor((endX - startX) * 0.05));
       let nonBlack = 0;
       for (let x = startX; x < endX; x++) {
@@ -172,11 +170,18 @@
 
   function scanFrame() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!settings.removeBlackBars || !video || video.readyState < 2 || video.paused) {
+    if (!settings.removeBlackBars || isAdShowing || !video || video.readyState < 2 || video.paused) {
+      return;
+    }
+    if (typeof document !== 'undefined' && document.hidden) {
       return;
     }
     if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
-      return;
+      const now = Date.now();
+      if (now - lastUnfocusedScan < 2000) {
+        return;
+      }
+      lastUnfocusedScan = now;
     }
     
     try {
@@ -196,9 +201,6 @@
     if (!intervalId) {
       intervalId = setInterval(() => {
         if (!video || video.paused) return;
-        if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
-          return;
-        }
         scanFrame();
       }, 500);
     }
@@ -209,16 +211,20 @@
       clearInterval(intervalId);
       intervalId = null;
     }
+    lastUnfocusedScan = 0;
   }
 
   function handlePlayerState(state) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (state.video !== video) {
-      if (video) resetCrop();
+    const nextAdShowing = !!state.isAdShowing;
+    if (state.video !== video || state.videoId !== videoId || nextAdShowing !== isAdShowing) {
+      resetCrop();
       video = state.video;
+      videoId = state.videoId;
+      isAdShowing = nextAdShowing;
     }
     
-    if (state.isWatchPage && video) {
+    if (state.isWatchPage && video && !isAdShowing) {
       startScanning();
     } else {
       stopScanning();

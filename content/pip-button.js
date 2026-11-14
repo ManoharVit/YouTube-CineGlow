@@ -244,9 +244,18 @@
         if (document.pictureInPictureElement === currentVideo) {
           await document.exitPictureInPicture();
         } else {
+          if (typeof window !== 'undefined') {
+            window._cineglowPipTransition = true;
+            setTimeout(() => {
+              window._cineglowPipTransition = false;
+            }, 500);
+          }
           await currentVideo.requestPictureInPicture();
         }
       } catch (error) {
+        if (typeof window !== 'undefined') {
+          window._cineglowPipTransition = false;
+        }
         console.error('[CineGlow] PiP Error:', error);
       }
     });
@@ -263,7 +272,10 @@
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    if (typeof window !== 'undefined') {
+      window.CineGlowKilled = true;
+      window._cineglowPipTransition = false;
+    }
 
     if (abortController) {
       abortController.abort();

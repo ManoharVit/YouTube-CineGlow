@@ -32,6 +32,38 @@
   let storageDebounceTimer = null;
   let isKilled = false;
   let activeOutsideClickListener = null;
+  let outsideClickTimer = null;
+  let isInjectingSpeedButton = false;
+  let lastAdEndTime = 0;
+  let lastWasAdShowing = false;
+
+  function isAdActive() {
+    if (typeof window !== 'undefined' && window.CineGlowPlayer && window.CineGlowPlayer.isAdShowing) {
+      return true;
+    }
+    const player = (typeof window !== 'undefined' && window.CineGlowPlayer && window.CineGlowPlayer.player) ||
+      (typeof document !== 'undefined' && document.querySelector('#movie_player, #shorts-player, .html5-video-player'));
+    if (player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'))) {
+      return true;
+    }
+    return false;
+  }
+
+  function isNativeSpeedMenuOpen() {
+    return Array.from(document.querySelectorAll('.ytp-settings-menu, .ytp-panel-speed')).some(menu => {
+      if (!menu.getClientRects || menu.getClientRects().length === 0) return false;
+      const style = typeof getComputedStyle === 'function' ? getComputedStyle(menu) : menu.style;
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+  }
+
+  function checkAdActive() {
+    if (isAdActive()) {
+      lastAdEndTime = Date.now();
+      return true;
+    }
+    return false;
+  }
 
   const SYNC_THROTTLE_MS = 550;
 
@@ -253,7 +285,7 @@
     if (!checkContextOrTeardown()) return;
 
     // If user clicked or interacted with YouTube native settings menu recently, do not override
-    if ((Date.now() - lastNativeSettingsClickTime) < 1200 || (typeof document !== 'undefined' && document.querySelector('.ytp-settings-menu, .ytp-panel-speed'))) {
+    if ((Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen()) {
       return;
     }
 
@@ -283,7 +315,7 @@
       enforcementTimer = null;
       if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
       if (!checkContextOrTeardown()) return;
-      if ((Date.now() - lastNativeSettingsClickTime) < 1200 || (typeof document !== 'undefined' && document.querySelector('.ytp-settings-menu, .ytp-panel-speed'))) {
+      if ((Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen()) {
         return;
       }
       if (v.playbackRate !== preferredSpeed && v.playbackRate <= 15) {
@@ -322,11 +354,14 @@
   }
 
   function closeMenu() {
+    if (outsideClickTimer) {
+      clearTimeout(outsideClickTimer);
+      outsideClickTimer = null;
+    }
     if (activeOutsideClickListener) {
       if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
         try {
-          document.removeEventListener('click', activeOutsideClickListener, true);
-          document.removeEventListener('pointerdown', activeOutsideClickListener, true);
+          document.removeEventListener('click', activeOutsideClickListener);
         } catch (_) {}
       }
       activeOutsideClickListener = null;
@@ -602,14 +637,18 @@
     activeMenu = menu;
 
     activeOutsideClickListener = (e) => {
-      if (menu && !menu.contains(e.target) && !anchorBtn.contains(e.target)) {
+      if (activeMenu && !activeMenu.contains(e.target) && (!anchorBtn || !anchorBtn.contains(e.target))) {
         closeMenu();
       }
     };
-    setTimeout(() => {
+    if (outsideClickTimer) {
+      clearTimeout(outsideClickTimer);
+      outsideClickTimer = null;
+    }
+    outsideClickTimer = setTimeout(() => {
+      outsideClickTimer = null;
       if (activeMenu === menu && typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-        document.addEventListener('click', activeOutsideClickListener, true);
-        document.addEventListener('pointerdown', activeOutsideClickListener, true);
+        document.addEventListener('click', activeOutsideClickListener);
       }
     }, 0);
   }
@@ -743,120 +782,132 @@
   async function injectSpeedButton(playerManager) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!checkContextOrTeardown()) return;
-    const { player, isWatchPage, video } = playerManager;
-
-    if (abortController) {
-      abortController.abort();
-    }
-    abortController = new AbortController();
-    const signal = abortController.signal;
-
-    if (!isWatchPage || !player) {
-      removeExistingButton();
-      return;
-    }
-
-    if (currentButton && player.contains(currentButton)) {
-      return;
-    }
-
-    removeExistingButton();
-
-    const toolbar = await waitForFloatingToolbar(player, signal);
-    if (!toolbar || signal.aborted) return;
-
-    // Purge any existing or duplicate speed buttons inside the toolbar
-    if (typeof toolbar.querySelectorAll === 'function') {
-      toolbar.querySelectorAll(`.${SPEED_BUTTON_CLASS}`).forEach(el => el.remove());
-    }
-
-    // Load initial preferred speed from settings
+    if (isInjectingSpeedButton) return;
+    isInjectingSpeedButton = true;
     try {
-      const stored = await safeStorageGet({ preferredSpeed: 1.0 });
-      if (stored && typeof stored.preferredSpeed === 'number') {
-        preferredSpeed = stored.preferredSpeed;
-        currentSpeed = stored.preferredSpeed;
+      const { player, isWatchPage, video } = playerManager;
+
+      if (abortController) {
+        abortController.abort();
       }
-    } catch (e) {}
+      abortController = new AbortController();
+      const signal = abortController.signal;
 
-    const btn = document.createElement('button');
-    btn.className = `ytp-button ${SPEED_BUTTON_CLASS}`;
-    btn.title = `Playback Speed: ${formatSpeed(currentSpeed)} (Click for speed scales)`;
-    btn.setAttribute('aria-label', 'Playback Speed');
+      if (!isWatchPage || !player) {
+        removeExistingButton();
+        return;
+      }
 
-    const inner = document.createElement('div');
-    inner.className = 'cineglow-speed-inner';
+      if (currentButton && player.contains(currentButton)) {
+        return;
+      }
 
-    const xmlns = 'http://www.w3.org/2000/svg';
-    const svgElem = document.createElementNS(xmlns, 'svg');
-    svgElem.setAttributeNS(null, 'viewBox', '0 0 24 24');
-    svgElem.setAttributeNS(null, 'width', '100%');
-    svgElem.setAttributeNS(null, 'height', '100%');
-    try {
-      if (svgElem.className && typeof svgElem.className === 'object') {
-        svgElem.className.baseVal = 'cineglow-speed-icon';
-      } else {
+      removeExistingButton();
+
+      const toolbar = await waitForFloatingToolbar(player, signal);
+      if (!toolbar || signal.aborted) return;
+
+      // Purge any existing or duplicate speed buttons inside the toolbar
+      if (typeof toolbar.querySelectorAll === 'function') {
+        toolbar.querySelectorAll(`.${SPEED_BUTTON_CLASS}`).forEach(el => el.remove());
+      }
+
+      // Load initial preferred speed from settings
+      try {
+        const stored = await safeStorageGet({ preferredSpeed: 1.0 });
+        if (stored && typeof stored.preferredSpeed === 'number') {
+          if (stored.preferredSpeed > 10.0 || stored.preferredSpeed < 0.1) {
+            preferredSpeed = 1.0;
+            safeStorageSet({ preferredSpeed: 1.0 });
+          } else {
+            preferredSpeed = stored.preferredSpeed;
+          }
+          currentSpeed = preferredSpeed;
+        }
+      } catch (e) {}
+
+      if (signal.aborted) return;
+
+      const btn = document.createElement('button');
+      btn.className = `ytp-button ${SPEED_BUTTON_CLASS}`;
+      btn.title = `Playback Speed: ${formatSpeed(currentSpeed)} (Click for speed scales)`;
+      btn.setAttribute('aria-label', 'Playback Speed');
+
+      const inner = document.createElement('div');
+      inner.className = 'cineglow-speed-inner';
+
+      const xmlns = 'http://www.w3.org/2000/svg';
+      const svgElem = document.createElementNS(xmlns, 'svg');
+      svgElem.setAttributeNS(null, 'viewBox', '0 0 24 24');
+      svgElem.setAttributeNS(null, 'width', '100%');
+      svgElem.setAttributeNS(null, 'height', '100%');
+      try {
+        if (svgElem.className && typeof svgElem.className === 'object') {
+          svgElem.className.baseVal = 'cineglow-speed-icon';
+        } else {
+          svgElem.setAttribute('class', 'cineglow-speed-icon');
+        }
+      } catch (_) {
         svgElem.setAttribute('class', 'cineglow-speed-icon');
       }
-    } catch (_) {
-      svgElem.setAttribute('class', 'cineglow-speed-icon');
-    }
 
-    const pathEl = document.createElementNS(xmlns, 'path');
-    pathEl.setAttributeNS(null, 'd', SPEED_ICON_PATH);
-    pathEl.setAttributeNS(null, 'fill', 'currentColor');
-    svgElem.appendChild(pathEl);
+      const pathEl = document.createElementNS(xmlns, 'path');
+      pathEl.setAttributeNS(null, 'd', SPEED_ICON_PATH);
+      pathEl.setAttributeNS(null, 'fill', 'currentColor');
+      svgElem.appendChild(pathEl);
 
-    const badge = document.createElement('span');
-    badge.className = 'cineglow-speed-badge';
-    badge.textContent = currentSpeed === 1 ? '1×' : `${currentSpeed}×`;
+      const badge = document.createElement('span');
+      badge.className = 'cineglow-speed-badge';
+      badge.textContent = currentSpeed === 1 ? '1×' : `${currentSpeed}×`;
 
-    inner.appendChild(svgElem);
-    inner.appendChild(badge);
-    btn.appendChild(inner);
+      inner.appendChild(svgElem);
+      inner.appendChild(badge);
+      btn.appendChild(inner);
 
-    // Prevent pointerdown/mousedown on button from triggering YouTube player interactions
-    ['pointerdown', 'mousedown', 'touchstart'].forEach(evtType => {
-      btn.addEventListener(evtType, (e) => {
-        e.stopPropagation();
+      // Prevent pointerdown/mousedown on button from triggering YouTube player interactions
+      ['pointerdown', 'mousedown', 'touchstart'].forEach(evtType => {
+        btn.addEventListener(evtType, (e) => {
+          e.stopPropagation();
+        });
       });
-    });
 
-    // Left click & Right click both toggle the multi-scale menu
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openSpeedMenu(btn, player);
-    });
+      // Left click & Right click both toggle the multi-scale menu
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openSpeedMenu(btn, player);
+      });
 
-    // Double click immediately resets speed to 1.0x
-    btn.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setPlaybackSpeed(1.0);
-      closeMenu();
-    });
+      // Double click immediately resets speed to 1.0x (keeps menu open)
+      btn.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setPlaybackSpeed(1.0);
+      });
 
-    btn.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openSpeedMenu(btn, player);
-    });
+      btn.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openSpeedMenu(btn, player);
+      });
 
-    // In stack: Speed button goes strictly above Screenshot button (top of stack)
-    const screenshotBtn = toolbar.querySelector('.cineglow-screenshot-button');
-    const pipBtn = toolbar.querySelector('.cineglow-pip-button');
-    if (screenshotBtn) {
-      toolbar.insertBefore(btn, screenshotBtn);
-    } else if (pipBtn) {
-      toolbar.insertBefore(btn, pipBtn);
-    } else {
-      toolbar.appendChild(btn);
+      // In stack: Speed button goes strictly above Screenshot button (top of stack)
+      const screenshotBtn = toolbar.querySelector('.cineglow-screenshot-button');
+      const pipBtn = toolbar.querySelector('.cineglow-pip-button');
+      if (screenshotBtn) {
+        toolbar.insertBefore(btn, screenshotBtn);
+      } else if (pipBtn) {
+        toolbar.insertBefore(btn, pipBtn);
+      } else {
+        toolbar.appendChild(btn);
+      }
+
+      currentButton = btn;
+
+      bindVideoListeners(video);
+    } finally {
+      isInjectingSpeedButton = false;
     }
-
-    currentButton = btn;
-
-    bindVideoListeners(video);
   }
 
   function unbindVideoListeners() {
@@ -883,8 +934,13 @@
     onRateChange = () => {
       if (isKilled) return;
       if (!checkContextOrTeardown()) return;
-      // If an ad is fast-forwarding at 16x, ignore
-      if (video.playbackRate > 15) return;
+      // If an ad is fast-forwarding at 16x, ignore and track ad timestamp
+      if (video.playbackRate > 15) {
+        lastAdEndTime = Date.now();
+        return;
+      }
+      if (checkAdActive()) return;
+
       // If this rate change was triggered by CineGlow itself, ignore
       if (isApplyingSpeed) return;
       // If user is holding pointer down on video (YouTube's native "Hold to 2x") or speedmaster active, ignore
@@ -892,11 +948,19 @@
       if (isHoldTo2x) return;
 
       const isHotkeyPress = (Date.now() - lastSpeedKeypressTime) < 600;
-      const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || Boolean(document.querySelector('.ytp-settings-menu, .ytp-panel-speed'));
+      const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen();
       const isDuringNewVideoLoad = (Date.now() - lastNavigatedTime) < 2500 || (typeof video.currentTime === 'number' && video.currentTime < 0.5);
+      const isAdTransition = (Date.now() - lastAdEndTime) < 1500 || checkAdActive();
 
-      // Check if YouTube's player reset the playbackRate to 1.0 on video load/navigation
+      // Check if YouTube's player reset the playbackRate to 1.0 on video load/navigation or post-ad
       if (video.playbackRate === 1.0 && preferredSpeed !== 1.0) {
+        // If mid-roll ad concluded or during ad transition, never treat as manual reset; re-enforce preferred speed
+        if (isAdTransition && !isHotkeyPress && !isNativeSettingsAction) {
+          enforcePlaybackSpeed(video);
+          scheduleSpeedEnforcement(video);
+          return;
+        }
+
         // If this was an intentional reset by hotkey, settings menu, or happened during active video playback:
         if (!isDuringNewVideoLoad || isHotkeyPress || isNativeSettingsAction) {
           clearEnforcementTimers();
@@ -989,14 +1053,19 @@
           onPointerUp = null;
         } catch (_) {}
       }
+      if (outsideClickTimer) {
+        clearTimeout(outsideClickTimer);
+        outsideClickTimer = null;
+      }
       if (activeOutsideClickListener && typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
         try {
-          document.removeEventListener('click', activeOutsideClickListener, true);
-          document.removeEventListener('pointerdown', activeOutsideClickListener, true);
+          document.removeEventListener('click', activeOutsideClickListener);
         } catch (_) {}
         activeOutsideClickListener = null;
       }
       clearTimeout(toastTimeout);
+      lastAdEndTime = 0;
+      lastWasAdShowing = false;
       if (toastEl) {
         toastEl.remove();
         toastEl = null;
@@ -1047,6 +1116,8 @@
     get preferredSpeed() { return preferredSpeed; },
     get lastNavigatedTime() { return lastNavigatedTime; },
     set lastNavigatedTime(val) { lastNavigatedTime = val; },
+    get lastAdEndTime() { return lastAdEndTime; },
+    set lastAdEndTime(val) { lastAdEndTime = val; },
     setPlaybackSpeed,
     enforcePlaybackSpeed,
     scheduleSpeedEnforcement,
@@ -1059,6 +1130,15 @@
       if (isKilled) return;
       if (!checkContextOrTeardown()) return;
       const state = e.detail;
+      if (state.isAdShowing) {
+        lastAdEndTime = Date.now();
+      } else if (lastWasAdShowing) {
+        lastAdEndTime = Date.now();
+        if (state.video && preferredSpeed !== 1.0) {
+          scheduleSpeedEnforcement(state.video);
+        }
+      }
+      lastWasAdShowing = Boolean(state.isAdShowing);
       if (state.isWatchPage && state.player) {
         if (!currentButton || !state.player.contains(currentButton)) {
           injectSpeedButton(state);
@@ -1102,7 +1182,11 @@
       if (!target) return;
       const tag = (target.tagName || target.nodeName || '').toUpperCase();
       if (tag !== 'VIDEO') return;
-      if (target.playbackRate > 15) return; // In-ad fast-forward (handled by adblocker)
+      if (target.playbackRate > 15) {
+        lastAdEndTime = Date.now();
+        return; // In-ad fast-forward (handled by adblocker)
+      }
+      if (checkAdActive()) return;
 
       if (e.type === 'ratechange') {
         if (isApplyingSpeed) return;
@@ -1111,11 +1195,18 @@
         if (isHoldTo2x) return;
 
         const isHotkeyPress = (Date.now() - lastSpeedKeypressTime) < 600;
-        const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || Boolean(document.querySelector('.ytp-settings-menu, .ytp-panel-speed'));
+        const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen();
         const isDuringNewVideoLoad = (Date.now() - lastNavigatedTime) < 2500 || (typeof target.currentTime === 'number' && target.currentTime < 0.5);
+        const isAdTransition = (Date.now() - lastAdEndTime) < 1500 || checkAdActive();
 
         // If target reset to 1.0 while preferred speed is non-1.0:
         if (target.playbackRate === 1.0 && preferredSpeed !== 1.0) {
+          if (isAdTransition && !isHotkeyPress && !isNativeSettingsAction) {
+            enforcePlaybackSpeed(target);
+            scheduleSpeedEnforcement(target);
+            return;
+          }
+
           if (!isDuringNewVideoLoad || isHotkeyPress || isNativeSettingsAction) {
             clearEnforcementTimers();
             currentSpeed = 1.0;
@@ -1158,8 +1249,13 @@
   safeStorageGet({ preferredSpeed: 1.0 }).then(stored => {
     if (isKilled || !isContextValid()) return;
     if (stored && typeof stored.preferredSpeed === 'number') {
-      preferredSpeed = stored.preferredSpeed;
-      currentSpeed = stored.preferredSpeed;
+      if (stored.preferredSpeed > 10.0 || stored.preferredSpeed < 0.1) {
+        preferredSpeed = 1.0;
+        safeStorageSet({ preferredSpeed: 1.0 });
+      } else {
+        preferredSpeed = stored.preferredSpeed;
+      }
+      currentSpeed = preferredSpeed;
       updateButtonLabel(currentSpeed);
       if (activeMenu) syncMenuControls(currentSpeed);
       const video = window.CineGlowPlayer ? window.CineGlowPlayer.video : document.querySelector('video');

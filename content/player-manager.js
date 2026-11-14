@@ -72,6 +72,7 @@
       }, { passive: true });
       document.addEventListener('keydown', (e) => {
         if (e.key === 't' || e.key === 'T') {
+          if (e.target && (e.target.matches("input, textarea, [contenteditable]") || e.target.closest("ytd-searchbox, ytd-commentbox, yt-searchbox"))) return;
           setTimeout(handleEvent, 50);
           setTimeout(handleEvent, 150);
           setTimeout(handleEvent, 350);
@@ -96,30 +97,13 @@
       if (watchFlexy) {
         isTheater = watchFlexy.hasAttribute('theater') ||
                     watchFlexy.hasAttribute('theater-requested_') ||
-                    watchFlexy.hasAttribute('full-bleed-player') ||
-                    watchFlexy.hasAttribute('full-bleed') ||
                     Boolean(watchFlexy.theater);
       }
       if (!isTheater && isWatchPage && !isFullscreen) {
-        const fullBleed = document.querySelector(
-          '#full-bleed-container #movie_player, #player-full-bleed-container #movie_player, #player-theater-container #movie_player, [id*="full-bleed"] #movie_player, [id*="theater-container"] #movie_player'
+        const theaterContainer = document.querySelector(
+          '#player-theater-container #movie_player, [id*="theater-container"] #movie_player'
         );
-        if (fullBleed) {
-          isTheater = true;
-        }
-      }
-      if (!isTheater && isWatchPage && !isFullscreen) {
-        const sizeBtn = document.querySelector('.ytp-size-button');
-        if (sizeBtn) {
-          const btnTitle = (sizeBtn.getAttribute('title') || sizeBtn.getAttribute('aria-label') || sizeBtn.getAttribute('data-title-no-tooltip') || '').toLowerCase();
-          if (btnTitle.includes('default view') || btnTitle.includes('default-view') || btnTitle.includes('exit theater') || btnTitle.includes('exit theatre')) {
-            isTheater = true;
-          }
-        }
-      }
-      if (!isTheater && isWatchPage && !isFullscreen && !isMiniplayer && player) {
-        const columns = document.querySelector('#columns');
-        if (columns && typeof columns.contains === 'function' && !columns.contains(player)) {
+        if (theaterContainer) {
           isTheater = true;
         }
       }
@@ -163,7 +147,7 @@
         this.watchFlexy = watchFlexy;
         this.watchFlexyObserver.disconnect();
         if (watchFlexy) {
-          this.watchFlexyObserver.observe(watchFlexy, { attributes: true, attributeFilter: ['theater', 'theater-requested_', 'full-bleed-player', 'full-bleed', 'default-layout', 'class'] });
+          this.watchFlexyObserver.observe(watchFlexy, { attributes: true, attributeFilter: ['theater', 'theater-requested_', 'default-layout', 'class'] });
         }
       }
       

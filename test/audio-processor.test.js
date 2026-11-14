@@ -28,6 +28,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
         this.video = null;
       }
     })();
+    delete globalThis.AURA_DEFAULTS;
   });
 
   afterEach(() => {
@@ -42,21 +43,31 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
     fn();
   }
 
-  test('constructs Web Audio graph upon video attachment', async () => {
+  test('FP-6.1: only instantiates AudioContext and mediaElementSource when at least one audio DSP feature is enabled', async () => {
     const video = new MockVideoElement();
     loadAudioProcessor();
 
-    // Attach video via CineGlowPlayer state-change
+    // 1. When all DSP features are disabled (default), AudioContext must NOT be instantiated
     globalThis.window.CineGlowPlayer.video = video;
     globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
 
-    assert.ok(globalThis.window.CineGlowAudioCtx, 'AudioContext should be created and exposed');
+    assert.ok(!globalThis.window.CineGlowAudioCtx, 'AudioContext should not be instantiated when DSP is disabled');
+    assert.ok(!globalThis.window.CineGlowAudioAnalyser);
+    assert.ok(!video.cineGlowAudioAttached);
+
+    // 2. When at least one DSP feature is enabled (e.g. bassBoost: 5), AudioContext is instantiated
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ bassBoost: { newValue: 5 } }, 'sync');
+    }
+
+    assert.ok(globalThis.window.CineGlowAudioCtx, 'AudioContext should be created and exposed when DSP is enabled');
     assert.ok(globalThis.window.CineGlowAudioAnalyser, 'AnalyserNode should be exposed for beat sync');
     assert.ok(globalThis.window.CineGlowAudioGainNode, 'GainNode should be exposed');
     assert.strictEqual(video.cineGlowAudioAttached, true);
   });
 
   test('DynamicsCompressorNode is configured with studio normalization parameters', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const video = new MockVideoElement();
     loadAudioProcessor();
 
@@ -79,6 +90,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
   });
 
   test('crossfades dry and wet gains when audioNormalizer setting changes', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const video = new MockVideoElement();
     loadAudioProcessor();
 
@@ -115,6 +127,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
   });
 
   test('configures dedicated Bass and Vocal biquad filters with proper frequency and clamping', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const video = new MockVideoElement();
     loadAudioProcessor();
 
@@ -147,6 +160,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
   });
 
   test('configures 5-Band Equalizer frequencies and handles decibel changes', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const video = new MockVideoElement();
     loadAudioProcessor();
 
@@ -195,6 +209,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
   });
 
   test('resumes suspended AudioContext on user interaction to comply with autoplay policy', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const video = new MockVideoElement();
     loadAudioProcessor();
 
@@ -229,7 +244,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
     assert.strictEqual(ctx.state, 'running', 'AudioContext must resume on window click event');
   });
 
-  test('computeEffectiveGain scales headroom dynamically under high EQ and bass boost at 100% and 300% volume', () => {
+  test('FP-6.4: computeEffectiveGain preserves master volume gain without broadband headroom attenuation under high EQ and bass boost', () => {
     loadAudioProcessor();
     const computeGain = globalThis.window.CineGlowAudioComputeEffectiveGain;
     assert.ok(typeof computeGain === 'function', 'computeEffectiveGain should be exposed for testing');
@@ -247,8 +262,8 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
       }, 'sync');
     }
 
-    const compensatedAt100 = computeGain();
-    assert.ok(compensatedAt100 < 0.5, `Effective gain at 100% volume with +27 dB boost must attenuate below 1.0, got ${compensatedAt100}`);
+    const gainAt100WithBoost = computeGain();
+    assert.strictEqual(gainAt100WithBoost, 1.0, `Effective gain at 100% volume with +27 dB boost must remain 1.0 (un-attenuated), got ${gainAt100WithBoost}`);
 
     // Apply high EQ boost at 300% volume
     for (const listener of env.chrome.storage.onChanged._listeners) {
@@ -259,11 +274,12 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
       }, 'sync');
     }
 
-    const compensatedAt300 = computeGain();
-    assert.ok(compensatedAt300 < 1.5, `Effective gain at 300% volume with +27 dB boost must scale below uncompressed 3.0, got ${compensatedAt300}`);
+    const gainAt300WithBoost = computeGain();
+    assert.strictEqual(gainAt300WithBoost, 3.0, `Effective gain at 300% volume with +27 dB boost must remain 3.0 (un-attenuated), got ${gainAt300WithBoost}`);
   });
 
   test('retains and reconnects existing source node when switching video A -> B -> A', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const videoA = new MockVideoElement();
     const videoB = new MockVideoElement();
     loadAudioProcessor();
@@ -300,6 +316,7 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
   });
 
   test('disconnects active audio source when video element is unmounted (player video becomes null)', () => {
+    globalThis.AURA_DEFAULTS = { bassBoost: 1 };
     const video = new MockVideoElement();
     loadAudioProcessor();
 
@@ -319,4 +336,130 @@ describe('Web Audio DSP Graph & Normalization Pipeline', () => {
     assert.strictEqual(activeSourceAfter, null, 'Active source must be cleared');
     assert.strictEqual(source.connections.length, 0, 'Source must be disconnected when video is unmounted');
   });
+
+  test('FP-6.2: adds makeup gain node (+8 dB to +10 dB) on compressor wet path to eliminate normalizer volume drop', () => {
+    globalThis.AURA_DEFAULTS = { audioNormalizer: true };
+    const video = new MockVideoElement();
+    loadAudioProcessor();
+
+    globalThis.window.CineGlowPlayer.video = video;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const ctx = globalThis.window.CineGlowAudioCtx;
+    assert.ok(ctx, 'AudioContext must be created');
+
+    const makeupGain = globalThis.window.CineGlowAudioGetMakeupGainNode();
+    assert.ok(makeupGain, 'Makeup gain node must exist');
+    const expectedGain = Math.pow(10, 9.0 / 20);
+    assert.ok(Math.abs(makeupGain.gain.value - expectedGain) < 0.01, `Makeup gain should be ~${expectedGain}, got ${makeupGain.gain.value}`);
+    assert.ok(makeupGain.gain.value >= Math.pow(10, 8.0 / 20), 'Makeup gain must be at least +8 dB');
+    assert.ok(makeupGain.gain.value <= Math.pow(10, 10.0 / 20), 'Makeup gain must not exceed +10 dB');
+  });
+
+  test('FP-6.3: teardownKillSwitch bypasses DSP without calling audioCtx.close(), connecting source to destination', () => {
+    globalThis.AURA_DEFAULTS = { audioNormalizer: true, audioBoost: 120 };
+    const video = new MockVideoElement();
+    loadAudioProcessor();
+
+    globalThis.window.CineGlowPlayer.video = video;
+    globalThis.window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+
+    const ctx = globalThis.window.CineGlowAudioCtx;
+    const source = globalThis.window.CineGlowAudioGetActiveSource();
+    assert.ok(ctx && source);
+
+    const dryGain = ctx.gainNodes[0];
+    const wetGain = ctx.gainNodes[1];
+
+    // Trigger teardown
+    globalThis.window.CineGlowAudioTeardown();
+
+    // 1. AudioContext must NOT be closed under W3C spec (FP-6.3)
+    assert.strictEqual(ctx.state, 'running', 'AudioContext must not be closed upon kill switch');
+
+    // 2. DSP must be bypassed: source connected directly to destination
+    assert.ok(source.connections.includes(ctx.destination), 'Source must connect directly to destination on kill switch');
+
+    // 3. Gains set: wetGain to 0, dryGain to 1
+    assert.strictEqual(wetGain.gain.value, 0, 'wetGain must be 0');
+    assert.strictEqual(dryGain.gain.value, 1, 'dryGain must be 1');
+
+    // 4. Global window hooks cleared
+    assert.strictEqual(globalThis.window.CineGlowAudioCtx, null);
+    assert.strictEqual(globalThis.window.CineGlowAudioAnalyser, null);
+  });
+
+  function selectVideo(video) {
+    window.CineGlowPlayer.video = video;
+    window.CineGlowPlayer.dispatchEvent(new CustomEvent('state-change'));
+  }
+
+  function setBassBoost(value) {
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ bassBoost: { newValue: value } }, 'sync');
+    }
+  }
+
+  test('disabling the last audio effect immediately bypasses DSP and re-enabling reconnects it', async () => {
+    loadAudioProcessor();
+    await Promise.resolve();
+    const video = new MockVideoElement();
+    selectVideo(video);
+    setBassBoost(5);
+    const source = window.CineGlowAudioGetActiveSource();
+    const ctx = window.CineGlowAudioCtx;
+
+    setBassBoost(0);
+    assert.ok(source.connections.length === 1 && source.connections[0] === ctx.destination, 'Disabling DSP must bypass it without waiting for a player event');
+
+    selectVideo(video);
+    setBassBoost(5);
+    assert.strictEqual(window.CineGlowAudioGetActiveSource(), source, 'Re-enabling must reuse the existing media source');
+    assert.ok(!source.connections.includes(ctx.destination), 'Re-enabling must remove the direct bypass');
+    assert.ok(source.connections.includes(ctx.gainNodes[0]), 'Re-enabling must reconnect the dry DSP input');
+    assert.ok(source.connections.includes(ctx.compressorNodes[0]), 'Re-enabling must reconnect the wet DSP input');
+  });
+
+  test('disabled DSP reconnects the correct existing source when returning to an earlier video', async () => {
+    loadAudioProcessor();
+    await Promise.resolve();
+    const videoA = new MockVideoElement();
+    const videoB = new MockVideoElement();
+    selectVideo(videoA);
+    setBassBoost(5);
+    const sourceA = window.CineGlowAudioGetActiveSource();
+    const ctx = window.CineGlowAudioCtx;
+    selectVideo(videoB);
+    const sourceB = window.CineGlowAudioGetActiveSource();
+
+    setBassBoost(0);
+    selectVideo(videoA);
+    assert.ok(window.CineGlowAudioGetActiveSource() === sourceA, 'Returning to A must select A’s source');
+    assert.ok(sourceA.connections.length === 1 && sourceA.connections[0] === ctx.destination, 'A must remain audible with DSP disabled');
+    assert.deepStrictEqual(sourceB.connections, [], 'The inactive B source must be disconnected');
+  });
+
+  test('a new video remains native while DSP is disabled and receives its own source on re-enable', async () => {
+    loadAudioProcessor();
+    await Promise.resolve();
+    const videoA = new MockVideoElement();
+    const videoB = new MockVideoElement();
+    selectVideo(videoA);
+    setBassBoost(5);
+    const sourceA = window.CineGlowAudioGetActiveSource();
+
+    setBassBoost(0);
+    selectVideo(videoB);
+    assert.ok(window.CineGlowAudioGetActiveSource() === null, 'The new video must not inherit A’s source');
+    assert.strictEqual(window.CineGlowAudioGetVideoSource(videoB), undefined, 'Disabled DSP must not capture an untouched video');
+    assert.deepStrictEqual(sourceA.connections, []);
+
+    setBassBoost(5);
+    const sourceB = window.CineGlowAudioGetActiveSource();
+    assert.ok(sourceB, 'Re-enabling must create B’s source');
+    assert.strictEqual(sourceB.mediaElement, videoB);
+    assert.notStrictEqual(sourceB, sourceA);
+    assert.ok(sourceB.connections.length > 0);
+  });
+
 });

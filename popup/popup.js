@@ -111,6 +111,9 @@ function checkMatchingPreset() {
 const qualityEnabledEl = document.getElementById('qualityEnabled');
 const statsEnabledEl = document.getElementById('statsEnabled');
 const adblockCountEl = document.getElementById('adblockCount');
+const sponsorBlockEnabledEl = document.getElementById('sponsorBlockEnabled');
+const sponsorBlockModeEl = document.getElementById('sponsorBlockMode');
+const sponsorBlockCountEl = document.getElementById('sponsorBlockCount');
 const preferredQualityEl = document.getElementById('preferredQuality');
 const blockAV1El = document.getElementById('blockAV1');
 const blockVP9El = document.getElementById('blockVP9');
@@ -150,7 +153,7 @@ const toolsResetEl = document.getElementById('toolsReset');
 const GLOW_KEYS = ['opacity', 'spread', 'smoothness', 'blur', 'saturation', 'contrast', 'brightness', 'fadeInDuration', 'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'enableInPiP', 'audioReactive', 'fps'];
 const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'videoBrightness', 'videoContrast', 'videoSepia', 'removeBlackBars', 'ultrawideZoom', 'lightsOut', 'lightsOutOpacity'];
 const AUDIO_KEYS = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset'];
-const TOOLS_KEYS = ['adblockEnabled', 'statsEnabled', 'abLoopEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
+const TOOLS_KEYS = ['adblockEnabled', 'sponsorBlockEnabled', 'sponsorBlockMode', 'statsEnabled', 'abLoopEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
 
 async function save(partial) {
   try {
@@ -244,6 +247,9 @@ function render(settings) {
   enabledEl.checked = settings.enabled;
   updateMasterStatus(settings.enabled);
   adblockEnabledEl.checked = settings.adblockEnabled;
+  if (sponsorBlockEnabledEl) sponsorBlockEnabledEl.checked = !!settings.sponsorBlockEnabled;
+  if (sponsorBlockModeEl) sponsorBlockModeEl.value = settings.sponsorBlockMode || 'skip';
+  if (sponsorBlockCountEl) sponsorBlockCountEl.textContent = settings.sponsorBlockCount ?? 0;
   if (autoPauseModeEl) autoPauseModeEl.value = settings.autoPauseMode || 'off';
   if (returnDislikesEl) returnDislikesEl.checked = !!settings.returnDislikes;
   if (hideShortsEl) hideShortsEl.checked = !!settings.hideShorts;
@@ -362,10 +368,11 @@ async function init() {
 
   // Check if extension is killed by emergency kill-switch or enterprise policy (CG-FIND-14)
   let isKillSwitchActive = false;
+  let localData = {};
   try {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
-      if (local && local.auraKillSwitchActive === true) {
+      localData = await chrome.storage.local.get(['auraKillSwitchActive', 'adblockCount', 'sponsorBlockCount']).catch(() => ({}));
+      if (localData && localData.auraKillSwitchActive === true) {
         isKillSwitchActive = true;
       }
     }
@@ -381,6 +388,12 @@ async function init() {
 
   try {
     settings = { ...AURA_DEFAULTS, ...(await chrome.storage.sync.get(AURA_DEFAULTS)) };
+    if (typeof localData.adblockCount === 'number') {
+      settings.adblockCount = localData.adblockCount;
+    }
+    if (typeof localData.sponsorBlockCount === 'number') {
+      settings.sponsorBlockCount = localData.sponsorBlockCount;
+    }
   } catch (err) {
     console.error('[Aura] Failed to load settings:', err);
   }
@@ -426,6 +439,9 @@ async function init() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if ((area === 'sync' || area === 'local') && changes.adblockCount) {
       adblockCountEl.textContent = changes.adblockCount.newValue;
+    }
+    if ((area === 'sync' || area === 'local') && changes.sponsorBlockCount && sponsorBlockCountEl) {
+      sponsorBlockCountEl.textContent = changes.sponsorBlockCount.newValue;
     }
     if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
       renderDeactivatedBanner();
@@ -664,6 +680,18 @@ async function init() {
     await save({ adblockEnabled: adblockEnabledEl.checked });
   });
 
+  if (sponsorBlockEnabledEl) {
+    sponsorBlockEnabledEl.addEventListener('change', async () => {
+      await save({ sponsorBlockEnabled: sponsorBlockEnabledEl.checked });
+    });
+  }
+
+  if (sponsorBlockModeEl) {
+    sponsorBlockModeEl.addEventListener('change', async () => {
+      await save({ sponsorBlockMode: sponsorBlockModeEl.value });
+    });
+  }
+
   qualityEnabledEl.addEventListener('change', async () => {
     await save({ qualityEnabled: qualityEnabledEl.checked });
   });
@@ -812,9 +840,10 @@ async function init() {
 
   resetEl.addEventListener('click', async () => {
     cancelPendingWrites();
-    // Preserve adblock count when resetting visual settings
+    // Preserve adblock and sponsorblock counts when resetting visual settings
     const currentCount = Number(adblockCountEl.textContent);
-    const resetSettings = { ...AURA_DEFAULTS, adblockCount: currentCount };
+    const currentSponsorCount = sponsorBlockCountEl ? Number(sponsorBlockCountEl.textContent) : 0;
+    const resetSettings = { ...AURA_DEFAULTS, adblockCount: currentCount, sponsorBlockCount: currentSponsorCount };
     render(resetSettings);
     await save(resetSettings);
   });

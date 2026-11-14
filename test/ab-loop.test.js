@@ -148,8 +148,9 @@ describe('Interactive A-B Section Looper', () => {
     assert.strictEqual(state.loopCount, 0);
   });
 
-  test('keyboard shortcuts [, ], and \\ set loop points and toggle loop', () => {
+  test('keyboard shortcuts [, ], and \\ set loop points and toggle loop when enabled', () => {
     const ab = loadABLoopScript();
+    ab.setSettings({ abLoopEnabled: true });
     const video = globalThis.window.CineGlowPlayer.video;
     video.currentTime = 30;
 
@@ -200,5 +201,77 @@ describe('Interactive A-B Section Looper', () => {
     video.currentTime = 25;
     video.dispatchEvent(new Event('timeupdate'));
     assert.strictEqual(video.currentTime, 25);
+  });
+
+  test('FP-7.2: hotkeys are never swallowed when abLoopEnabled is disabled', () => {
+    const ab = loadABLoopScript();
+    ab.setSettings({ abLoopEnabled: false });
+
+    for (const key of ['[', ']', '\\']) {
+      let prevented = false;
+      globalThis.window.dispatchEvent(Object.assign(new Event('keydown'), {
+        key,
+        preventDefault: () => { prevented = true; }
+      }));
+      assert.strictEqual(prevented, false, `Key ${key} must not be swallowed when abLoop is disabled`);
+    }
+    const state = ab.getState();
+    assert.strictEqual(state.pointA, null);
+    assert.strictEqual(state.pointB, null);
+    assert.strictEqual(state.isLooping, false);
+  });
+
+  test('FP-7.3: isInputFocused recognizes Lit/Polymer custom elements via composedPath', () => {
+    const ab = loadABLoopScript();
+    ab.setSettings({ abLoopEnabled: true });
+
+    // Focus inside <ytd-commentbox>
+    const commentBox = new MockElement('ytd-commentbox');
+    const innerDiv = new MockElement('div');
+    commentBox.appendChild(innerDiv);
+
+    let prevented = false;
+    globalThis.window.dispatchEvent(Object.assign(new Event('keydown'), {
+      key: '[',
+      composedPath: () => [innerDiv, commentBox, globalThis.document.body, globalThis.window],
+      preventDefault: () => { prevented = true; }
+    }));
+    assert.strictEqual(prevented, false, 'Key [ must not be swallowed when typing in ytd-commentbox');
+
+    // Focus inside <ytd-searchbox>
+    const searchBox = new MockElement('ytd-searchbox');
+    const searchInput = new MockElement('input');
+    searchBox.appendChild(searchInput);
+
+    prevented = false;
+    globalThis.window.dispatchEvent(Object.assign(new Event('keydown'), {
+      key: ']',
+      composedPath: () => [searchInput, searchBox, globalThis.document.body, globalThis.window],
+      preventDefault: () => { prevented = true; }
+    }));
+    assert.strictEqual(prevented, false, 'Key ] must not be swallowed when typing in ytd-searchbox');
+
+    assert.strictEqual(ab.getState().pointA, null);
+    assert.strictEqual(ab.getState().pointB, null);
+  });
+
+  test('FP-7.4: setPointB when pointA is null shows HUD toast and does not default to 0.0 or rewind', () => {
+    const ab = loadABLoopScript();
+    const video = globalThis.window.CineGlowPlayer.video;
+    video.currentTime = 42;
+
+    ab.setPointB(50);
+    const state = ab.getState();
+    assert.strictEqual(state.pointA, null, 'pointA must remain null');
+    assert.strictEqual(state.pointB, null, 'pointB must remain null');
+    assert.strictEqual(state.isLooping, false, 'isLooping must be false');
+    assert.strictEqual(video.currentTime, 42, 'video must not rewind');
+
+    const host = globalThis.document.getElementById('cineglow-ab-host');
+    assert.ok(host, 'HUD host container must exist');
+    const toastEl = host.shadowRoot ? host.shadowRoot.children.find(c => c.id === 'abToast') : host.children.find(c => c.id === 'abToast');
+    assert.ok(toastEl, 'Toast element must exist in shadow root');
+    assert.strictEqual(toastEl.textContent, 'Set Point A first ([)');
+    assert.ok(toastEl.classList.contains('visible'), 'Toast must be visible');
   });
 });

@@ -34,10 +34,10 @@ html.aura-active body,
 html.aura-active ytd-app,
 html.aura-active ytd-app #content,
 html.aura-active ytd-page-manager,
-html.aura-active ytd-watch-flexy,
-html.aura-active ytd-watch-flexy #columns,
-html.aura-active ytd-watch-flexy #full-bleed-container,
-html.aura-active ytd-watch-flexy #player-container-outer,
+html.aura-active :is(ytd-watch-flexy, ytd-watch-grid),
+html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) #columns,
+html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) #full-bleed-container,
+html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) #player-container-outer,
 html.aura-active ytd-player,
 html.aura-active ytd-player #container,
 html.aura-active #movie_player,
@@ -80,9 +80,9 @@ html.aura-active #cinematics-container {
 
 /* 
  * AdBlock UI & Right-Side Companion/Sponsored Ad Removal (Brave-level)
- * We hide these globally (not just when Aura is active) since the adblocker 
- * can be on even if the ambient light is off.
+ * Scope cosmetic ad hiding to its own setting, independently of ambient light.
  */
+html.aura-adblock :is(
 ytd-companion-slot-renderer,
 ytd-action-companion-ad-renderer,
 ytd-ad-slot-renderer,
@@ -93,7 +93,6 @@ ytd-video-masthead-ad-v3-renderer,
 ytd-player-legacy-desktop-watch-ads-renderer,
 ytd-in-feed-ad-layout-renderer,
 ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
-ytd-merch-shelf-renderer,
 #secondary #companion,
 #secondary #player-ads,
 #secondary ytd-ad-slot-renderer,
@@ -101,13 +100,6 @@ ytd-merch-shelf-renderer,
 [target-id="engagement-panel-ads"],
 #masthead-ad,
 #player-ads,
-.ytp-cards-button,
-.ytp-cards-button-icon,
-.ytp-cards-button-icon-default,
-.ytp-cards-button-icon-shopping,
-.ytp-cards-teaser,
-.ytp-cards-teaser-text,
-.ytp-cards-teaser-box,
 .ytp-suggested-action-badge,
 .ytp-ad-overlay-container,
 .ytp-ad-message-container,
@@ -128,7 +120,10 @@ ytd-merch-shelf-renderer,
 .ad-showing ytd-action-companion-ad-renderer,
 .ad-showing ytd-companion-slot-renderer,
 ytd-enforcement-message-view-model,
-tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {
+tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
+:is(body:has(ytd-enforcement-message-view-model), html:has(ytd-enforcement-message-view-model)) :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim),
+:is(tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), ytd-enforcement-message-view-model) ~ :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim)
+) {
   display: none !important;
   height: 0 !important;
   visibility: hidden !important;
@@ -138,7 +133,6 @@ tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {
 /* 
  * Remove channel watermark/logo from the bottom right of the video player
  */
-.iv-branding,
 .ytp-watermark {
   display: none !important;
 }
@@ -159,34 +153,24 @@ html.aura-hide-scrollbar {
    ========================================================================== */
 
 /* 1. Scroll Lock & Masthead Offset Reset */
-html.aura-hide-theater:has(
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-) {
-  overflow-y: hidden !important;
-  scrollbar-width: none !important;
+html.aura-hide-theater.aura-in-theater {
   --ytd-masthead-height: 0px !important;
   --ytd-toolbar-offset: 0px !important;
 }
 
-html.aura-hide-theater:has(
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-) :is(#page-manager, ytd-page-manager) {
+html.aura-hide-theater.aura-in-theater :is(#page-manager, ytd-page-manager) {
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
 
 /* 2. Auto-Hiding Top Search Bar + 64px Hover Bridge */
-html.aura-hide-theater:has(
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-) #masthead-container {
+html.aura-hide-theater.aura-in-theater #masthead-container {
   transform: translateY(-100%);
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
 
-html.aura-hide-theater:has(
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-) #masthead-container::after {
+html.aura-hide-theater.aura-in-theater #masthead-container::after {
   content: "";
   position: absolute;
   left: 0;
@@ -194,34 +178,40 @@ html.aura-hide-theater:has(
   bottom: -64px;
   height: 64px;
   background: transparent;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
-html.aura-hide-theater:has(
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-) #masthead-container:is(:hover, :focus-within),
+html.aura-hide-theater.aura-in-theater #masthead-container:is(:hover, :focus-within),
 html.aura-hide-theater.aura-theater-reveal-top #masthead-container {
   transform: translateY(0);
 }
 
-html.aura-hide-theater:has(
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-) #masthead-container:is(:hover, :focus-within)::after {
+html.aura-hide-theater.aura-in-theater #masthead-container:is(:hover, :focus-within)::after {
   height: 0;
   bottom: 0;
   pointer-events: none;
 }
 
 /* 3. Distraction Elimination */
-html.aura-hide-theater
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
-  :is(#secondary, #below, #related, #panels, #chat-container) {
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
+  :is(#secondary, #below, #related):not(#chat-container) {
   display: none !important;
 }
 
+/* Preserve #chat-container when ytd-watch-flexy[live] or ytd-watch-grid[live] is present */
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy[live], ytd-watch-grid[live]):not([hidden])
+  #chat-container,
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy[live], ytd-watch-grid[live]):not([hidden])
+  #secondary:has(#chat-container) {
+  display: block !important;
+}
+
 /* 4. 100vh Full-Viewport Stage */
-html.aura-hide-theater
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   :is(#full-bleed-container, #player-theater-container, #player-wide-container) {
   width: 100vw !important;
   height: 100vh !important;
@@ -238,8 +228,8 @@ html.aura-hide-theater
 }
 
 /* 5. 92vh / 94vw 16:9 Player Box for Even 4-Sided Ambient Glow */
-html.aura-hide-theater
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   :is(#player-full-bleed-container, #player-container) {
   width: min(94vw, calc(92vh * (16 / 9))) !important;
   height: min(92vh, calc(94vw * (9 / 16))) !important;
@@ -252,8 +242,8 @@ html.aura-hide-theater
 }
 
 /* 6. Fill the Centered Player Box Without Inline Offset Drift */
-html.aura-hide-theater
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   :is(#ytd-player, #container.ytd-player, #movie_player, .html5-video-container) {
   width: 100% !important;
   height: 100% !important;
@@ -263,8 +253,8 @@ html.aura-hide-theater
   overflow: visible !important;
 }
 
-html.aura-hide-theater
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   video.html5-main-video {
   position: relative !important;
   top: 0 !important;
@@ -274,33 +264,22 @@ html.aura-hide-theater
   object-fit: contain !important;
 }
 
-html.aura-hide-theater.aura-ultrawide-zoom
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
+html.aura-hide-theater.aura-in-theater.aura-ultrawide-zoom
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   video.html5-main-video {
   transform: scale(1.34) !important;
 }
 
 /* 7. Keep Bottom Player Controls Aligned with the Framed Video */
-html.aura-hide-theater
-  :is(ytd-watch-flexy, ytd-watch-grid):is([theater], [theater-requested_]):not([fullscreen])
+html.aura-hide-theater.aura-in-theater
+  :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   .ytp-chrome-bottom {
   width: calc(100% - 24px) !important;
   left: 12px !important;
 }
 
 
-/* AdBlock UI hiding & Info Cards removal */
-.ytp-cards-button,
-.ytp-cards-button-icon,
-.ytp-cards-button-icon-default,
-.ytp-cards-button-icon-shopping,
-.ytp-cards-teaser,
-.ytp-cards-teaser-text,
-.ytp-cards-teaser-box,
-.ytp-suggested-action-badge,
-html.aura-adblock .ytp-cards-button,
-html.aura-adblock .ytp-cards-button-icon,
-html.aura-adblock .ytp-cards-teaser,
+/* AdBlock UI hiding */
 html.aura-adblock .ytp-suggested-action-badge {
   display: none !important;
   height: 0 !important;
@@ -951,6 +930,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
   flex-direction: column;
   gap: 10px;
   box-sizing: border-box;
+  pointer-events: auto !important;
 }
 
 .cineglow-speed-header {
@@ -1311,7 +1291,7 @@ ytd-reel-video-renderer #dislike-button .cineglow-dislike-count {
 }
 
 /* Hide YouTube Shorts */
-html[cineglow-hide-shorts="true"] grid-shelf-view-model,
+html[cineglow-hide-shorts="true"] grid-shelf-view-model:has(a[href*="/shorts/"]),
 html[cineglow-hide-shorts="true"] reel-shelf-view-model,
 html[cineglow-hide-shorts="true"] yt-reel-shelf-view-model,
 html[cineglow-hide-shorts="true"] ytd-reel-shelf-renderer,
@@ -1319,13 +1299,13 @@ html[cineglow-hide-shorts="true"] ytd-rich-shelf-renderer[is-shorts],
 html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
 html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(reel-shelf-view-model),
 html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(yt-reel-shelf-view-model),
-html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(grid-shelf-view-model),
+html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(grid-shelf-view-model:has(a[href*="/shorts/"])),
 html[cineglow-hide-shorts="true"] ytm-shorts-lockup-view-model,
 html[cineglow-hide-shorts="true"] ytm-shorts-lockup-view-model-v2,
 html[cineglow-hide-shorts="true"] yt-lockup-view-model:has(a[href*="/shorts/"]),
 html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(a[href*="/shorts/"]),
 html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(ytm-shorts-lockup-view-model),
-html[cineglow-hide-shorts="true"] ytd-video-renderer:has(a[href*="/shorts/"]),
+html[cineglow-hide-shorts="true"] ytd-video-renderer:has(#thumbnail[href*="/shorts/"]),
 html[cineglow-hide-shorts="true"] ytd-compact-video-renderer:has(a[href*="/shorts/"]),
 html[cineglow-hide-shorts="true"] ytd-guide-entry-renderer:has(a[href*="/shorts"]),
 html[cineglow-hide-shorts="true"] ytd-mini-guide-entry-renderer:has(a[href*="/shorts"]),
@@ -1339,5 +1319,76 @@ html[cineglow-hide-shorts="true"] ytd-browse[page-subtype="channels"] ytd-tab-re
 html[cineglow-hide-shorts="true"] ytd-reel-video-renderer {
   display: none !important;
 }
+
+/* CineGlow In-Video Sponsor & Creator Branded Content Skipping */
+.cineglow-sponsor-markers {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 25 !important;
+}
+
+.cineglow-sponsor-marker {
+  position: absolute !important;
+  height: 100% !important;
+  border-radius: 2px !important;
+  pointer-events: none !important;
+  opacity: 0.9 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.cineglow-sponsor-notice {
+  position: absolute !important;
+  bottom: 68px !important;
+  left: 24px !important;
+  z-index: 60 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 14px !important;
+  background: rgba(15, 15, 20, 0.92) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: 'YouTube Noto', Roboto, Arial, sans-serif !important;
+  pointer-events: auto !important;
+  animation: cineglowSponsorFadeIn 0.2s ease-out !important;
+}
+
+@keyframes cineglowSponsorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cineglow-sponsor-undo {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 4px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background 0.18s ease !important;
+}
+
+.cineglow-sponsor-undo:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
 
 

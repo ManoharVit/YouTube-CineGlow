@@ -3,6 +3,11 @@ const AURA_DEFAULTS = Object.freeze({
   enabled: true,
   adblockEnabled: true,
   adblockCount: 0,
+  sponsorBlockEnabled: true,
+  sponsorBlockMode: 'skip',      // 'skip' | 'fastforward'
+  sponsorBlockCategories: Object.freeze(['sponsor', 'selfpromo', 'interaction']),
+  sponsorBlockNotice: true,
+  sponsorBlockCount: 0,
   qualityEnabled: true,
   statsEnabled: false,
   preferredQuality: 'hd1080',
@@ -52,5 +57,5 @@ const AURA_DEFAULTS = Object.freeze({
   returnDislikes: false, // restore public dislike count & rating
   hideShorts: false,     // hide YouTube Shorts shelves & feeds
   restoreAnnotations: false, // restore classic YouTube video annotations
-  hideEndCards: true       // hide video end cards, suggestions & subscribe overlays by default
+  hideEndCards: false      // hide video end cards, suggestions & subscribe overlays by default
 });

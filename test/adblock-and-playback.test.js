@@ -220,10 +220,15 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     let removed = false;
     modal.remove = () => { removed = true; };
 
+    const backdrop = new MockElement('tp-yt-iron-overlay-backdrop');
+    let backdropRemoved = false;
+    backdrop.remove = () => { backdropRemoved = true; };
+
     env.elements.set('#movie_player', player);
     env.elements.set('video.html5-main-video', video);
     env.elements.set('video', video);
     env.elements.set('ytd-enforcement-message-view-model', modal);
+    env.elements.set('tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim', [backdrop]);
 
     const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
     const fn = new Function(code);
@@ -234,6 +239,7 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     adBlock.dismissEnforcementModal();
 
     assert.strictEqual(removed, true, 'Enforcement modal must be removed');
+    assert.strictEqual(backdropRemoved, true, 'Backdrop scrim must be removed');
     assert.strictEqual(playVideoCalled, true, 'moviePlayer.playVideo must be called');
     assert.strictEqual(videoPlayCalled, true, 'video.play must be called');
   });
@@ -429,7 +435,7 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.strictEqual(video.muted, false, 'Unmuted normal video must not be changed');
   });
 
-  test('AD_CSS and content.css contain companion, sidebar, engagement panel, and info card selectors', () => {
+  test('AD_CSS and content.css contain companion, sidebar, and engagement panel selectors', () => {
     const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
     const contentCss = fs.readFileSync(path.join(__dirname, '../content/content.css'), 'utf8');
 
@@ -438,10 +444,7 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
       '#secondary #companion',
       '[target-id="engagement-panel-ads"]',
       'ytd-ad-slot-renderer',
-      'ytd-action-companion-ad-renderer',
-      '.ytp-cards-button',
-      '.ytp-cards-button-icon',
-      '.ytp-cards-teaser'
+      'ytd-action-companion-ad-renderer'
     ]) {
       assert.ok(adsJs.includes(sel), `youtube-ads.js must include ${sel} in cosmetic ad suppression rules`);
       assert.ok(contentCss.includes(sel), `content.css must include ${sel} in static stylesheet`);
@@ -489,5 +492,198 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.strictEqual(mainWorldCode.includes('window.fetch.toString ='), false, 'must not define own toString on window.fetch');
     assert.strictEqual(mainWorldCode.includes('customFnToString.toString ='), false, 'must not define own toString on Function.prototype.toString');
     assert.ok(mainWorldCode.includes('Function.prototype.toString = customFnToString'), 'must replace Function.prototype.toString');
+  });
+
+  test('FP-1.1: eliminates generic button[aria-label*="Skip"] and scopes skip button queries inside isAdActive and player container', async () => {
+    const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const mainWorld = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+
+    assert.strictEqual(adsJs.includes("'button[aria-label*=\"Skip\"]'"), false, 'youtube-ads.js must not include generic button[aria-label*="Skip"]');
+    assert.strictEqual(mainWorld.includes("'button[aria-label*=\"Skip\"]'"), false, 'main-world.js must not include generic button[aria-label*="Skip"]');
+
+    // Verify skip button query is strictly inside isAdActive() and scoped to player
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    player.appendChild(video);
+
+    // Create accessibility "Skip navigation" button in document outside player
+    const a11ySkipBtn = new MockElement('button', { ariaLabel: 'Skip navigation' });
+    let a11yClicked = false;
+    a11ySkipBtn.click = () => { a11yClicked = true; };
+
+    // Create YouTube Jump Ahead button inside player
+    const jumpAheadBtn = new MockElement('button', { ariaLabel: 'Skip ahead' });
+    let jumpAheadClicked = false;
+    jumpAheadBtn.click = () => { jumpAheadClicked = true; };
+    player.appendChild(jumpAheadBtn);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+    env.elements.set('button[aria-label*="Skip"]', a11ySkipBtn);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    new Function(code)();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+    // Normal video playback: isAdActive is false
+    adBlock.skipVideoAds();
+    assert.strictEqual(a11yClicked, false, 'Accessibility skip button must NEVER be clicked');
+    assert.strictEqual(jumpAheadClicked, false, 'Jump ahead button must NOT be clicked');
+
+    // Even if ad is active, generic skip buttons must not be clicked
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+    assert.strictEqual(a11yClicked, false, 'Accessibility skip button outside player must NEVER be clicked during ad');
+    assert.strictEqual(jumpAheadClicked, false, 'Generic Jump Ahead button must not be clicked during ad');
+  });
+
+  test('FP-1.2: JSON.parse hook checks adBlockEnabled and preserves payloads when adblock is disabled', async () => {
+    const mainWorldCode = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    assert.ok(
+      mainWorldCode.includes('if (!adBlockEnabled || (isKilled && origJSONParse)) return origJSONParse.apply(this, args);'),
+      'main-world.js must check adBlockEnabled before pruning in JSON.parse hook'
+    );
+
+    const listeners = [];
+    const testGlobal = {
+      window: {
+        location: { origin: 'https://www.youtube.com' },
+        addEventListener: (type, fn) => { listeners.push({ type, fn }); },
+        removeEventListener: () => {},
+        postMessage: () => {}
+      },
+      document: {
+        getElementById: () => null,
+        querySelector: () => null,
+        querySelectorAll: () => [],
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        readyState: 'complete'
+      },
+      JSON: {
+        parse: JSON.parse
+      },
+      Function: {
+        prototype: {
+          toString: Function.prototype.toString
+        }
+      },
+      setTimeout: () => 0,
+      setInterval: () => 0,
+      clearInterval: () => {}
+    };
+    testGlobal.window.window = testGlobal.window;
+
+    const fn = new Function('window', 'document', 'JSON', 'Function', 'setTimeout', 'setInterval', 'clearInterval', mainWorldCode);
+    fn(testGlobal.window, testGlobal.document, testGlobal.JSON, testGlobal.Function, testGlobal.setTimeout, testGlobal.setInterval, testGlobal.clearInterval);
+
+    const samplePayload = JSON.stringify({
+      adPlacements: [{ ad: 1 }],
+      playerAds: [{ ad: 2 }],
+      videoDetails: { title: 'Test Video' }
+    });
+
+    // 1. When adblock is enabled (default), JSON.parse prunes ad keys
+    const parsedEnabled = testGlobal.JSON.parse(samplePayload);
+    assert.deepStrictEqual(parsedEnabled.adPlacements, [], 'adPlacements should be pruned when enabled');
+    assert.deepStrictEqual(parsedEnabled.playerAds, [], 'playerAds should be pruned when enabled');
+
+    // 2. Disable adblock via CINEGLOW_SET_ADBLOCK_STATE
+    const msgListener = listeners.find(l => l.type === 'message' && l.fn.name === 'handleAdBlockStateMessage');
+    if (msgListener) {
+      msgListener.fn({
+        source: testGlobal.window,
+        data: { type: 'CINEGLOW_SET_ADBLOCK_STATE', enabled: false }
+      });
+    }
+
+    // 3. When adblock is disabled, JSON.parse preserves ad keys intact
+    const parsedDisabled = testGlobal.JSON.parse(samplePayload);
+    assert.strictEqual(parsedDisabled.adPlacements.length, 1, 'adPlacements must not be pruned when adblock is disabled');
+    assert.strictEqual(parsedDisabled.playerAds.length, 1, 'playerAds must not be pruned when adblock is disabled');
+    assert.strictEqual(parsedDisabled.adPlacements[0].ad, 1);
+  });
+
+  test('FP-1.4: synchronizes video muting using data-cineglow-ad-muted attribute', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    video.muted = false;
+    player.appendChild(video);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    new Function(code)();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Start ad
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+
+    assert.strictEqual(video.muted, true, 'Video must be muted during ad');
+    assert.strictEqual(video.getAttribute('data-cineglow-ad-muted'), 'true', 'Video must have data-cineglow-ad-muted attribute set to true');
+
+    // End ad
+    player.classList.remove('ad-showing');
+    adBlock.checkAdState();
+
+    assert.strictEqual(video.muted, false, 'Video must be unmuted after ad');
+    assert.strictEqual(video.hasAttribute('data-cineglow-ad-muted'), false, 'data-cineglow-ad-muted attribute must be removed');
+  });
+
+  test('FP-1.4: respects external data-cineglow-ad-muted from main-world and unmutes normal video', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const video = new MockVideoElement();
+    // Simulate main-world having muted the video first and set the attribute
+    video.muted = true;
+    video.setAttribute('data-cineglow-ad-muted', 'true');
+    player.appendChild(video);
+
+    env.elements.set('#movie_player', player);
+    env.elements.set('video.html5-main-video', video);
+    env.elements.set('video', video);
+
+    const code = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    new Function(code)();
+    await new Promise(r => setTimeout(r, 10));
+
+    const adBlock = globalThis.window.CineGlowAdBlock;
+
+    // Ad is active
+    player.classList.add('ad-showing');
+    adBlock.skipVideoAds();
+
+    // Verify youtube-ads recognizes it was muted by CineGlow, not by user
+    player.classList.remove('ad-showing');
+    adBlock.checkAdState();
+
+    assert.strictEqual(video.muted, false, 'Video must be unmuted after ad because it was muted by CineGlow');
+    assert.strictEqual(video.hasAttribute('data-cineglow-ad-muted'), false, 'Attribute must be cleaned up');
+  });
+
+  test('FP-1.3 & FP-9.6: restores creator info cards, collaborator links, and merchandise shelves', () => {
+    const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+    const mainWorld = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+
+    // FP-1.3: Info card buttons/teasers must NOT be in AD_CSS
+    for (const sel of ['.ytp-cards-button', '.ytp-cards-teaser', '.ytp-cards-button-icon']) {
+      assert.strictEqual(adsJs.includes(sel), false, `youtube-ads.js must NOT hide ${sel}`);
+    }
+
+    // FP-1.3: main-world must NOT prune cards or delete info card elements
+    assert.strictEqual(mainWorld.includes("'cards'"), false, 'main-world.js AD_KEYS_TO_DELETE must not contain cards');
+    assert.strictEqual(mainWorld.includes("'cardCollectionRenderer'"), false, 'main-world.js AD_KEYS_TO_DELETE must not contain cardCollectionRenderer');
+    assert.strictEqual(mainWorld.includes("'cardsRenderer'"), false, 'main-world.js AD_KEYS_TO_DELETE must not contain cardsRenderer');
+    assert.strictEqual(mainWorld.includes('.ytp-cards-button'), false, 'skipMainWorldAd must not delete .ytp-cards-button');
+    assert.strictEqual(mainWorld.includes('.ytp-cards-teaser'), false, 'skipMainWorldAd must not delete .ytp-cards-teaser');
+
+    // FP-9.6: Merchandise shelves must NOT be suppressed in AD_CSS
+    assert.strictEqual(adsJs.includes('ytd-merch-shelf-renderer'), false, 'youtube-ads.js must NOT suppress ytd-merch-shelf-renderer');
   });
 });

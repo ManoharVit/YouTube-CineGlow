@@ -5,7 +5,7 @@
 (() => {
   'use strict';
 
-  let settings = { ...AURA_DEFAULTS };
+  let settings = typeof AURA_DEFAULTS !== 'undefined' ? { ...AURA_DEFAULTS } : { abLoopEnabled: true };
   let video = null;
   let player = null;
   let isKilled = false;
@@ -23,6 +23,8 @@
   let counterEl = null;
   let toggleBtn = null;
   let clearBtn = null;
+  let toastEl = null;
+  let toastTimer = null;
   let rangeOverlayEl = null;
 
   function formatTime(seconds) {
@@ -46,7 +48,7 @@
       hostEl.style.top = '16px';
       hostEl.style.left = '16px';
       hostEl.style.zIndex = '9999';
-      hostEl.style.pointerEvents = 'auto';
+      hostEl.style.pointerEvents = 'none';
 
       if (typeof hostEl.attachShadow === 'function') {
         try {
@@ -65,6 +67,7 @@
       style.textContent = `
         .cineglow-ab-hud {
           display: none;
+          pointer-events: auto;
           align-items: center;
           gap: 8px;
           background: rgba(15, 15, 20, 0.88);
@@ -125,6 +128,29 @@
           color: #fff;
           background: rgba(255, 255, 255, 0.2);
         }
+        .cineglow-ab-toast {
+          display: none;
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          background: rgba(255, 0, 85, 0.95);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 14px;
+          padding: 6px 14px;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          color: #fff;
+          white-space: nowrap;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+          pointer-events: none;
+          z-index: 10001;
+        }
+        .cineglow-ab-toast.visible {
+          display: block;
+        }
       `;
 
       badgeEl = document.createElement('span');
@@ -172,11 +198,38 @@
       hudEl.appendChild(toggleBtn);
       hudEl.appendChild(clearBtn);
 
+      toastEl = document.createElement('div');
+      toastEl.className = 'cineglow-ab-toast';
+      toastEl.id = 'abToast';
+
       shadowRoot.appendChild(hudEl);
+      shadowRoot.appendChild(toastEl);
       targetContainer.appendChild(hostEl);
     }
 
     return hudEl;
+  }
+
+  function showHUDToast(message, durationMs = 1800) {
+    if (isKilled) return;
+    ensureShadowHUD();
+    if (!shadowRoot) return;
+
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'cineglow-ab-toast';
+      toastEl.id = 'abToast';
+      shadowRoot.appendChild(toastEl);
+    }
+    toastEl.textContent = message;
+    toastEl.classList.add('visible');
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      if (toastEl) {
+        toastEl.classList.remove('visible');
+      }
+    }, durationMs);
   }
 
   function updateHUD() {
@@ -270,10 +323,11 @@
 
   function setPointB(timeSec) {
     if (isKilled || !video) return;
-    const t = typeof timeSec === 'number' ? timeSec : video.currentTime;
-    if (pointA === null) {
-      pointA = 0;
+    if (pointA === null || pointA === undefined) {
+      showHUDToast('Set Point A first ([)');
+      return;
     }
+    const t = typeof timeSec === 'number' ? timeSec : video.currentTime;
     if (t > pointA) {
       pointB = t;
       isLooping = true;
@@ -309,15 +363,59 @@
     }
   }
 
-  function isInputFocused() {
-    const el = document.activeElement;
+  function isInputFocused(e) {
+    if (e && typeof e.composedPath === 'function') {
+      try {
+        const path = e.composedPath();
+        if (Array.isArray(path)) {
+          for (const node of path) {
+            if (!node || (node.nodeType !== undefined && node.nodeType !== 1)) continue;
+            const tag = (node.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || node.isContentEditable) {
+              return true;
+            }
+            if (typeof node.getAttribute === 'function') {
+              const role = node.getAttribute('role');
+              if (role === 'textbox' || role === 'combobox' || role === 'searchbox') {
+                return true;
+              }
+            }
+            if (tag === 'ytd-commentbox' ||
+                tag === 'ytd-searchbox' ||
+                tag === 'yt-searchbox' ||
+                tag === 'ytd-comment-simplebox-renderer' ||
+                tag === 'yt-live-chat-text-input-field-renderer') {
+              return true;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    let el = document.activeElement;
+    while (el && el.shadowRoot && el.shadowRoot.activeElement) {
+      el = el.shadowRoot.activeElement;
+    }
     if (!el) return false;
-    const tag = el.tagName.toLowerCase();
-    return tag === 'input' || tag === 'textarea' || el.isContentEditable || el.getAttribute('role') === 'textbox';
+    const tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || el.isContentEditable) return true;
+    if (typeof el.getAttribute === 'function') {
+      const role = el.getAttribute('role');
+      if (role === 'textbox' || role === 'combobox' || role === 'searchbox') return true;
+    }
+    if (tag === 'ytd-commentbox' || tag === 'ytd-searchbox' || tag === 'yt-searchbox' || tag === 'ytd-comment-simplebox-renderer') {
+      return true;
+    }
+    if (typeof el.closest === 'function') {
+      if (el.closest('ytd-commentbox, ytd-searchbox, yt-searchbox, ytd-comment-simplebox-renderer, #search-form')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function onKeyDown(e) {
-    if (isKilled || isInputFocused() || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isKilled || !settings.abLoopEnabled || isInputFocused(e) || e.ctrlKey || e.metaKey || e.altKey) return;
 
     if (e.key === '[') {
       e.preventDefault();
@@ -373,6 +471,14 @@
     counterEl = null;
     toggleBtn = null;
     clearBtn = null;
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    if (toastEl) {
+      try { toastEl.remove(); } catch (_) {}
+      toastEl = null;
+    }
     video = null;
     player = null;
   }
@@ -403,6 +509,10 @@
     setPointB,
     toggleLoop,
     resetLoop,
+    showHUDToast,
+    isInputFocused,
+    getSettings: () => settings,
+    setSettings: (s) => { Object.assign(settings, s); },
     getState: () => ({ pointA, pointB, isLooping, loopCount }),
     teardown: teardownKillSwitch
   };
@@ -418,11 +528,23 @@
     }
   }
 
-  // Storage listener for popup integration
+  // Storage listener and initial sync for popup integration
+  if (typeof chrome !== 'undefined' && chrome.storage?.sync?.get) {
+    try {
+      chrome.storage.sync.get({ abLoopEnabled: true }, (items) => {
+        if (chrome.runtime?.lastError) return;
+        if (items && typeof items.abLoopEnabled === 'boolean') {
+          settings.abLoopEnabled = items.abLoopEnabled;
+        }
+      });
+    } catch (_) {}
+  }
+
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (isKilled || area !== 'sync') return;
       if (changes.abLoopEnabled) {
+        settings.abLoopEnabled = Boolean(changes.abLoopEnabled.newValue);
         if (!changes.abLoopEnabled.newValue) {
           resetLoop();
         }

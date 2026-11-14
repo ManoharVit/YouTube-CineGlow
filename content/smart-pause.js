@@ -3,6 +3,7 @@
 
   let autoPauseMode = 'off'; // 'off' | 'tab' | 'app'
   let pausedByExtension = false;
+  let lastExtensionPauseTime = 0;
   let lastVideo = null;
   let blurTimer = null;
   let isKilled = false;
@@ -27,12 +28,22 @@
 
   function shouldPause() {
     if (autoPauseMode === 'off') return false;
-    
+
+    // Prevent PiP from opening in a paused state during transition (FP-4.4)
+    if (typeof window !== 'undefined' && window._cineglowPipTransition) return false;
+
+    // Active in-stream ads must not freeze when switching tabs (FP-4.3)
+    if (document.querySelector('.ad-showing, .ad-interrupting') || window.CineGlowPlayer?.isAdShowing) {
+      return false;
+    }
+
     // Always pause if the tab is completely hidden (switched tabs / minimized)
     if (document.hidden) return true;
 
     // In 'app' mode, also pause if user switches to another desktop app/window
     if (autoPauseMode === 'app' && typeof document.hasFocus === 'function') {
+      // Focus moved to an internal iframe (e.g. Live Chat) does not auto-pause (FP-4.2)
+      if (document.activeElement && document.activeElement.tagName === 'IFRAME') return false;
       if (!document.hasFocus()) return true;
     }
 
@@ -61,6 +72,7 @@
 
     if (shouldPause()) {
       if (!video.paused) {
+        lastExtensionPauseTime = Date.now();
         video.pause();
         pausedByExtension = true;
       }
@@ -111,7 +123,9 @@
   };
 
   const onUserPause = () => {
-    if (!shouldPause()) {
+    // If a pause event fires >200ms after an extension pause, treat as explicit user intent
+    // (e.g. media keys/headset pause while tab hidden) and clear pausedByExtension
+    if (!shouldPause() || (Date.now() - lastExtensionPauseTime > 200)) {
       pausedByExtension = false;
     }
   };
@@ -137,6 +151,7 @@
     if (isKilled) return;
     isKilled = true;
     autoPauseMode = 'off';
+    lastExtensionPauseTime = 0;
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
 
     document.removeEventListener('visibilitychange', onVisibilityChange);

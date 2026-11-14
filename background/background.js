@@ -79,8 +79,9 @@ async function activateKillSwitch(reason = 'Managed Policy KillSwitch activated'
   isKillSwitchActive = true;
   console.warn(`[Aura Emergency] Kill-switch activated: ${reason}`);
 
-  // Flush any pending throttled adblock count writes
+  // Flush any pending throttled adblock and sponsorblock count writes
   flushAdBlockCount();
+  flushSponsorBlockCount();
 
   // 1. Set persistent local flag for new tabs / re-initializations
   try {
@@ -331,6 +332,55 @@ function recordAdBlocked(count = 1) {
   }
 }
 
+// --- Throttled SponsorBlock Count Persistence ---
+let pendingSponsorIncrement = 0;
+let lastSponsorWriteTime = 0;
+let sponsorThrottleTimer = null;
+const SPONSOR_WRITE_INTERVAL_MS = 500;
+
+async function flushSponsorBlockCount() {
+  if (sponsorThrottleTimer) {
+    clearTimeout(sponsorThrottleTimer);
+    sponsorThrottleTimer = null;
+  }
+  if (pendingSponsorIncrement === 0) return;
+  const toAdd = pendingSponsorIncrement;
+  pendingSponsorIncrement = 0;
+  lastSponsorWriteTime = Date.now();
+
+  try {
+    if (chrome.storage && chrome.storage.local) {
+      let { sponsorBlockCount } = await chrome.storage.local.get('sponsorBlockCount');
+      if (typeof sponsorBlockCount !== 'number') {
+        const syncData = await chrome.storage.sync?.get('sponsorBlockCount').catch(() => ({}));
+        sponsorBlockCount = typeof syncData?.sponsorBlockCount === 'number' ? syncData.sponsorBlockCount : 0;
+      }
+      await chrome.storage.local.set({ sponsorBlockCount: sponsorBlockCount + toAdd });
+    }
+  } catch (err) {
+    console.error('[Aura] Failed to update sponsor block count in storage.local:', err);
+  }
+}
+
+function recordSponsorBlocked(count = 1) {
+  pendingSponsorIncrement += count;
+  const now = Date.now();
+  const timeSinceLastWrite = now - lastSponsorWriteTime;
+
+  if (timeSinceLastWrite >= SPONSOR_WRITE_INTERVAL_MS && !sponsorThrottleTimer) {
+    flushSponsorBlockCount();
+  } else if (!sponsorThrottleTimer) {
+    const delay = Math.max(0, SPONSOR_WRITE_INTERVAL_MS - timeSinceLastWrite);
+    sponsorThrottleTimer = setTimeout(() => {
+      sponsorThrottleTimer = null;
+      flushSponsorBlockCount();
+    }, delay);
+    if (sponsorThrottleTimer && typeof sponsorThrottleTimer.unref === 'function') {
+      sponsorThrottleTimer.unref();
+    }
+  }
+}
+
 // --- LRU Annotations Cache (CG-FIND-03) ---
 const MAX_ANNOTATION_CACHE_ENTRIES = 5;
 
@@ -394,6 +444,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'AD_BLOCKED') {
     recordAdBlocked(message.count || 1);
+  }
+  if (message.type === 'SPONSOR_BLOCKED') {
+    recordSponsorBlocked(message.count || 1);
+  }
+  if (message.type === 'FETCH_SPONSOR_BLOCK') {
+    (async () => {
+      const videoId = message.videoId;
+      if (!videoId || typeof videoId !== 'string') {
+        sendResponse({ success: false, error: 'Invalid video ID' });
+        return;
+      }
+      try {
+        if (chrome.storage && chrome.storage.managed) {
+          const managed = await chrome.storage.managed.get(['DisableThirdPartyAPIs', 'KillSwitch']).catch(() => null);
+          if (managed && (managed.DisableThirdPartyAPIs || managed.KillSwitch)) {
+            sendResponse({ success: false, error: 'Blocked by enterprise policy' });
+            return;
+          }
+        }
+        const categories = Array.isArray(message.categories) && message.categories.length > 0
+          ? message.categories
+          : ['sponsor', 'selfpromo', 'interaction'];
+        const url = `https://sponsor.ajay.app/api/skipSegments?videoID=${encodeURIComponent(videoId)}&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+        const fetchFn = typeof fetchWithBackoff === 'function' ? fetchWithBackoff : fetch;
+        const resp = await fetchFn(url, { cache: 'no-cache' });
+        if (resp.status === 404) {
+          sendResponse({ success: true, segments: [] });
+          return;
+        }
+        if (!resp.ok) {
+          sendResponse({ success: false, status: resp.status });
+          return;
+        }
+        const data = await resp.json();
+        sendResponse({ success: true, segments: Array.isArray(data) ? data : [] });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true;
   }
   if (message.type === 'FETCH_DISLIKES') {
     (async () => {

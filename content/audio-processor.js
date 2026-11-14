@@ -1,23 +1,26 @@
 (() => {
   'use strict';
 
+  const defaults = (typeof AURA_DEFAULTS !== 'undefined' ? AURA_DEFAULTS : (typeof window !== 'undefined' && window.AURA_DEFAULTS) || (typeof globalThis !== 'undefined' && globalThis.AURA_DEFAULTS)) || {};
   let settings = {
-    audioNormalizer: false,
-    audioBoost: 100,
-    bassBoost: 0,
-    vocalBoost: 0,
-    eq60: 0,
-    eq250: 0,
-    eq1000: 0,
-    eq4000: 0,
-    eq12000: 0,
-    audioReactive: false
+    audioNormalizer: defaults.audioNormalizer || false,
+    audioBoost: defaults.audioBoost !== undefined ? defaults.audioBoost : 100,
+    bassBoost: defaults.bassBoost || 0,
+    vocalBoost: defaults.vocalBoost || 0,
+    eq60: defaults.eq60 || 0,
+    eq250: defaults.eq250 || 0,
+    eq1000: defaults.eq1000 || 0,
+    eq4000: defaults.eq4000 || 0,
+    eq12000: defaults.eq12000 || 0,
+    audioReactive: defaults.audioReactive || false
   };
 
   let audioCtx = null;
   let source = null;
+  let sourceUsesDsp = false;
   let normalizerGain = null;
   let compressor = null;
+  let makeupGainNode = null;
   let compressedGain = null;
   let bassFilter = null;
   let vocalFilter = null;
@@ -37,6 +40,22 @@
   let onVideoPlaybackResume = null;
   let boundResumeVideo = null;
 
+  function isDspEnabled() {
+    const boost = Number(settings.audioBoost);
+    const hasVolumeBoost = !isNaN(boost) && boost !== 100 && boost > 0;
+    const hasNormalizer = Boolean(settings.audioNormalizer);
+    const hasBassBoost = Number(settings.bassBoost) !== 0;
+    const hasVocalBoost = Number(settings.vocalBoost) !== 0;
+    const hasEq = (
+      Number(settings.eq60) !== 0 ||
+      Number(settings.eq250) !== 0 ||
+      Number(settings.eq1000) !== 0 ||
+      Number(settings.eq4000) !== 0 ||
+      Number(settings.eq12000) !== 0
+    );
+    return hasNormalizer || hasVolumeBoost || hasBassBoost || hasVocalBoost || hasEq;
+  }
+
   async function loadSettings() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
@@ -45,6 +64,7 @@
       for (const k of keys) {
         if (stored[k] !== undefined) settings[k] = stored[k];
       }
+      attachToPlayer();
       updateAudioParams();
     } catch (err) {
       console.warn('[CineGlow Audio] Could not load settings:', err);
@@ -63,15 +83,29 @@
         }
       }
       if (changed) {
+        attachToPlayer();
         updateAudioParams();
       }
     }
   });
 
-  function initAudio(video) {
+  function initAudio(video, force = false) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!video) return;
-    if (currentVideo === video && source) return;
+    // FP-6.1: In attachToPlayer() / initAudio(), only instantiate AudioContext and mediaElementSource
+    // when at least one audio DSP feature is enabled, avoiding unnecessary 5.1/7.1 downmixing & autoplay silence
+    if (!force && !isDspEnabled()) {
+      if (currentVideo === video && !sourceUsesDsp) return;
+      if (source) {
+        try { source.disconnect(); } catch (_) {}
+      }
+      source = videoSources.get(video) || null;
+      if (source && audioCtx) source.connect(audioCtx.destination);
+      currentVideo = video;
+      sourceUsesDsp = false;
+      return;
+    }
+    if (currentVideo === video && source && sourceUsesDsp) return;
     
     try {
       if (!audioCtx) {
@@ -139,6 +173,10 @@
         gainNode = audioCtx.createGain();
         gainNode.gain.value = computeEffectiveGain();
 
+        // 5b. Makeup Gain Node on Compressor Wet Path (+8 dB to +10 dB, +9 dB = 2.818x linear) (FP-6.2)
+        makeupGainNode = audioCtx.createGain();
+        makeupGainNode.gain.value = Math.pow(10, 9.0 / 20); // +9 dB makeup gain to eliminate 15-20 dB normalizer volume drop
+
         // 6. Safety Brickwall Limiter (prevents digital clipping on heavy bass/volume boost)
         limiterNode = audioCtx.createDynamicsCompressor();
         limiterNode.threshold.value = -1.0;
@@ -159,8 +197,9 @@
         window.CineGlowAudioGainNode = gainNode;
 
         // --- Wire Node Connections ---
-        // Normalizer bypass routing
-        compressor.connect(compressedGain);
+        // Normalizer wet path with makeup gain (+8 dB to +10 dB) (FP-6.2)
+        compressor.connect(makeupGainNode);
+        makeupGainNode.connect(compressedGain);
 
         // Connect both dry and wet paths into the Bass Booster
         normalizerGain.connect(bassFilter);
@@ -216,6 +255,7 @@
       videoSource.connect(compressor);
       
       source = videoSource;
+      sourceUsesDsp = true;
       currentVideo = video;
       video.cineGlowAudioAttached = true;
       
@@ -247,24 +287,9 @@
     const boostVal = settings.audioBoost !== undefined && !isNaN(Number(settings.audioBoost)) ? Number(settings.audioBoost) : 100;
     const rawGain = Math.max(0, boostVal) / 100;
 
-    // Calculate maximum positive EQ/boost gain applied in the filter chain
-    const bass = Math.max(0, Math.min(15, Number(settings.bassBoost) || 0));
-    const vocal = Math.max(0, Math.min(12, Number(settings.vocalBoost) || 0));
-    const eqMax = Math.max(
-      0,
-      Number(settings.eq60) || 0,
-      Number(settings.eq250) || 0,
-      Number(settings.eq1000) || 0,
-      Number(settings.eq4000) || 0,
-      Number(settings.eq12000) || 0
-    );
-    const totalMaxBoostDb = bass + vocal + eqMax;
-    
-    // Provide dynamic headroom scaling when massive EQ boost is applied across any volume level
-    if (totalMaxBoostDb > 6) {
-      const headroomFactor = Math.pow(10, -(totalMaxBoostDb - 6) / 40);
-      return rawGain * headroomFactor;
-    }
+    // FP-6.4: Rely on the downstream safety brickwall limiterNode (threshold -1 dB, ratio 20:1) to prevent
+    // digital clipping rather than applying broadband headroom attenuation across the master mix when
+    // bass/vocal/EQ boost is active. This ensures boosting bass does not muffle vocals and dialogue across the master mix.
     return rawGain;
   }
 
@@ -280,7 +305,7 @@
       compressedGain.gain.setTargetAtTime(normOn ? 1 : 0, t, 0.02);
     }
 
-    // 2. Extra Volume Boost (with dynamic headroom scaling)
+    // 2. Extra Volume Boost (relying on limiterNode for clipping prevention)
     if (gainNode) {
       const vol = computeEffectiveGain();
       gainNode.gain.setTargetAtTime(vol, t, 0.02);
@@ -309,7 +334,7 @@
   // Hook into the central player manager to find the video element
   function attachToPlayer() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (window.CineGlowPlayer) {
+    if (typeof window !== 'undefined' && window.CineGlowPlayer) {
       if (window.CineGlowPlayer.video) {
         initAudio(window.CineGlowPlayer.video);
       } else if (source) {
@@ -317,6 +342,7 @@
           source.disconnect();
         } catch (_) {}
         source = null;
+        sourceUsesDsp = false;
         currentVideo = null;
       }
     }
@@ -328,23 +354,25 @@
     isKilled = true;
     if (typeof window !== 'undefined') window.CineGlowKilled = true;
 
-    // 1. Disconnect active source node
-    if (source) {
+    // 1. FP-6.3: In teardownKillSwitch(), do NOT call audioCtx.close(), which permanently severs audio
+    // from the HTMLMediaElement under W3C Web Audio spec. Instead, bypass DSP by connecting
+    // source.connect(audioCtx.destination), setting wetGain to 0, and dryGain to 1.
+    if (source && audioCtx) {
       try { source.disconnect(); } catch (_) {}
-      source = null;
+      try { source.connect(audioCtx.destination); } catch (_) {}
     }
 
-    // 2. Close AudioContext
-    if (audioCtx) {
-      try {
-        if (audioCtx.state !== 'closed') {
-          audioCtx.close();
-        }
-      } catch (_) {}
-      audioCtx = null;
+    if (compressedGain && compressedGain.gain) {
+      try { compressedGain.gain.value = 0; } catch (_) {}
+    }
+    if (normalizerGain && normalizerGain.gain) {
+      try { normalizerGain.gain.value = 1; } catch (_) {}
+    }
+    if (gainNode && gainNode.gain) {
+      try { gainNode.gain.value = 1; } catch (_) {}
     }
 
-    // 3. Clear global window hooks
+    // 2. Clear global window hooks
     if (typeof window !== 'undefined') {
       window.CineGlowAudioAnalyser = null;
       window.CineGlowAudioDataArray = null;
@@ -389,7 +417,7 @@
     boundResumeVideo = null;
 
     // 7. Remove player state listener
-    if (window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
+    if (typeof window !== 'undefined' && window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
       try {
         window.CineGlowPlayer.removeEventListener('state-change', attachToPlayer);
       } catch (_) {}
@@ -418,20 +446,22 @@
     }, { once: true });
   }
 
-  if (window.CineGlowPlayer) {
+  if (typeof window !== 'undefined' && window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', attachToPlayer);
     attachToPlayer();
-  } else {
+  } else if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('load', () => {
-      if (window.CineGlowPlayer) attachToPlayer();
+      if (typeof window !== 'undefined' && window.CineGlowPlayer) attachToPlayer();
     });
   }
 
   window.CineGlowAudioComputeEffectiveGain = computeEffectiveGain;
-  window.CineGlowAudioInit = initAudio;
+  window.CineGlowAudioInit = (v, force = true) => initAudio(v, force);
   window.CineGlowAudioGetActiveSource = () => source;
   window.CineGlowAudioGetVideoSource = (v) => videoSources.get(v);
   window.CineGlowAudioTeardown = teardownKillSwitch;
+  window.CineGlowAudioIsDspEnabled = isDspEnabled;
+  window.CineGlowAudioGetMakeupGainNode = () => makeupGainNode;
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('unhandledrejection', (event) => {

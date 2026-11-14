@@ -7,6 +7,7 @@
   let mutedVideoElement = null;
   let userWasMuted = false;
   let preAdSpeed = 1.0;
+  let acceleratedVideo = null;
   let lastAdSkipTime = 0;
   let adSkipTimer = 0;
   let activeVideo = null;
@@ -43,13 +44,6 @@
   const AD_CSS_ID = 'cineglow-adblock-styles';
   const AD_CSS = `
     #masthead-ad,
-    .ytp-cards-button,
-    .ytp-cards-button-icon,
-    .ytp-cards-button-icon-default,
-    .ytp-cards-button-icon-shopping,
-    .ytp-cards-teaser,
-    .ytp-cards-teaser-text,
-    .ytp-cards-teaser-box,
     .ytp-suggested-action-badge,
     ytd-companion-slot-renderer,
     ytd-action-companion-ad-renderer,
@@ -61,7 +55,6 @@
     ytd-player-legacy-desktop-watch-ads-renderer,
     ytd-in-feed-ad-layout-renderer,
     ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
-    ytd-merch-shelf-renderer,
     #secondary #companion,
     #secondary #player-ads,
     #secondary ytd-ad-slot-renderer,
@@ -87,7 +80,9 @@
     .ad-showing ytd-action-companion-ad-renderer,
     .ad-showing ytd-companion-slot-renderer,
     ytd-enforcement-message-view-model,
-    tp-yt-paper-dialog:has(ytd-enforcement-message-view-model) {
+    tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
+    :is(body:has(ytd-enforcement-message-view-model), html:has(ytd-enforcement-message-view-model)) :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim),
+    :is(tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), ytd-enforcement-message-view-model) ~ :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim) {
       display: none !important;
       height: 0 !important;
       visibility: hidden !important;
@@ -204,26 +199,9 @@
     const moviePlayer = document.querySelector('#movie_player, #shorts-player, .html5-video-player');
     if (!moviePlayer) return false;
 
-    // 1. YouTube adds 'ad-showing' or 'ad-interrupting' exclusively when in-stream ad video is active
-    if (moviePlayer.classList.contains('ad-showing') || moviePlayer.classList.contains('ad-interrupting')) {
-      return true;
-    }
-
-    // 2. Visible skip button or active ad overlay (not static hidden containers)
-    const skipBtn = moviePlayer.querySelector(
-      '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-skip-button-slot button, [id^="skip-button:"] button, button.ytp-ad-skip-button-modern, div.ytp-ad-skip-button-modern, .ytp-ad-skip-button-container button'
-    );
-    if (skipBtn && (skipBtn.offsetParent !== null || skipBtn.offsetWidth > 0 || (skipBtn.getClientRects && skipBtn.getClientRects().length > 0))) {
-      return true;
-    }
-
-    // 3. Fallback: check if an ad text or preview element is explicitly rendered with visible content
-    const adText = moviePlayer.querySelector('.ytp-ad-text, .ytp-ad-preview-text');
-    if (adText && (adText.offsetParent !== null || adText.offsetWidth > 0) && adText.textContent.trim().length > 0) {
-      return true;
-    }
-
-    return false;
+    // YouTube adds 'ad-showing' or 'ad-interrupting' exclusively when an in-stream ad video is actively playing.
+    // Static or dormant skip button placeholders in the DOM must NEVER flag normal videos as ads.
+    return Boolean(moviePlayer.classList.contains('ad-showing') || moviePlayer.classList.contains('ad-interrupting'));
   }
 
   function dismissEnforcementModal() {
@@ -231,6 +209,12 @@
     if (enforcementModal) {
       const dialog = enforcementModal.closest('tp-yt-paper-dialog') || enforcementModal;
       dialog.remove();
+      const backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim');
+      if (backdrops && typeof backdrops.forEach === 'function') {
+        backdrops.forEach(b => {
+          if (b && typeof b.remove === 'function') b.remove();
+        });
+      }
       const moviePlayer = document.querySelector('#movie_player, .html5-video-player');
       if (moviePlayer && typeof moviePlayer.playVideo === 'function') {
         moviePlayer.playVideo();
@@ -254,7 +238,6 @@
     '[id^="skip-button:"] button',
     'button.ytp-ad-skip-button-modern',
     '.ytp-ad-skip-button-container button',
-    'button[aria-label*="Skip"]',
     '.ytp-ad-overlay-close-button'
   ].join(', ');
 
@@ -265,6 +248,7 @@
     if (target && typeof MutationObserver !== 'undefined') {
       adMutationObserver = new MutationObserver(() => {
         if (!settings.adblockEnabled) return;
+        dismissEnforcementModal();
         if (isAdActive()) {
           skipVideoAds();
         }
@@ -289,20 +273,23 @@
       } catch (_) {}
 
       const isAd = isAdActive();
+      const player = document.querySelector('#movie_player, #shorts-player, .html5-video-player');
 
-      // 1. Click the active skip button
-      const now = Date.now();
-      if (now - lastSkipButtonClickTime > 150) {
-        let btn = document.querySelector(SKIP_BUTTON_SELECTOR);
-        if (btn) {
-          lastSkipButtonClickTime = now;
-          try {
-            if (btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
-              const childBtn = btn.querySelector('button, [role="button"]');
-              if (childBtn) childBtn.click();
-            }
-            btn.click();
-          } catch (_) {}
+      // 1. Click the active skip button strictly inside if (isAdActive()) and scoped to player
+      if (isAd && player) {
+        const now = Date.now();
+        if (now - lastSkipButtonClickTime > 150) {
+          let btn = typeof player.querySelector === 'function' ? player.querySelector(SKIP_BUTTON_SELECTOR) : null;
+          if (btn) {
+            lastSkipButtonClickTime = now;
+            try {
+              if (btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
+                const childBtn = btn.querySelector('button, [role="button"]');
+                if (childBtn) childBtn.click();
+              }
+              btn.click();
+            } catch (_) {}
+          }
         }
       }
 
@@ -313,9 +300,13 @@
           if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
             preAdSpeed = video.playbackRate;
           }
-          userWasMuted = video.muted;
-          if (!video.muted) {
+          const alreadyMutedByCineGlow = typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted');
+          userWasMuted = video.muted && !alreadyMutedByCineGlow;
+          if (!video.muted || alreadyMutedByCineGlow) {
             video.muted = true;
+            if (typeof video.setAttribute === 'function') {
+              video.setAttribute('data-cineglow-ad-muted', 'true');
+            }
             adMutedByUs = true;
             mutedVideoElement = video;
           }
@@ -324,8 +315,12 @@
         } else if (!userWasMuted && !video.muted) {
           // Handle video element swap mid-ad
           video.muted = true;
+          if (typeof video.setAttribute === 'function') {
+            video.setAttribute('data-cineglow-ad-muted', 'true');
+          }
           mutedVideoElement = video;
         }
+        acceleratedVideo = video;
         video.playbackRate = 16.0;
       } else if (!isAd && video) {
         // Ad finished — restore audio and user's playback speed ONLY on the element we modified
@@ -338,21 +333,30 @@
 
   function restoreModifiedPlaybackState(video) {
     const targetVideo = video || mutedVideoElement || activeVideo || document.querySelector('video.html5-main-video') || document.querySelector('video');
-    if (adMutedByUs) {
+    if (adMutedByUs || (targetVideo && typeof targetVideo.hasAttribute === 'function' && targetVideo.hasAttribute('data-cineglow-ad-muted'))) {
       if (mutedVideoElement && targetVideo && mutedVideoElement === targetVideo && !userWasMuted) {
         targetVideo.muted = false;
+      } else if (!mutedVideoElement && targetVideo && !userWasMuted && targetVideo.getAttribute('data-cineglow-ad-muted') === 'true') {
+        targetVideo.muted = false;
+      }
+      if (targetVideo && typeof targetVideo.removeAttribute === 'function') {
+        targetVideo.removeAttribute('data-cineglow-ad-muted');
+      }
+      if (mutedVideoElement && typeof mutedVideoElement.removeAttribute === 'function') {
+        mutedVideoElement.removeAttribute('data-cineglow-ad-muted');
       }
       adMutedByUs = false;
       mutedVideoElement = null;
     }
     userWasMuted = false;
-    if (targetVideo && targetVideo.playbackRate === 16.0) {
+    if (targetVideo && acceleratedVideo === targetVideo && targetVideo.playbackRate === 16.0) {
       const restoreSpeed = (typeof window !== 'undefined' && window.CineGlowSpeed && typeof window.CineGlowSpeed.preferredSpeed === 'number')
         ? window.CineGlowSpeed.preferredSpeed
         : (preAdSpeed || 1.0);
       targetVideo.playbackRate = restoreSpeed;
       try { targetVideo.defaultPlaybackRate = restoreSpeed; } catch (_) {}
     }
+    acceleratedVideo = null;
   }
 
   function checkAdState() {

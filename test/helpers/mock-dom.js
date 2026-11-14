@@ -320,6 +320,9 @@ class MockElement extends EventTarget {
 
   matches(selector) {
     if (!selector || typeof selector !== 'string') return false;
+    if (selector.includes(',')) {
+      return selector.split(',').some(part => this.matches(part.trim()));
+    }
     if (selector === ':hover' || selector === ':focus-within' || selector === ':focus') return false;
     if (selector.startsWith('#')) return this.id === selector.slice(1);
     if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
@@ -379,12 +382,28 @@ class MockElement extends EventTarget {
   }
 
   querySelector(_selector) {
-    if (!_selector || !Array.isArray(this.children)) return null;
-    for (const child of this.children) {
-      if (child && child.matches && child.matches(_selector)) return child;
-      if (child && typeof child.querySelector === 'function') {
-        const found = child.querySelector(_selector);
+    if (!_selector) return null;
+    if (_selector.includes(',')) {
+      const parts = _selector.split(',').map(s => s.trim());
+      for (const part of parts) {
+        const found = this.querySelector(part);
         if (found) return found;
+      }
+      return null;
+    }
+    if (Array.isArray(this.children)) {
+      for (const child of this.children) {
+        if (child && child.matches && child.matches(_selector)) return child;
+        if (child && typeof child.querySelector === 'function') {
+          const found = child.querySelector(_selector);
+          if (found) return found;
+        }
+      }
+    }
+    if (typeof globalThis !== 'undefined' && globalThis.document && typeof globalThis.document.querySelector === 'function') {
+      const globalEl = globalThis.document.querySelector(_selector);
+      if (globalEl && (globalEl.offsetParent === this || this.contains(globalEl))) {
+        return globalEl;
       }
     }
     return null;
@@ -525,7 +544,22 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
     return null;
   };
   mockDocument.querySelectorAll = (sel) => {
-    if (elements.has(sel)) return [elements.get(sel)];
+    if (elements.has(sel)) {
+      const val = elements.get(sel);
+      return Array.isArray(val) ? val : [val];
+    }
+    if (typeof sel === 'string' && sel.includes(',')) {
+      const parts = sel.split(',').map(s => s.trim());
+      const results = [];
+      for (const part of parts) {
+        if (elements.has(part)) {
+          const val = elements.get(part);
+          if (Array.isArray(val)) results.push(...val);
+          else results.push(val);
+        }
+      }
+      if (results.length > 0) return results;
+    }
     return [];
   };
   function findNodeById(node, id) {
@@ -620,25 +654,29 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
     storage: {
       sync: {
         _data: {},
-        get: async (keys) => {
+        get: async (keys, callback) => {
+          let res;
           if (typeof keys === 'string') {
-            return { [keys]: mockChrome.storage.sync._data[keys] };
-          }
-          if (Array.isArray(keys)) {
+            res = { [keys]: mockChrome.storage.sync._data[keys] };
+          } else if (Array.isArray(keys)) {
             const out = {};
             keys.forEach(k => { out[k] = mockChrome.storage.sync._data[k]; });
-            return out;
-          }
-          if (typeof keys === 'object' && keys !== null) {
+            res = out;
+          } else if (typeof keys === 'object' && keys !== null) {
             const out = { ...keys };
             for (const k of Object.keys(keys)) {
               if (k in mockChrome.storage.sync._data) {
                 out[k] = mockChrome.storage.sync._data[k];
               }
             }
-            return out;
+            res = out;
+          } else {
+            res = { ...mockChrome.storage.sync._data };
           }
-          return { ...mockChrome.storage.sync._data };
+          if (typeof callback === 'function') {
+            callback(res);
+          }
+          return res;
         },
         set: async (items) => {
           Object.assign(mockChrome.storage.sync._data, items);
@@ -646,7 +684,25 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
       },
       local: {
         _data: {},
-        get: async (key) => ({ [key]: mockChrome.storage.local._data[key] }),
+        get: async (keys) => {
+          if (!keys) return { ...mockChrome.storage.local._data };
+          if (typeof keys === 'string') return { [keys]: mockChrome.storage.local._data[keys] };
+          if (Array.isArray(keys)) {
+            const out = {};
+            keys.forEach(k => { out[k] = mockChrome.storage.local._data[k]; });
+            return out;
+          }
+          if (typeof keys === 'object' && keys !== null) {
+            const out = { ...keys };
+            for (const k of Object.keys(keys)) {
+              if (k in mockChrome.storage.local._data) {
+                out[k] = mockChrome.storage.local._data[k];
+              }
+            }
+            return out;
+          }
+          return { ...mockChrome.storage.local._data };
+        },
         set: async (items) => Object.assign(mockChrome.storage.local._data, items)
       },
       managed: {
