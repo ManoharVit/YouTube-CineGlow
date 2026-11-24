@@ -2,204 +2,60 @@
   'use strict';
 
   const SCREENSHOT_BUTTON_CLASS = 'cineglow-screenshot-button';
-
-  // SVG icon for a camera
   const CAMERA_SVG_PATH = 'M12,12 A3,3 0 1,0 15,15 A3,3 0 0,0 12,12 Z M20,8 L18.3,8 L16.8,6 L7.2,6 L5.7,8 L4,8 C2.9,8 2,8.9 2,10 L2,20 C2,21.1 2.9,22 4,22 L20,22 C21.1,22 22,21.1 22,20 L22,10 C22,8.9 21.1,8 20,8 Z M12,20 A5,5 0 1,1 17,15 A5,5 0 0,1 12,20 Z';
 
+  const lifecycle = new AbortController();
+  const { signal } = lifecycle;
+
   let currentButton = null;
-  let abortController = null;
   let isKilled = false;
   let isRecordingDisabled = false;
+  let policyLoaded = false;
+  let toastTimeout = 0;
 
-  async function loadManagedPolicy() {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        if (chrome.storage.local) {
-          const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
-          if (local && local.auraKillSwitchActive) {
-            teardownKillSwitch();
-            return;
-          }
-        }
-        if (chrome.storage.managed) {
-          const managed = await chrome.storage.managed.get(['DisableRecording', 'KillSwitch']).catch(() => ({}));
-          if (managed) {
-            if (managed.KillSwitch === true) {
-              teardownKillSwitch();
-              return;
-            }
-            if (managed.DisableRecording === true) {
-              isRecordingDisabled = true;
-              removeExistingButton();
-            }
-          }
-        }
-      }
-    } catch (_) {}
+  function showToast(msg) {
+    const player = window.CineGlowPlayer?.player || document.getElementById('movie_player');
+    if (!player) return;
+    let toast = player.querySelector('.cineglow-rec-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.className = 'cineglow-rec-toast';
+      player.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+      toast.classList.remove('visible');
+    }, 2400);
   }
 
   function removeExistingButton() {
-    document.querySelectorAll(`.${SCREENSHOT_BUTTON_CLASS}`).forEach(el => el.remove());
+    document.querySelectorAll(`.${SCREENSHOT_BUTTON_CLASS}`).forEach((el) => el.remove());
     currentButton = null;
-
-    const toolbar = document.querySelector('.cineglow-floating-toolbar');
-    if (toolbar) {
-      const remaining = toolbar.querySelectorAll ? toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button') : [];
-      const hasChildren = typeof toolbar.hasChildNodes === 'function' ? toolbar.hasChildNodes() : (toolbar.children && toolbar.children.length > 0);
-      if (!hasChildren || remaining.length === 0) {
-        if (typeof toolbar._autohideTeardown === 'function') {
-          toolbar._autohideTeardown();
-        }
-        toolbar.remove();
-      }
-    }
-  }
-
-  function initToolbarAutohide(player, toolbar) {
-    if (toolbar._autohideInitialized) return;
-    toolbar._autohideInitialized = true;
-
-    let hideTimeout = 0;
-
-    const syncVisibility = () => {
-      // NEVER hide if hovered, focused, or if any menu is open
-      const isHovered = toolbar.matches(':hover') || toolbar.querySelector(':hover');
-      const isMenuOpen = toolbar.classList.contains('cineglow-menu-open') || 
-                         toolbar.querySelector('.cineglow-rec-menu, .cineglow-speed-menu');
-      const isFocused = toolbar.matches(':focus-within');
-
-      if (isHovered || isMenuOpen || isFocused) {
-        toolbar.classList.remove('cineglow-toolbar-hidden');
-        return;
-      }
-
-      const isAutohide = player.classList.contains('ytp-autohide') || 
-                         player.classList.contains('ytp-hide-controls');
-      const chromeBottom = player.querySelector('.ytp-chrome-bottom');
-      const isChromeHidden = chromeBottom && (
-        chromeBottom.hidden ||
-        chromeBottom.style.display === 'none' ||
-        chromeBottom.classList.contains('ytp-chrome-hidden')
-      );
-
-      if (isAutohide || isChromeHidden) {
-        toolbar.classList.add('cineglow-toolbar-hidden');
-      } else {
-        toolbar.classList.remove('cineglow-toolbar-hidden');
-      }
-    };
-
-    const observer = new MutationObserver(() => syncVisibility());
-    observer.observe(player, { attributes: true, attributeFilter: ['class'] });
-
-    const chromeBottom = player.querySelector('.ytp-chrome-bottom');
-    if (chromeBottom) {
-      observer.observe(chromeBottom, { attributes: true, attributeFilter: ['style', 'class'] });
-    }
-
-    const onToolbarMouseEnter = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    const onToolbarMouseMove = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    const onToolbarMouseLeave = () => {
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(syncVisibility, 200);
-    };
-
-    const onPlayerMouseEnter = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    const onPlayerMouseMove = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    toolbar.addEventListener('mouseenter', onToolbarMouseEnter);
-    toolbar.addEventListener('mousemove', onToolbarMouseMove);
-    toolbar.addEventListener('mouseleave', onToolbarMouseLeave);
-    player.addEventListener('mouseenter', onPlayerMouseEnter);
-    player.addEventListener('mousemove', onPlayerMouseMove);
-
-    const teardownAutohide = () => {
-      clearTimeout(hideTimeout);
-      if (observer) {
-        try { observer.disconnect(); } catch (_) {}
-      }
-      try { toolbar.removeEventListener('mouseenter', onToolbarMouseEnter); } catch (_) {}
-      try { toolbar.removeEventListener('mousemove', onToolbarMouseMove); } catch (_) {}
-      try { toolbar.removeEventListener('mouseleave', onToolbarMouseLeave); } catch (_) {}
-      try { player.removeEventListener('mouseenter', onPlayerMouseEnter); } catch (_) {}
-      try { player.removeEventListener('mousemove', onPlayerMouseMove); } catch (_) {}
-      toolbar._autohideInitialized = false;
-      delete toolbar._autohideTeardown;
-      delete toolbar._teardownAutohide;
-    };
-
-    toolbar._autohideTeardown = teardownAutohide;
-    toolbar._teardownAutohide = teardownAutohide;
-
-    syncVisibility();
-  }
-
-  function waitForFloatingToolbar(player, signal) {
-    return new Promise((resolve) => {
-      const getToolbar = () => {
-        // Remove legacy center controls
-        const legacy = player.querySelectorAll('.cineglow-center-controls');
-        legacy.forEach(el => el.remove());
-
-        let toolbar = player.querySelector('.cineglow-floating-toolbar');
-        if (toolbar) return toolbar;
-
-        toolbar = document.createElement('div');
-        toolbar.className = 'cineglow-floating-toolbar cineglow-vertical-toolbar';
-        player.appendChild(toolbar);
-        initToolbarAutohide(player, toolbar);
-        return toolbar;
-      };
-
-      const existing = getToolbar();
-      if (existing) {
-        resolve(existing);
-        return;
-      }
-
-      const observer = new MutationObserver(() => {
-        const el = getToolbar();
-        if (el) {
-          observer.disconnect();
-          resolve(el);
-        }
-      });
-
-      signal.addEventListener('abort', () => {
-        observer.disconnect();
-        resolve(null);
-      }, { once: true });
-
-      observer.observe(player, { childList: true, subtree: true });
-    });
+    window.CineGlowToolbar?.cleanupToolbarIfEmpty?.();
   }
 
   function takeScreenshot(video) {
     if (isRecordingDisabled) {
-      console.warn('[CineGlow Screenshot] Screenshots are disabled by enterprise DLP policy.');
+      showToast('Screenshots disabled by enterprise DLP policy');
       return;
     }
+    if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+      showToast('Video frame not ready yet');
+      return;
+    }
+
     try {
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+
       canvas.toBlob((blob) => {
         if (!blob) {
-          console.error('[CineGlow Screenshot] Canvas buffer export failed: blob is null or undefined.');
+          showToast('Screenshot failed (DRM protected stream)');
           return;
         }
         try {
@@ -207,7 +63,7 @@
           const a = document.createElement('a');
           a.style.display = 'none';
           a.href = url;
-          const title = document.title.replace(/ - YouTube$/, '').replace(/[\\/:*?"<>|]/g, '');
+          const title = document.title.replace(/ - YouTube$/, '').replace(/[\\/:*?"<>|]/g, '').trim() || 'YouTube';
           const time = Math.floor(video.currentTime);
           const hrs = Math.floor(time / 3600).toString().padStart(2, '0');
           const mins = Math.floor((time % 3600) / 60).toString().padStart(2, '0');
@@ -215,59 +71,51 @@
           a.download = `Screenshot_${title}_${hrs}-${mins}-${secs}.png`;
           document.body.appendChild(a);
           a.click();
-          
+
           setTimeout(() => {
-            if (a.parentNode) a.parentNode.removeChild(a);
-            window.URL.revokeObjectURL(url);
-          }, 100);
+            a.remove();
+            URL.revokeObjectURL(url);
+          }, 250);
+          showToast(`Saved ${canvas.width}×${canvas.height} PNG`);
         } catch (cbErr) {
-          console.error('[CineGlow Screenshot] Failed to process screenshot blob:', cbErr);
+          console.error('[CineGlow Screenshot] Failed to save screenshot blob:', cbErr);
         }
       }, 'image/png');
     } catch (err) {
       console.error('[CineGlow Screenshot]', err);
-      if (err.name === 'SecurityError') {
-        alert('Cannot take screenshot: This video is DRM-protected or has cross-origin restrictions.');
-      } else {
-        alert('Failed to take screenshot: ' + err.message);
-      }
+      showToast(err.name === 'SecurityError' ? 'Cannot capture DRM-protected stream' : 'Screenshot failed');
     }
   }
 
-  async function injectScreenshotButton(playerManager) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-
-    // Check enterprise managed policy for DLP compliance
+  async function ensureManagedPolicy() {
+    if (policyLoaded) return;
+    policyLoaded = true;
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.managed) {
-        const managed = await chrome.storage.managed.get(['DisableRecording', 'KillSwitch']).catch(() => null);
-        if (managed) {
-          if (managed.KillSwitch === true) {
-            teardownKillSwitch();
-            return;
-          }
-          if (managed.DisableRecording === true) {
-            isRecordingDisabled = true;
-            removeExistingButton();
-            return;
-          }
-        }
+      const [local, managed] = await Promise.all([
+        chrome.storage?.local?.get(['auraKillSwitchActive']).catch(() => ({})),
+        chrome.storage?.managed?.get(['DisableRecording', 'KillSwitch']).catch(() => ({}))
+      ]);
+      if (local?.auraKillSwitchActive || managed?.KillSwitch === true) {
+        teardownKillSwitch();
+        return;
+      }
+      if (managed?.DisableRecording === true) {
+        isRecordingDisabled = true;
+        removeExistingButton();
       }
     } catch (_) {}
+  }
 
-    if (isRecordingDisabled) {
+  async function injectScreenshotButton(playerManager) {
+    if (isKilled || window.CineGlowKilled || !playerManager) return;
+    await ensureManagedPolicy();
+
+    if (isKilled || isRecordingDisabled) {
       removeExistingButton();
       return;
     }
 
     const { player, isWatchPage } = playerManager;
-
-    if (abortController) {
-      abortController.abort();
-    }
-    abortController = new AbortController();
-    const signal = abortController.signal;
-
     if (!isWatchPage || !player) {
       removeExistingButton();
       return;
@@ -279,44 +127,48 @@
 
     removeExistingButton();
 
-    const toolbar = await waitForFloatingToolbar(player, signal);
-    if (!toolbar || signal.aborted || isRecordingDisabled || isKilled) return;
+    const toolbar = window.CineGlowToolbar?.getOrCreateToolbar?.(player) || (() => {
+      let tb = player.querySelector('.cineglow-floating-toolbar');
+      if (!tb) {
+        tb = document.createElement('div');
+        tb.className = 'cineglow-floating-toolbar cineglow-vertical-toolbar';
+        player.appendChild(tb);
+      }
+      return tb;
+    })();
+    if (!toolbar || isRecordingDisabled || isKilled) return;
 
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = `ytp-button ${SCREENSHOT_BUTTON_CLASS}`;
     btn.title = 'Take High-Res Screenshot';
     btn.setAttribute('aria-label', 'Take High-Res Screenshot');
 
     const xmlns = 'http://www.w3.org/2000/svg';
     const svgElem = document.createElementNS(xmlns, 'svg');
-    svgElem.setAttributeNS(null, 'height', '100%');
-    svgElem.setAttributeNS(null, 'version', '1.1');
-    svgElem.setAttributeNS(null, 'viewBox', '0 0 24 24');
-    svgElem.setAttributeNS(null, 'width', '100%');
+    svgElem.setAttribute('height', '100%');
+    svgElem.setAttribute('width', '100%');
+    svgElem.setAttribute('viewBox', '0 0 24 24');
     svgElem.style.display = 'block';
     svgElem.style.margin = 'auto';
 
-    const groupEl = document.createElementNS(xmlns, 'g');
     const pathEl = document.createElementNS(xmlns, 'path');
-    pathEl.setAttributeNS(null, 'class', 'ytp-svg-fill');
-    pathEl.setAttributeNS(null, 'd', CAMERA_SVG_PATH);
-    pathEl.setAttributeNS(null, 'fill', '#fff');
+    pathEl.setAttribute('class', 'ytp-svg-fill');
+    pathEl.setAttribute('d', CAMERA_SVG_PATH);
+    pathEl.setAttribute('fill', '#fff');
 
-    groupEl.appendChild(pathEl);
-    svgElem.appendChild(groupEl);
+    svgElem.appendChild(pathEl);
     btn.appendChild(svgElem);
 
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-
-      const currentVideo = window.CineGlowPlayer ? window.CineGlowPlayer.video : null;
+      const currentVideo = window.CineGlowPlayer?.video;
       if (currentVideo) {
         takeScreenshot(currentVideo);
       }
-    });
+    }, { signal });
 
-    // In stack: Screenshot goes before PiP (middle of stack)
     const pipBtn = toolbar.querySelector('.cineglow-pip-button');
     if (pipBtn) {
       toolbar.insertBefore(btn, pipBtn);
@@ -327,81 +179,50 @@
     currentButton = btn;
   }
 
-  // --- Emergency Kill-Switch Teardown ---
+  const handleStorageChange = (changes, area) => {
+    if (area === 'managed') {
+      if ('DisableRecording' in changes) {
+        isRecordingDisabled = changes.DisableRecording.newValue === true;
+        if (isRecordingDisabled) {
+          removeExistingButton();
+        } else if (window.CineGlowPlayer && !isKilled) {
+          injectScreenshotButton(window.CineGlowPlayer);
+        }
+      }
+      if (changes.KillSwitch?.newValue === true) {
+        teardownKillSwitch();
+      }
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+    }
+  };
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
+
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    window.CineGlowKilled = true;
+    clearTimeout(toastTimeout);
 
-    if (abortController) {
-      abortController.abort();
-      abortController = null;
-    }
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    lifecycle.abort();
     removeExistingButton();
-    const toolbar = document.querySelector('.cineglow-floating-toolbar');
-    if (toolbar) {
-      if (typeof toolbar._autohideTeardown === 'function') {
-        toolbar._autohideTeardown();
-      }
-      const remaining = toolbar.querySelectorAll ? toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button') : [];
-      const hasChildren = typeof toolbar.hasChildNodes === 'function' ? toolbar.hasChildNodes() : (toolbar.children && toolbar.children.length > 0);
-      if (!hasChildren || remaining.length === 0) {
-        toolbar.remove();
-      }
-    }
   }
 
-  // Live storage sync for enterprise DLP managed policies & kill switch
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged && typeof chrome.storage.onChanged.addListener === 'function') {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'managed') {
-        if ('DisableRecording' in changes) {
-          isRecordingDisabled = changes.DisableRecording.newValue === true;
-          if (isRecordingDisabled) {
-            if (abortController) {
-              abortController.abort();
-              abortController = null;
-            }
-            removeExistingButton();
-          } else if (window.CineGlowPlayer && !isKilled) {
-            injectScreenshotButton(window.CineGlowPlayer);
-          }
-        }
-        if ('KillSwitch' in changes && changes.KillSwitch.newValue === true) {
-          teardownKillSwitch();
-        }
-      }
-      if (area === 'local' && changes.auraKillSwitchActive && changes.auraKillSwitchActive.newValue === true) {
-        teardownKillSwitch();
-      }
-    });
-  }
-
-  // Dual listener registration: Direct runtime message + In-tab fallback event
-  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
-        teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
-          window._cineglowKillEventFired = true;
-          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
-        }
-        if (typeof sendResponse === 'function') {
-          sendResponse({ success: true, script: 'screenshot-button.js' });
-        }
-      }
-    });
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
+  chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
+    if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
       teardownKillSwitch();
-    }, { once: true });
-  }
+      if (!window._cineglowKillEventFired) {
+        window._cineglowKillEventFired = true;
+        window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+      }
+      sendResponse?.({ success: true, script: 'screenshot-button.js' });
+    }
+  });
 
+  window.addEventListener('cineglow:kill-switch', teardownKillSwitch, { once: true });
   window.CineGlowScreenshotTeardown = teardownKillSwitch;
-
-  loadManagedPolicy();
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
@@ -418,21 +239,9 @@
       } else {
         removeExistingButton();
       }
-    });
+    }, { signal });
 
     injectScreenshotButton(window.CineGlowPlayer);
   }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
 })();
+

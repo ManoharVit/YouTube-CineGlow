@@ -1,154 +1,75 @@
 // YouTube specific ad blocking/skipping content script
+// Author: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 (() => {
   'use strict';
 
+  // Cosmetic ad suppression rules managed via content.css (html.aura-adblock):
+  // ytd-companion-slot-renderer, #secondary #companion, [target-id="engagement-panel-ads"],
+  // ytd-ad-slot-renderer, ytd-action-companion-ad-renderer
+
   let settings = { adblockEnabled: true };
-  let adMutedByUs = false;
+  let isKilled = false;
+  let isAdBlockPolicyDisabled = false;
+  let popupObserver = null;
+  let popupBootstrapObserver = null;
+  let observedPopupContainer = null;
+  let fallbackAdTimer = 0;
+  let wasAdShowing = false;
+  let adMutedByFallback = false;
   let mutedVideoElement = null;
   let userWasMuted = false;
   let preAdSpeed = 1.0;
-  let acceleratedVideo = null;
-  let lastAdSkipTime = 0;
-  let adSkipTimer = 0;
   let activeVideo = null;
-  let isKilled = false;
-  let isAdBlockPolicyDisabled = false;
 
   function safeSendMessage(msg) {
     try {
-      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
         chrome.runtime.sendMessage(msg, () => {
           try {
             if (chrome.runtime?.lastError) {}
           } catch (_) {}
         });
       }
-    } catch (_) {
-      // Extension context invalidated (e.g. extension was reloaded in chrome://extensions)
-    }
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
-
-  const AD_CSS_ID = 'cineglow-adblock-styles';
-  const AD_CSS = `
-    #masthead-ad,
-    .ytp-suggested-action-badge,
-    ytd-companion-slot-renderer,
-    ytd-action-companion-ad-renderer,
-    ytd-ad-slot-renderer,
-    ytd-promoted-sparkles-web-renderer,
-    ytd-promoted-video-renderer,
-    ytd-banner-promo-renderer,
-    ytd-video-masthead-ad-v3-renderer,
-    ytd-player-legacy-desktop-watch-ads-renderer,
-    ytd-in-feed-ad-layout-renderer,
-    ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
-    #secondary #companion,
-    #secondary #player-ads,
-    #secondary ytd-ad-slot-renderer,
-    #items > ytd-ad-slot-renderer,
-    [target-id="engagement-panel-ads"],
-    #player-ads,
-    .ytp-ad-overlay-container,
-    .ytp-ad-message-container,
-    .ytp-ad-survey,
-    .ytp-ad-preview-container,
-    .ytp-ad-player-overlay,
-    .ytp-ad-player-overlay-layout,
-    .ytp-ad-player-overlay-instream-info,
-    .ad-showing .ytp-ad-player-overlay,
-    .ad-showing .ytp-ad-player-overlay-layout,
-    .ad-showing .ytp-ad-player-overlay-instream-info,
-    .ad-showing .ytp-ad-text,
-    .ad-showing .ytp-ad-preview-text,
-    .ad-showing .ytp-ad-preview-container,
-    .ad-showing .ytp-ad-message-container,
-    .ad-showing .ytp-ad-survey,
-    .ad-showing .ytp-ad-image-overlay,
-    .ad-showing ytd-action-companion-ad-renderer,
-    .ad-showing ytd-companion-slot-renderer,
-    ytd-enforcement-message-view-model,
-    tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
-    :is(body:has(ytd-enforcement-message-view-model), html:has(ytd-enforcement-message-view-model)) :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim),
-    :is(tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), ytd-enforcement-message-view-model) ~ :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim) {
-      display: none !important;
-      height: 0 !important;
-      visibility: hidden !important;
-      pointer-events: none !important;
-    }
-  `;
-
-  function applyAdBlockStyles() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) {
-      const el = document.getElementById(AD_CSS_ID);
-      if (el) el.remove();
-      return;
-    }
-    let el = document.getElementById(AD_CSS_ID);
-    if (settings.adblockEnabled) {
-      if (!el) {
-        el = document.createElement('style');
-        el.id = AD_CSS_ID;
-        el.textContent = AD_CSS;
-        (document.head || document.documentElement).appendChild(el);
-      }
-    } else if (el) {
-      el.remove();
-    }
+    } catch (_) {}
   }
 
   function syncAdBlockStateToMainWorld() {
     try {
-      if (typeof window !== 'undefined' && typeof window.postMessage === 'function') {
-        const origin = (window.location && window.location.origin) ? window.location.origin : 'https://www.youtube.com';
-        window.postMessage({
-          type: 'CINEGLOW_SET_ADBLOCK_STATE',
-          enabled: settings.adblockEnabled
-        }, origin);
-      }
+      const origin = window.location?.origin || 'https://www.youtube.com';
+      window.postMessage({
+        type: 'CINEGLOW_SET_ADBLOCK_STATE',
+        enabled: settings.adblockEnabled
+      }, origin);
     } catch (_) {}
   }
 
+  function applyAdBlockClass() {
+    if (isKilled || window.CineGlowKilled) {
+      document.documentElement?.classList.remove('aura-adblock');
+      return;
+    }
+    document.documentElement?.classList.toggle('aura-adblock', Boolean(settings.adblockEnabled));
+  }
+
   async function loadSettings() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     try {
       if (typeof chrome !== 'undefined' && chrome.storage) {
-        if (chrome.storage.local) {
-          const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
-          if (local && local.auraKillSwitchActive) {
-            teardownKillSwitch();
-            return;
-          }
+        const [local, managed, stored] = await Promise.all([
+          chrome.storage.local?.get(['auraKillSwitchActive']).catch(() => ({})),
+          chrome.storage.managed?.get(['DisableAdBlock', 'KillSwitch']).catch(() => ({})),
+          chrome.storage.sync?.get(['adblockEnabled']).catch(() => ({}))
+        ]);
+
+        if (local?.auraKillSwitchActive || managed?.KillSwitch) {
+          teardownKillSwitch();
+          return;
         }
-        if (chrome.storage.managed) {
-          const managed = await chrome.storage.managed.get(['DisableAdBlock', 'KillSwitch']).catch(() => ({}));
-          if (managed) {
-            if (managed.KillSwitch) {
-              teardownKillSwitch();
-              return;
-            }
-            if (managed.DisableAdBlock) {
-              isAdBlockPolicyDisabled = true;
-            }
-          }
+        if (managed?.DisableAdBlock) {
+          isAdBlockPolicyDisabled = true;
         }
-        if (chrome.storage.sync) {
-          const stored = await chrome.storage.sync.get(['adblockEnabled']);
-          if (stored.adblockEnabled !== undefined) {
-            settings.adblockEnabled = stored.adblockEnabled;
-          }
+        if (stored?.adblockEnabled !== undefined) {
+          settings.adblockEnabled = Boolean(stored.adblockEnabled);
         }
       }
     } catch (_) {}
@@ -156,79 +77,100 @@
     if (isAdBlockPolicyDisabled) {
       settings.adblockEnabled = false;
     }
-    applyAdBlockStyles();
-    checkAdState();
-    setupAdObserver();
+    applyAdBlockClass();
     syncAdBlockStateToMainWorld();
+    setupPopupObserver();
+    checkAdState();
   }
 
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (area === 'managed') {
-        if ('DisableAdBlock' in changes) {
-          isAdBlockPolicyDisabled = changes.DisableAdBlock.newValue === true;
-          if (isAdBlockPolicyDisabled) {
-            settings.adblockEnabled = false;
-          } else {
-            settings.adblockEnabled = true;
-          }
-          applyAdBlockStyles();
-          checkAdState();
-          syncAdBlockStateToMainWorld();
-        }
-        if ('KillSwitch' in changes && changes.KillSwitch.newValue === true) {
-          teardownKillSwitch();
-        }
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'managed') {
+      if ('DisableAdBlock' in changes) {
+        isAdBlockPolicyDisabled = changes.DisableAdBlock.newValue === true;
+        settings.adblockEnabled = !isAdBlockPolicyDisabled;
+        applyAdBlockClass();
+        syncAdBlockStateToMainWorld();
+        checkAdState();
       }
-      if (area === 'local' && changes.auraKillSwitchActive && changes.auraKillSwitchActive.newValue === true) {
+      if (changes.KillSwitch?.newValue === true) {
         teardownKillSwitch();
       }
-      if (area === 'sync' && changes.adblockEnabled) {
-        if (!isAdBlockPolicyDisabled) {
-          settings.adblockEnabled = changes.adblockEnabled.newValue;
-          applyAdBlockStyles();
-          checkAdState();
-          syncAdBlockStateToMainWorld();
-        }
-      }
-    });
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+    }
+    if (area === 'sync' && 'adblockEnabled' in changes && !isAdBlockPolicyDisabled) {
+      settings.adblockEnabled = Boolean(changes.adblockEnabled.newValue);
+      applyAdBlockClass();
+      syncAdBlockStateToMainWorld();
+      checkAdState();
+    }
+  };
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
+
+  function getPlayerElement() {
+    return document.querySelector('#movie_player, #shorts-player, .html5-video-player');
   }
 
-  function isAdActive() {
-    const moviePlayer = document.querySelector('#movie_player, #shorts-player, .html5-video-player');
-    if (!moviePlayer) return false;
-
-    // YouTube adds 'ad-showing' or 'ad-interrupting' exclusively when an in-stream ad video is actively playing.
-    // Static or dormant skip button placeholders in the DOM must NEVER flag normal videos as ads.
-    return Boolean(moviePlayer.classList.contains('ad-showing') || moviePlayer.classList.contains('ad-interrupting'));
+  function isAdActive(player = getPlayerElement()) {
+    if (!player) return false;
+    return Boolean(player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'));
   }
 
   function dismissEnforcementModal() {
+    if (!settings.adblockEnabled || isKilled) return;
     const enforcementModal = document.querySelector('ytd-enforcement-message-view-model');
-    if (enforcementModal) {
-      const dialog = enforcementModal.closest('tp-yt-paper-dialog') || enforcementModal;
-      dialog.remove();
-      const backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim');
-      if (backdrops && typeof backdrops.forEach === 'function') {
-        backdrops.forEach(b => {
-          if (b && typeof b.remove === 'function') b.remove();
-        });
-      }
-      const moviePlayer = document.querySelector('#movie_player, .html5-video-player');
-      if (moviePlayer && typeof moviePlayer.playVideo === 'function') {
-        moviePlayer.playVideo();
-      }
-      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-      if (video && video.paused) {
-        video.play().catch(() => {});
-      }
+    if (!enforcementModal) return;
+
+    const dialog = enforcementModal.closest('tp-yt-paper-dialog');
+    if (dialog && dialog.getAttribute('aria-hidden') === 'true') return;
+
+    (dialog || enforcementModal).remove();
+    document.querySelectorAll('tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim').forEach((b) => {
+      if (b && typeof b.remove === 'function') b.remove();
+    });
+
+    const moviePlayer = document.querySelector('#movie_player, .html5-video-player');
+    if (moviePlayer && typeof moviePlayer.playVideo === 'function') {
+      moviePlayer.playVideo();
+    }
+
+    const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+    if (video && video.paused) {
+      video.play().catch(() => {});
     }
   }
 
-  let adMutationObserver = null;
-  let isSkipping = false;
-  let lastSkipButtonClickTime = 0;
+  // Observe ytd-popup-container (where YouTube mounts enforcement dialogs), never document.body permanently
+  function setupPopupObserver() {
+    if (isKilled || !settings.adblockEnabled || typeof MutationObserver === 'undefined') return;
+    const container = document.querySelector('ytd-popup-container');
+    if (container) {
+      if (popupBootstrapObserver) {
+        popupBootstrapObserver.disconnect();
+        popupBootstrapObserver = null;
+      }
+      if (observedPopupContainer === container && popupObserver) return;
+      if (!popupObserver) {
+        popupObserver = new MutationObserver(() => dismissEnforcementModal());
+      }
+      popupObserver.disconnect();
+      observedPopupContainer = container;
+      popupObserver.observe(container, { childList: true, subtree: true });
+      dismissEnforcementModal();
+      return;
+    }
+
+    if (!popupBootstrapObserver && document.body) {
+      popupBootstrapObserver = new MutationObserver(() => {
+        if (document.querySelector('ytd-popup-container')) {
+          setupPopupObserver();
+        }
+      });
+      popupBootstrapObserver.observe(document.body, { childList: true, subtree: true });
+    }
+  }
 
   const SKIP_BUTTON_SELECTOR = [
     '.ytp-ad-skip-button-modern',
@@ -241,99 +183,54 @@
     '.ytp-ad-overlay-close-button'
   ].join(', ');
 
-  function setupAdObserver() {
-    if (isKilled) return;
-    if (adMutationObserver) return;
-    const target = document.querySelector('#movie_player, .html5-video-player') || document.body;
-    if (target && typeof MutationObserver !== 'undefined') {
-      adMutationObserver = new MutationObserver(() => {
-        if (!settings.adblockEnabled) return;
-        dismissEnforcementModal();
-        if (isAdActive()) {
-          skipVideoAds();
-        }
-      });
-      adMutationObserver.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  function fallbackSkipAd() {
+    if (isKilled || window.CineGlowKilled || !settings.adblockEnabled) return;
+    const player = getPlayerElement();
+    if (!isAdActive(player)) {
+      restoreFallbackState();
+      return;
     }
-  }
-
-  function skipVideoAds() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!settings.adblockEnabled) return;
-    if (isSkipping) return;
-    isSkipping = true;
 
     try {
-      // Dismiss YouTube Anti-Adblock popup if it ever appears
-      dismissEnforcementModal();
+      window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
+    } catch (_) {}
 
-      // Trigger MAIN world privileged skipAd() engine
+    const btn = player?.querySelector?.(SKIP_BUTTON_SELECTOR);
+    if (btn) {
       try {
-        window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
+        (btn.tagName !== 'BUTTON' ? btn.querySelector('button, [role="button"]') || btn : btn).click();
       } catch (_) {}
+    }
 
-      const isAd = isAdActive();
-      const player = document.querySelector('#movie_player, #shorts-player, .html5-video-player');
-
-      // 1. Click the active skip button strictly inside if (isAdActive()) and scoped to player
-      if (isAd && player) {
-        const now = Date.now();
-        if (now - lastSkipButtonClickTime > 150) {
-          let btn = typeof player.querySelector === 'function' ? player.querySelector(SKIP_BUTTON_SELECTOR) : null;
-          if (btn) {
-            lastSkipButtonClickTime = now;
-            try {
-              if (btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
-                const childBtn = btn.querySelector('button, [role="button"]');
-                if (childBtn) childBtn.click();
-              }
-              btn.click();
-            } catch (_) {}
-          }
+    const video = document.querySelector('video.html5-main-video') || player?.querySelector?.('video') || document.querySelector('video');
+    if (video) {
+      const alreadyMutedByCineGlow = typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted');
+      if (!adMutedByFallback || alreadyMutedByCineGlow || !video.muted || mutedVideoElement !== video) {
+        if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
+          preAdSpeed = video.playbackRate;
         }
+        userWasMuted = video.muted && !alreadyMutedByCineGlow;
+        video.muted = true;
+        if (typeof video.setAttribute === 'function') {
+          video.setAttribute('data-cineglow-ad-muted', 'true');
+        }
+        adMutedByFallback = true;
+        mutedVideoElement = video;
       }
-
-      // 2. Fast-forward video ad ONLY if an ad is actively confirmed
-      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-      if (isAd && video) {
-        if (!adMutedByUs) {
-          if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
-            preAdSpeed = video.playbackRate;
-          }
-          const alreadyMutedByCineGlow = typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted');
-          userWasMuted = video.muted && !alreadyMutedByCineGlow;
-          if (!video.muted || alreadyMutedByCineGlow) {
-            video.muted = true;
-            if (typeof video.setAttribute === 'function') {
-              video.setAttribute('data-cineglow-ad-muted', 'true');
-            }
-            adMutedByUs = true;
-            mutedVideoElement = video;
-          }
-          safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
-          lastAdSkipTime = Date.now();
-        } else if (!userWasMuted && !video.muted) {
-          // Handle video element swap mid-ad
-          video.muted = true;
-          if (typeof video.setAttribute === 'function') {
-            video.setAttribute('data-cineglow-ad-muted', 'true');
-          }
-          mutedVideoElement = video;
-        }
-        acceleratedVideo = video;
+      if (video.playbackRate !== 16.0) {
         video.playbackRate = 16.0;
-      } else if (!isAd && video) {
-        // Ad finished — restore audio and user's playback speed ONLY on the element we modified
-        restoreModifiedPlaybackState(video);
       }
-    } finally {
-      isSkipping = false;
     }
   }
 
-  function restoreModifiedPlaybackState(video) {
-    const targetVideo = video || mutedVideoElement || activeVideo || document.querySelector('video.html5-main-video') || document.querySelector('video');
-    if (adMutedByUs || (targetVideo && typeof targetVideo.hasAttribute === 'function' && targetVideo.hasAttribute('data-cineglow-ad-muted'))) {
+  function restoreFallbackState() {
+    if (fallbackAdTimer) {
+      clearTimeout(fallbackAdTimer);
+      fallbackAdTimer = 0;
+    }
+    const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+    const targetVideo = video || mutedVideoElement || activeVideo;
+    if (adMutedByFallback || (targetVideo && typeof targetVideo.hasAttribute === 'function' && targetVideo.hasAttribute('data-cineglow-ad-muted'))) {
       if (mutedVideoElement && targetVideo && mutedVideoElement === targetVideo && !userWasMuted) {
         targetVideo.muted = false;
       } else if (!mutedVideoElement && targetVideo && !userWasMuted && targetVideo.getAttribute('data-cineglow-ad-muted') === 'true') {
@@ -345,120 +242,99 @@
       if (mutedVideoElement && typeof mutedVideoElement.removeAttribute === 'function') {
         mutedVideoElement.removeAttribute('data-cineglow-ad-muted');
       }
-      adMutedByUs = false;
+      adMutedByFallback = false;
       mutedVideoElement = null;
     }
     userWasMuted = false;
-    if (targetVideo && acceleratedVideo === targetVideo && targetVideo.playbackRate === 16.0) {
-      const restoreSpeed = (typeof window !== 'undefined' && window.CineGlowSpeed && typeof window.CineGlowSpeed.preferredSpeed === 'number')
+    if (targetVideo && targetVideo.playbackRate === 16.0) {
+      const restoreSpeed = typeof window.CineGlowSpeed?.preferredSpeed === 'number'
         ? window.CineGlowSpeed.preferredSpeed
         : (preAdSpeed || 1.0);
       targetVideo.playbackRate = restoreSpeed;
-      try { targetVideo.defaultPlaybackRate = restoreSpeed; } catch (_) {}
     }
-    acceleratedVideo = null;
   }
 
   function checkAdState() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     if (!settings.adblockEnabled) {
-      if (adSkipTimer) {
-        clearInterval(adSkipTimer);
-        adSkipTimer = 0;
-      }
-      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-      restoreModifiedPlaybackState(video);
+      wasAdShowing = false;
+      restoreFallbackState();
       return;
     }
 
     const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
-    if (video && activeVideo !== video) {
-      attachVideoListener(video);
-    }
-
     const isAd = isAdActive();
-    if (isAd) {
-      skipVideoAds();
-      if (!adSkipTimer) {
-        adSkipTimer = setInterval(skipVideoAds, 50);
-        if (adSkipTimer && typeof adSkipTimer === 'object' && typeof adSkipTimer.unref === 'function') {
-          adSkipTimer.unref();
-        }
-      }
-    } else {
-      if (adSkipTimer) {
-        clearInterval(adSkipTimer);
-        adSkipTimer = 0;
-      }
-      restoreModifiedPlaybackState(video);
-    }
-  }
 
-  function attachVideoListener(video) {
-    if (activeVideo === video) return;
-    if (activeVideo) {
-      activeVideo.removeEventListener('timeupdate', checkAdState);
+    if (isAd) {
+      if (!wasAdShowing) {
+        wasAdShowing = true;
+        safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
+        try {
+          window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
+        } catch (_) {}
+      }
+      fallbackSkipAd();
+    } else if (wasAdShowing || adMutedByFallback) {
+      wasAdShowing = false;
+      restoreFallbackState();
     }
     activeVideo = video;
-    if (activeVideo) {
-      activeVideo.addEventListener('timeupdate', checkAdState);
-    }
   }
 
-  if (window.CineGlowPlayer) {
-    window.CineGlowPlayer.addEventListener('state-change', (e) => {
-      if (e.detail && e.detail.video) {
-        attachVideoListener(e.detail.video);
+  const onPlayerStateChange = () => checkAdState();
+  window.CineGlowPlayer?.addEventListener('state-change', onPlayerStateChange);
+  document.addEventListener('yt-page-data-updated', checkAdState, { passive: true });
+  document.addEventListener('yt-navigate-finish', () => {
+    setupPopupObserver();
+    checkAdState();
+    setTimeout(() => {
+      const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+      const player = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
+      if (video && video.paused && video.currentTime < 0.5 && !video.ended && !isAdActive() && !isKilled) {
+        try {
+          if (player && typeof player.playVideo === 'function') {
+            const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
+            if (state === -1 || state === 5) {
+              player.playVideo();
+            }
+          } else {
+            video.play().catch(() => {});
+          }
+        } catch (_) {}
       }
-      checkAdState();
-    });
-    if (window.CineGlowPlayer.video) {
-      attachVideoListener(window.CineGlowPlayer.video);
-    }
-  }
+    }, 300);
+  }, { passive: true });
 
-  document.addEventListener('yt-page-data-updated', checkAdState);
-  document.addEventListener('yt-navigate-finish', checkAdState);
-
-  function cleanup() {
-    if (adSkipTimer) {
-      clearInterval(adSkipTimer);
-      adSkipTimer = 0;
-    }
-    if (adMutationObserver) {
-      adMutationObserver.disconnect();
-      adMutationObserver = null;
-    }
-    if (activeVideo) {
-      activeVideo.removeEventListener('timeupdate', checkAdState);
-    }
-    restoreModifiedPlaybackState(activeVideo);
-    activeVideo = null;
-  }
-
-  // --- Emergency Kill-Switch Teardown ---
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     settings.adblockEnabled = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
-    syncAdBlockStateToMainWorld();
+    window.CineGlowKilled = true;
 
-    cleanup();
-    if (adMutationObserver) {
-      adMutationObserver.disconnect();
-      adMutationObserver = null;
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerStateChange);
+    document.removeEventListener('yt-page-data-updated', checkAdState);
+
+    if (popupBootstrapObserver) {
+      popupBootstrapObserver.disconnect();
+      popupBootstrapObserver = null;
     }
-    const styleEl = document.getElementById(AD_CSS_ID);
-    if (styleEl) styleEl.remove();
+    if (popupObserver) {
+      popupObserver.disconnect();
+      popupObserver = null;
+    }
+    observedPopupContainer = null;
+
+    syncAdBlockStateToMainWorld();
+    restoreFallbackState();
+    document.documentElement?.classList.remove('aura-adblock');
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -469,23 +345,20 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
-  // Expose for testing and external diagnostics if needed
   window.CineGlowAdBlock = {
     settings,
     isAdBlockPolicyDisabled: () => isAdBlockPolicyDisabled,
     isAdActive,
-    skipVideoAds,
+    skipVideoAds: fallbackSkipAd,
     checkAdState,
     dismissEnforcementModal,
-    restoreModifiedPlaybackState,
+    restoreModifiedPlaybackState: restoreFallbackState,
     syncAdBlockStateToMainWorld,
-    cleanup,
+    cleanup: restoreFallbackState,
     teardownKillSwitch
   };
 

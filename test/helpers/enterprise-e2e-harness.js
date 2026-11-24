@@ -326,7 +326,8 @@ function setupEnterpriseHarness(initialUrl = 'https://www.youtube.com/watch?v=dQ
         status: 200,
         headers: new Map(Object.entries(env.networkSpy.proxyHeaders)),
         json: async () => ({ success: true, count: 42 }),
-        text: async () => '<timedtext><p t="0">test</p></timedtext>'
+        text: async () => '<timedtext><p t="0">test</p></timedtext>',
+        arrayBuffer: async () => Buffer.from('<timedtext><p t="0">test</p></timedtext>')
       };
     }
   };

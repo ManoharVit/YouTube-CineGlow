@@ -1,3 +1,5 @@
+// Stats for Nerds overlay HUD for CineGlow Pro
+// Author: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 (() => {
   'use strict';
 
@@ -7,14 +9,7 @@
   let overlayEl = null;
   let video = null;
   let updateInterval = 0;
-  
   let isGraphCollapsed = true;
-  try {
-    const saved = localStorage.getItem('cineglow_hud_graph_collapsed');
-    if (saved !== null) {
-      isGraphCollapsed = saved === 'true';
-    }
-  } catch (e) {}
 
   let refs = {};
   let nerdStats = null;
@@ -27,27 +22,52 @@
   let lastGlowFps = 0;
   let rvfcId = 0;
   let rvfcFrames = 0;
-  let useRvfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+  const useRvfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 
   let videoFrameTimes = [];
   let frameTimes = [];
   let rafLoopId = 0;
+  let probeRafId = 0;
   let lastSeenRenderCount = -1;
   let displayFrames = 0;
   let lastDisplayFrames = 0;
   let lastDisplayFps = 0;
   let isKilled = false;
 
-  // Listen for Stats for Nerds response from MAIN world
-  window.addEventListener('message', (event) => {
-    if (event.source !== window || event.origin !== window.location.origin || !event.data || event.data.type !== 'CINEGLOW_STATS_NERDS_RESPONSE') return;
+  const handleStatsMessage = (event) => {
+    if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'CINEGLOW_STATS_NERDS_RESPONSE') return;
     nerdStats = event.data.stats || null;
-  });
+  };
+  window.addEventListener('message', handleStatsMessage);
+
+  // Measure true monitor refresh rate via a lightweight 5-frame rAF burst when graph is collapsed
+  function probeDisplayRefreshRate() {
+    if (isKilled || document.hidden || !isGraphCollapsed || probeRafId) return;
+    let count = 0;
+    let firstTs = 0;
+    const step = (ts) => {
+      probeRafId = 0;
+      if (isKilled || document.hidden) return;
+      if (count === 0) {
+        firstTs = ts;
+      }
+      count++;
+      if (count <= 5) {
+        probeRafId = requestAnimationFrame(step);
+      } else {
+        const elapsed = ts - firstTs;
+        if (elapsed > 0) {
+          lastDisplayFps = (5 * 1000) / elapsed;
+        }
+      }
+    };
+    probeRafId = requestAnimationFrame(step);
+  }
 
   function onRvfc(now, metadata) {
-    if (!updateInterval) return;
+    if (!updateInterval || document.hidden) return;
     rvfcFrames++;
-    
+
     if (!isGraphCollapsed) {
       videoFrameTimes.push({
         decode: metadata.presentationTime,
@@ -56,7 +76,7 @@
         receive: now,
         display: metadata.expectedDisplayTime
       });
-      
+
       if (videoFrameTimes.length > 120) {
         const dropped = videoFrameTimes.shift();
         frameTimes.push({ video: dropped });
@@ -70,51 +90,49 @@
   }
 
   function statsLoop(now) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!updateInterval) return;
-    
-    // Stop the rAF loop if the video is paused/ended and CineGlow rendering has settled.
+    if (isKilled || window.CineGlowKilled || !updateInterval || document.hidden || isGraphCollapsed) {
+      rafLoopId = 0;
+      return;
+    }
+
     if (video && (video.paused || video.ended) && window.CineGlowMetrics && lastSeenRenderCount === window.CineGlowMetrics.renderCount) {
       rafLoopId = 0;
       return;
     }
 
-    // Stop if we shouldn't draw in PiP
-    if (window.CineGlowPlayer && window.CineGlowPlayer.isPiP && !settings.enableInPiP) {
+    if (window.CineGlowPlayer?.isPiP && !settings.enableInPiP) {
       rafLoopId = 0;
       return;
     }
-    
+
     displayFrames++;
-    
-    if (!isGraphCollapsed) {
-      let currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
-      if (currentRenderCount !== lastSeenRenderCount) {
-        lastSeenRenderCount = currentRenderCount;
-        const vf = videoFrameTimes[videoFrameTimes.length - 1];
-        
-        let ft = {
-          video: vf,
-          drawStart: window.CineGlowMetrics.lastDrawStart,
-          drawEnd: window.CineGlowMetrics.lastDrawEnd,
-          display: now,
-          complete: performance.now()
-        };
-        
-        if (vf) {
-          const idx = videoFrameTimes.indexOf(vf);
-          if (idx !== -1) {
-            const droppedVideoFrameTimes = videoFrameTimes.splice(0, idx + 1);
-            droppedVideoFrameTimes.pop();
-            for (const v of droppedVideoFrameTimes) {
-              frameTimes.push({ video: v });
-            }
+
+    const currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
+    if (currentRenderCount !== lastSeenRenderCount) {
+      lastSeenRenderCount = currentRenderCount;
+      const vf = videoFrameTimes[videoFrameTimes.length - 1];
+
+      const ft = {
+        video: vf,
+        drawStart: window.CineGlowMetrics.lastDrawStart,
+        drawEnd: window.CineGlowMetrics.lastDrawEnd,
+        display: now,
+        complete: performance.now()
+      };
+
+      if (vf) {
+        const idx = videoFrameTimes.indexOf(vf);
+        if (idx !== -1) {
+          const droppedVideoFrameTimes = videoFrameTimes.splice(0, idx + 1);
+          droppedVideoFrameTimes.pop();
+          for (const v of droppedVideoFrameTimes) {
+            frameTimes.push({ video: v });
           }
         }
-        
-        frameTimes.push(ft);
-        if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
       }
+
+      frameTimes.push(ft);
+      if (frameTimes.length > 120) frameTimes = frameTimes.slice(-120);
     }
 
     rafLoopId = requestAnimationFrame(statsLoop);
@@ -122,6 +140,7 @@
 
   function createOverlay() {
     const container = document.body;
+    if (!container) return;
     if (overlayEl) {
       if (hostEl && hostEl.parentElement !== container) {
         container.appendChild(hostEl);
@@ -131,7 +150,6 @@
       return;
     }
 
-    // Shadow DOM Isolation Host to prevent corporate LMS / iframe CSS contamination
     hostEl = document.createElement('div');
     hostEl.id = 'cineglow-stats-host';
     hostEl.className = 'cineglow-stats-host';
@@ -153,7 +171,6 @@
       shadowRoot = hostEl;
     }
 
-    // Encapsulate styles directly inside ShadowRoot
     const styleEl = document.createElement('style');
     styleEl.textContent = `
 #aura-stats-overlay {
@@ -171,18 +188,13 @@
   pointer-events: auto;
   cursor: grab;
   backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
   user-select: none;
   min-width: 320px;
   max-width: 380px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
-
-#aura-stats-overlay:active {
-  cursor: grabbing;
-}
-
+#aura-stats-overlay:active { cursor: grabbing; }
 .aura-stats-header {
   display: flex;
   align-items: center;
@@ -191,13 +203,7 @@
   padding-bottom: 7px;
   margin-bottom: 8px;
 }
-
-.aura-stats-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
+.aura-stats-title-wrap { display: flex; align-items: center; gap: 6px; }
 .aura-stats-dot {
   width: 6px;
   height: 6px;
@@ -205,7 +211,6 @@
   background: #38bdf8;
   box-shadow: 0 0 8px #38bdf8;
 }
-
 .aura-stats-title {
   font-weight: 700;
   color: #f8fafc;
@@ -214,13 +219,7 @@
   text-transform: uppercase;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
-
-.aura-stats-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
+.aura-stats-actions { display: flex; align-items: center; gap: 4px; }
 .aura-stats-icon-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -235,33 +234,27 @@
   padding: 0;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-
 .aura-stats-icon-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.25);
 }
-
 .aura-stats-icon-btn.active {
   background: rgba(56, 189, 248, 0.25);
   color: #38bdf8;
   border-color: rgba(56, 189, 248, 0.4);
 }
-
 .aura-stats-close-btn:hover {
   background: rgba(239, 68, 68, 0.8) !important;
   border-color: rgba(239, 68, 68, 0.9) !important;
   color: #fff !important;
 }
-
-/* Grid of Telemetry Cards */
 .aura-stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-bottom: 8px;
 }
-
 .aura-stat-card {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -272,11 +265,7 @@
   gap: 2px;
   min-width: 0;
 }
-
-.aura-stat-card.full-width {
-  grid-column: 1 / -1;
-}
-
+.aura-stat-card.full-width { grid-column: 1 / -1; }
 .aura-stat-label {
   font-size: 9px;
   font-weight: 600;
@@ -285,7 +274,6 @@
   letter-spacing: 0.5px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
-
 .aura-stat-val-row {
   display: flex;
   align-items: center;
@@ -295,7 +283,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .aura-stat-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11.5px;
@@ -306,14 +293,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.aura-stat-unit {
-  font-size: 10px;
-  color: #94a3b8;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
+.aura-stat-unit { font-size: 10px; color: #94a3b8; font-weight: 500; flex-shrink: 0; }
 .aura-stat-subtitle {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 9.5px;
@@ -325,7 +305,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .aura-stat-badge {
   display: inline-block;
   padding: 1px 5px;
@@ -336,49 +315,13 @@
   letter-spacing: 0.4px;
   flex-shrink: 0;
 }
-
-.aura-badge-green {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
-.aura-badge-amber {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.aura-badge-blue {
-  background: rgba(56, 189, 248, 0.2);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.aura-badge-red {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.aura-badge-purple {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-/* Collapsible Graph Section */
-.aura-stats-graph-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: all 0.2s ease;
-}
-
-.aura-stats-graph-section.collapsed {
-  display: none !important;
-}
-
+.aura-badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+.aura-badge-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.aura-badge-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+.aura-badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+.aura-badge-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+.aura-stats-graph-section { display: flex; flex-direction: column; gap: 4px; transition: all 0.2s ease; }
+.aura-stats-graph-section.collapsed { display: none !important; }
 .aura-stats-graph-container {
   position: relative;
   width: 100%;
@@ -388,13 +331,7 @@
   border-radius: 6px;
   overflow: hidden;
 }
-
-#aura-stats-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
+#aura-stats-canvas { width: 100%; height: 100%; display: block; }
 .aura-stats-legend {
   position: absolute;
   right: 4px;
@@ -414,8 +351,7 @@
 
     overlayEl = document.createElement('div');
     overlayEl.id = 'aura-stats-overlay';
-    
-    // 1. Header
+
     const header = document.createElement('div');
     header.className = 'aura-stats-header';
 
@@ -435,7 +371,6 @@
     const actions = document.createElement('div');
     actions.className = 'aura-stats-actions';
 
-    // Graph toggle button (Trusted Types safe)
     const graphToggleBtn = document.createElement('button');
     graphToggleBtn.className = `aura-stats-icon-btn aura-stats-graph-toggle${isGraphCollapsed ? '' : ' active'}`;
     graphToggleBtn.title = 'Toggle Frametimes Graph';
@@ -453,7 +388,6 @@
     graphSvg.appendChild(polyline);
     graphToggleBtn.appendChild(graphSvg);
 
-    // Close button (Trusted Types safe)
     const closeBtn = document.createElement('button');
     closeBtn.className = 'aura-stats-icon-btn aura-stats-close-btn';
     closeBtn.title = 'Close HUD';
@@ -480,7 +414,6 @@
     header.appendChild(titleWrap);
     header.appendChild(actions);
 
-    // 2. Telemetry Grid (6 Cards)
     const grid = document.createElement('div');
     grid.className = 'aura-stats-grid';
 
@@ -506,7 +439,6 @@
       return { card, row, val };
     };
 
-    // Card 1: Video FPS
     const cVideo = createCard('Video FPS');
     refs.videoVal = cVideo.val;
     refs.videoUnit = document.createElement('span');
@@ -515,7 +447,6 @@
     cVideo.row.appendChild(refs.videoUnit);
     grid.appendChild(cVideo.card);
 
-    // Card 2: Display Refresh
     const cDisplay = createCard('Display');
     refs.displayVal = cDisplay.val;
     refs.displayUnit = document.createElement('span');
@@ -524,7 +455,6 @@
     cDisplay.row.appendChild(refs.displayUnit);
     grid.appendChild(cDisplay.card);
 
-    // Card 3: Resolution & Aspect
     const cRes = createCard('Resolution');
     refs.resVal = cRes.val;
     refs.resBadge = document.createElement('span');
@@ -533,7 +463,6 @@
     cRes.row.appendChild(refs.resBadge);
     grid.appendChild(cRes.card);
 
-    // Card 4: Video Bitrate (Encoded Stream Rate)
     const cVideoBitrate = createCard('Video Bitrate');
     refs.videoBitrateVal = cVideoBitrate.val;
     refs.videoBitrateBadge = document.createElement('span');
@@ -542,7 +471,6 @@
     cVideoBitrate.row.appendChild(refs.videoBitrateBadge);
     grid.appendChild(cVideoBitrate.card);
 
-    // Card 5: Net Speed / Connection Bandwidth
     const cNetSpeed = createCard('Net Speed');
     refs.netSpeedVal = cNetSpeed.val;
     refs.netSpeedBadge = document.createElement('span');
@@ -551,7 +479,6 @@
     cNetSpeed.row.appendChild(refs.netSpeedBadge);
     grid.appendChild(cNetSpeed.card);
 
-    // Card 6: Buffer Health
     const cBuffer = createCard('Buffer Health');
     refs.bufferVal = cBuffer.val;
     refs.bufferBadge = document.createElement('span');
@@ -560,7 +487,6 @@
     cBuffer.row.appendChild(refs.bufferBadge);
     grid.appendChild(cBuffer.card);
 
-    // Card 7: Codec & Audio
     const cCodec = createCard('Codec & Audio');
     refs.codecVal = cCodec.val;
     refs.audioBadge = document.createElement('span');
@@ -573,7 +499,6 @@
     cCodec.card.appendChild(refs.audioSubtitle);
     grid.appendChild(cCodec.card);
 
-    // Card 8: Color Depth & Range
     const cColor = createCard('Color Depth & Range');
     refs.colorVal = cColor.val;
     refs.hdrBadge = document.createElement('span');
@@ -586,7 +511,6 @@
     cColor.card.appendChild(refs.colorSubtitle);
     grid.appendChild(cColor.card);
 
-    // Card 9: Dropped Frames
     const cDrop = createCard('Dropped Frames');
     refs.dropVal = cDrop.val;
     refs.dropBadge = document.createElement('span');
@@ -595,7 +519,6 @@
     cDrop.row.appendChild(refs.dropBadge);
     grid.appendChild(cDrop.card);
 
-    // Card 10: Ambient Glow Engine
     const cAmbient = createCard('Ambient Glow');
     refs.ambientVal = cAmbient.val;
     refs.ambientUnit = document.createElement('span');
@@ -604,7 +527,6 @@
     cAmbient.row.appendChild(refs.ambientUnit);
     grid.appendChild(cAmbient.card);
 
-    // 3. Collapsible Frametimes Graph Section
     const graphSection = document.createElement('div');
     graphSection.className = `aura-stats-graph-section${isGraphCollapsed ? ' collapsed' : ''}`;
 
@@ -637,36 +559,35 @@
     graphContainer.appendChild(legend);
     graphSection.appendChild(graphContainer);
 
-    // Event Listeners for Header Actions
     graphToggleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       isGraphCollapsed = !isGraphCollapsed;
-      try {
-        localStorage.setItem('cineglow_hud_graph_collapsed', String(isGraphCollapsed));
-      } catch (err) {}
+      chrome.storage?.local?.set({ cineglow_hud_graph_collapsed: isGraphCollapsed }).catch(() => {});
       graphSection.classList.toggle('collapsed', isGraphCollapsed);
       graphToggleBtn.classList.toggle('active', !isGraphCollapsed);
       if (!isGraphCollapsed) {
+        if (!rafLoopId && updateInterval && !document.hidden) {
+          rafLoopId = requestAnimationFrame(statsLoop);
+        }
         drawFrametimesCanvas();
+      } else {
+        probeDisplayRefreshRate();
       }
     });
-    graphToggleBtn.addEventListener('mousedown', e => e.stopPropagation());
+    graphToggleBtn.addEventListener('mousedown', (e) => e.stopPropagation());
 
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       settings.statsEnabled = false;
-      try {
-        chrome.storage.sync.set({ statsEnabled: false });
-      } catch (err) {}
+      chrome.storage?.sync?.set({ statsEnabled: false }).catch(() => {});
       applyState();
     });
-    closeBtn.addEventListener('mousedown', e => e.stopPropagation());
+    closeBtn.addEventListener('mousedown', (e) => e.stopPropagation());
 
-    // Assemble Overlay inside Shadow DOM
     overlayEl.appendChild(header);
     overlayEl.appendChild(grid);
     overlayEl.appendChild(graphSection);
-    
+
     if (shadowRoot && shadowRoot !== hostEl) {
       shadowRoot.appendChild(overlayEl);
       container.appendChild(hostEl);
@@ -675,7 +596,7 @@
     }
 
     makeDraggable(overlayEl);
-    
+
     window.addEventListener('resize', clampOverlayPosition, { passive: true });
     dragCleanups.push(() => {
       window.removeEventListener('resize', clampOverlayPosition);
@@ -683,33 +604,26 @@
   }
 
   function clampOverlayPosition() {
-    if (!overlayEl) return;
-    if (!overlayEl.style.left) return;
+    if (!overlayEl || !overlayEl.isConnected || !overlayEl.style.left || overlayEl.offsetWidth === 0) return;
 
     const pWidth = window.innerWidth;
     const pHeight = window.innerHeight;
-    
-    let currentLeft = overlayEl.offsetLeft;
-    let currentTop = overlayEl.offsetTop;
-    
+    const currentLeft = overlayEl.offsetLeft;
+    const currentTop = overlayEl.offsetTop;
+
     const maxLeft = Math.max(0, pWidth - overlayEl.offsetWidth);
     const maxTop = Math.max(0, pHeight - overlayEl.offsetHeight);
-    
-    const newLeft = Math.max(0, Math.min(currentLeft, maxLeft));
-    const newTop = Math.max(0, Math.min(currentTop, maxTop));
-    
-    overlayEl.style.left = `${newLeft}px`;
-    overlayEl.style.top = `${newTop}px`;
+
+    overlayEl.style.left = `${Math.max(0, Math.min(currentLeft, maxLeft))}px`;
+    overlayEl.style.top = `${Math.max(0, Math.min(currentTop, maxTop))}px`;
     overlayEl.style.right = 'auto';
     overlayEl.style.bottom = 'auto';
   }
 
   function removeOverlay() {
     if (overlayEl) {
-      if (typeof dragCleanups !== 'undefined') {
-        dragCleanups.forEach(c => c());
-        dragCleanups = [];
-      }
+      dragCleanups.forEach((c) => c());
+      dragCleanups = [];
       overlayEl.remove();
       overlayEl = null;
       refs = {};
@@ -741,18 +655,23 @@
   }
 
   function startMonitoring() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     if (updateInterval) clearInterval(updateInterval);
     if (rafLoopId) cancelAnimationFrame(rafLoopId);
-    
+    if (probeRafId) cancelAnimationFrame(probeRafId);
+
     resetStats();
-    if (useRvfc && video) {
+    if (useRvfc && video && !document.hidden) {
       if (rvfcId) video.cancelVideoFrameCallback(rvfcId);
       rvfcId = video.requestVideoFrameCallback(onRvfc);
     }
-    rafLoopId = requestAnimationFrame(statsLoop);
+    if (!isGraphCollapsed && !document.hidden) {
+      rafLoopId = requestAnimationFrame(statsLoop);
+    } else {
+      probeDisplayRefreshRate();
+    }
     updateInterval = setInterval(updateStats, 1000);
-    updateStats(); 
+    updateStats();
   }
 
   function stopMonitoring() {
@@ -768,13 +687,36 @@
       cancelAnimationFrame(rafLoopId);
       rafLoopId = 0;
     }
+    if (probeRafId) {
+      cancelAnimationFrame(probeRafId);
+      probeRafId = 0;
+    }
   }
 
+  const handleVisibilityChange = () => {
+    if (isKilled || !settings.statsEnabled || !updateInterval) return;
+    if (!document.hidden) {
+      lastTime = performance.now();
+      rvfcFrames = 0;
+      displayFrames = 0;
+      lastDisplayFrames = 0;
+      if (useRvfc && video && !rvfcId) {
+        rvfcId = video.requestVideoFrameCallback(onRvfc);
+      }
+      if (!isGraphCollapsed && !rafLoopId) {
+        rafLoopId = requestAnimationFrame(statsLoop);
+      } else if (isGraphCollapsed) {
+        probeDisplayRefreshRate();
+      }
+      updateStats();
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
   function updateStats() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!settings.statsEnabled || !overlayEl) return;
-    
-    // Ensure overlay is still in the DOM (YouTube SPA navigation can detach it)
+    if (isKilled || window.CineGlowKilled) return;
+    if (!settings.statsEnabled || !overlayEl || document.hidden) return;
+
     const container = document.body;
     if (hostEl && (hostEl.parentElement !== container || !document.contains(hostEl))) {
       container.appendChild(hostEl);
@@ -782,10 +724,9 @@
       container.appendChild(overlayEl);
     }
 
-    // Request fresh Stats for Nerds (codecs, color, format) from MAIN world
     try {
       window.postMessage({ type: 'CINEGLOW_GET_STATS_NERDS' }, window.location.origin);
-    } catch (e) {}
+    } catch (_) {}
 
     const now = performance.now();
     const dt = (now - lastTime) / 1000;
@@ -802,13 +743,13 @@
       vH = video.videoHeight;
       buffering = video.readyState < 3;
       playing = !video.paused && !video.ended;
-      
+
       if (typeof video.getVideoPlaybackQuality === 'function') {
         const q = video.getVideoPlaybackQuality();
         droppedFrames = q.droppedVideoFrames;
         totalFrames = q.totalVideoFrames;
       }
-      
+
       if (useRvfc) {
         if (playing && !buffering) {
           lastVideoFps = rvfcFrames / dt;
@@ -829,18 +770,18 @@
         lastPresentedFrames = currentPresented;
       }
     }
-    
-    const shouldAnimate = playing && !buffering && !(window.CineGlowPlayer && window.CineGlowPlayer.isPiP && !settings.enableInPiP);
-    if (shouldAnimate) {
+
+    const shouldAnimate = playing && !buffering && !(window.CineGlowPlayer?.isPiP && !settings.enableInPiP);
+    if (shouldAnimate && !isGraphCollapsed) {
       if (!rafLoopId && updateInterval) rafLoopId = requestAnimationFrame(statsLoop);
       lastDisplayFps = (displayFrames - lastDisplayFrames) / dt;
-    } else if (!playing) {
-      lastDisplayFps = 0;
+    } else if (isGraphCollapsed) {
+      probeDisplayRefreshRate();
     } else {
       lastDisplayFps = 0;
     }
     lastDisplayFrames = displayFrames;
-    
+
     let glowDrawTime = '0.0';
     if (window.CineGlowMetrics) {
       const currentRenders = window.CineGlowMetrics.renderCount;
@@ -858,15 +799,12 @@
     const displayMs = lastDisplayFps ? (1000 / lastDisplayFps).toFixed(1) : '0.0';
     const videoMs = lastVideoFps ? (1000 / lastVideoFps).toFixed(1) : '0.0';
 
-    // 1. Video FPS
     if (refs.videoVal) refs.videoVal.textContent = lastVideoFps.toFixed(2);
     if (refs.videoUnit) refs.videoUnit.textContent = `(${videoMs}ms)`;
 
-    // 2. Display
     if (refs.displayVal) refs.displayVal.textContent = `${lastDisplayFps.toFixed(2)} Hz`;
     if (refs.displayUnit) refs.displayUnit.textContent = `(${displayMs}ms)`;
 
-    // 3. Resolution & Quality Badge
     if (refs.resVal) {
       refs.resVal.textContent = (vW && vH) ? `${vW}×${vH}` : '--';
     }
@@ -892,7 +830,6 @@
       refs.resBadge.className = `aura-stat-badge ${badgeClass}`;
     }
 
-    // 4. Video Bitrate (Encoded Stream Quality)
     let vidBitrateStr = '--';
     let vidBitrateBadge = 'STREAM';
     let vidBitrateClass = 'aura-badge-purple';
@@ -900,11 +837,9 @@
     const vBitrate = nerdStats ? (nerdStats.videoBitrate || nerdStats.averageBitrate) : null;
     if (vBitrate && !isNaN(Number(vBitrate))) {
       const bps = Number(vBitrate);
-      if (bps >= 1000000) {
-        vidBitrateStr = `${(bps / 1000000).toFixed(2)} Mbps`;
-      } else {
-        vidBitrateStr = `${Math.round(bps / 1000)} Kbps`;
-      }
+      vidBitrateStr = bps >= 1000000
+        ? `${(bps / 1000000).toFixed(2)} Mbps`
+        : `${Math.round(bps / 1000)} Kbps`;
 
       if (nerdStats.formatQuality) {
         vidBitrateBadge = nerdStats.formatQuality;
@@ -923,7 +858,6 @@
       refs.videoBitrateBadge.className = `aura-stat-badge ${vidBitrateClass}`;
     }
 
-    // 5. Net Speed / Bandwidth
     let speedStr = '--';
     let speedBadge = 'NET';
     let speedClass = 'aura-badge-blue';
@@ -932,11 +866,7 @@
     if (bwRaw) {
       const kbps = typeof bwRaw === 'number' ? bwRaw : parseFloat(String(bwRaw).replace(/[^0-9.]/g, ''));
       if (!isNaN(kbps) && kbps > 0) {
-        if (kbps >= 1000) {
-          speedStr = `${(kbps / 1000).toFixed(1)} Mbps`;
-        } else {
-          speedStr = `${Math.round(kbps)} Kbps`;
-        }
+        speedStr = kbps >= 1000 ? `${(kbps / 1000).toFixed(1)} Mbps` : `${Math.round(kbps)} Kbps`;
         if (kbps >= 50000) {
           speedBadge = 'ULTRA';
           speedClass = 'aura-badge-purple';
@@ -958,11 +888,10 @@
       refs.netSpeedBadge.className = `aura-stat-badge ${speedClass}`;
     }
 
-    // 7. Codec & Audio
     let videoCodec = 'AVC';
     let audioCodec = 'AAC';
     let audioSubtitle = 'Stereo • 48 kHz';
-    if (nerdStats && nerdStats.codecs) {
+    if (nerdStats?.codecs) {
       const parts = String(nerdStats.codecs).toLowerCase().split('/');
       const vPart = parts[0] || '';
       const aPart = parts[1] || '';
@@ -999,16 +928,15 @@
       refs.audioSubtitle.textContent = audioSubtitle;
     }
 
-    // 8. Color Depth & Range
     let colorSpace = 'BT.709';
     let colorDepth = '8-bit';
     let colorRange = 'Limited (TV)';
     let colorBadge = 'SDR';
     let colorClass = 'aura-badge-blue';
 
-    const rawColor = nerdStats && nerdStats.color ? String(nerdStats.color).toLowerCase() : '';
-    const rawCodecs = nerdStats && nerdStats.codecs ? String(nerdStats.codecs).toLowerCase() : '';
-    const colorInfo = nerdStats && nerdStats.colorInfo ? nerdStats.colorInfo : null;
+    const rawColor = nerdStats?.color ? String(nerdStats.color).toLowerCase() : '';
+    const rawCodecs = nerdStats?.codecs ? String(nerdStats.codecs).toLowerCase() : '';
+    const colorInfo = nerdStats?.colorInfo || null;
 
     if (rawColor.includes('bt2020') || (colorInfo && String(colorInfo.primaries).includes('BT2020'))) {
       colorSpace = 'BT.2020';
@@ -1029,24 +957,15 @@
     } else if (rawColor.includes('bt2020') || rawCodecs.includes('vp09.02') || rawCodecs.includes('.10')) {
       colorBadge = 'HDR';
       colorClass = 'aura-badge-amber';
-    } else {
-      colorBadge = 'SDR';
-      colorClass = 'aura-badge-blue';
     }
 
     if (rawColor.includes('12-bit') || rawCodecs.includes('vp09.03')) {
       colorDepth = '12-bit';
     } else if (rawColor.includes('10-bit') || rawCodecs.includes('vp09.02') || rawCodecs.includes('.10') || colorBadge.startsWith('HDR') || colorBadge === 'HLG') {
       colorDepth = '10-bit';
-    } else {
-      colorDepth = '8-bit';
     }
 
-    if (rawColor.includes('full') || colorSpace === 'sRGB') {
-      colorRange = 'Full (PC)';
-    } else {
-      colorRange = 'Limited (TV)';
-    }
+    colorRange = (rawColor.includes('full') || colorSpace === 'sRGB') ? 'Full (PC)' : 'Limited (TV)';
 
     if (refs.colorVal) refs.colorVal.textContent = colorSpace;
     if (refs.hdrBadge) {
@@ -1057,9 +976,8 @@
       refs.colorSubtitle.textContent = `${colorDepth} • ${colorRange}`;
     }
 
-    // 7. Buffer Health
     let bufferAhead = 0;
-    if (video && video.buffered && video.buffered.length > 0) {
+    if (video?.buffered?.length > 0) {
       const cur = video.currentTime;
       for (let i = 0; i < video.buffered.length; i++) {
         if (cur >= video.buffered.start(i) && cur <= video.buffered.end(i)) {
@@ -1088,7 +1006,7 @@
       bufferBadge = 'LOW';
       bufferClass = 'aura-badge-amber';
     } else {
-      bufferBadge = (video && video.paused) ? 'PAUSED' : 'STALL';
+      bufferBadge = video?.paused ? 'PAUSED' : 'STALL';
       bufferClass = 'aura-badge-red';
     }
 
@@ -1098,30 +1016,19 @@
       refs.bufferBadge.className = `aura-stat-badge ${bufferClass}`;
     }
 
-    // 8. Dropped Frames & Rate
-    if (refs.dropVal) {
-      refs.dropVal.textContent = String(droppedFrames);
-    }
+    if (refs.dropVal) refs.dropVal.textContent = String(droppedFrames);
     if (refs.dropBadge) {
       const dropPct = totalFrames > 0 ? ((droppedFrames / totalFrames) * 100).toFixed(1) : '0.0';
       refs.dropBadge.textContent = `${dropPct}%`;
       let dropClass = 'aura-badge-green';
       const pctNum = parseFloat(dropPct);
-      if (pctNum > 2.0) {
-        dropClass = 'aura-badge-red';
-      } else if (pctNum > 0.5) {
-        dropClass = 'aura-badge-amber';
-      }
+      if (pctNum > 2.0) dropClass = 'aura-badge-red';
+      else if (pctNum > 0.5) dropClass = 'aura-badge-amber';
       refs.dropBadge.className = `aura-stat-badge ${dropClass}`;
     }
 
-    // 10. Ambient Glow Engine
-    if (refs.ambientVal) {
-      refs.ambientVal.textContent = `${lastGlowFps.toFixed(1)} fps`;
-    }
-    if (refs.ambientUnit) {
-      refs.ambientUnit.textContent = `(${glowDrawTime}ms)`;
-    }
+    if (refs.ambientVal) refs.ambientVal.textContent = `${lastGlowFps.toFixed(1)} fps`;
+    if (refs.ambientUnit) refs.ambientUnit.textContent = `(${glowDrawTime}ms)`;
 
     if (!isGraphCollapsed) {
       drawFrametimesCanvas();
@@ -1134,31 +1041,31 @@
     const width = 336;
     const height = 120;
     const xSize = 2.5;
-    
+
     ctx.clearRect(0, 0, width, height);
-    
+
     const displayFrameDuration = lastDisplayFps ? 1000 / Math.max(24, lastDisplayFps) : 1000 / 60;
-    
+
     const offsettedFrameTimes = frameTimes.map((ft, i) => {
-      const offset = (ft.video && ft.video.display) ? ft.video.display : ((ft.video && ft.video.compose) ? ft.video.compose + displayFrameDuration : ft.display);
+      const offset = ft.video?.display ?? (ft.video?.compose ? ft.video.compose + displayFrameDuration : ft.display);
       return {
         video: ft.video ? {
           decode: ft.video.decode - offset,
           present: ft.video.present - offset,
           compose: ft.video.compose - offset,
           receive: ft.video.receive - offset,
-          display: ft.video.display - offset,
+          display: ft.video.display - offset
         } : undefined,
         drawStart: ft.drawStart - offset,
         drawEnd: ft.drawEnd - offset,
         display: ft.display - offset,
         complete: ft.complete - offset,
-        nextCompose: (i < frameTimes.length - 1 && frameTimes[i+1].video) ? frameTimes[i+1].video.compose - offset : undefined,
-        nextDisplay: (i < frameTimes.length - 1 && frameTimes[i+1].video) ? frameTimes[i+1].video.display - offset : undefined,
+        nextCompose: (i < frameTimes.length - 1 && frameTimes[i + 1].video) ? frameTimes[i + 1].video.compose - offset : undefined,
+        nextDisplay: (i < frameTimes.length - 1 && frameTimes[i + 1].video) ? frameTimes[i + 1].video.display - offset : undefined
       };
     });
 
-    const frameDurations = offsettedFrameTimes.map(ft => ({
+    const frameDurations = offsettedFrameTimes.map((ft) => ({
       decodeToPresent: ft.video ? [ft.video.decode, ft.video.present - ft.video.decode] : [],
       composeToReceive: ft.video ? [ft.video.compose, ft.video.receive - ft.video.compose] : [],
       presentToCompose: ft.video ? [ft.video.present, Math.max(0, ft.video.compose - ft.video.present)] : [],
@@ -1168,21 +1075,27 @@
       videoDisplay: ft.video ? ft.video.display : undefined,
       isDrawnBeforeVideoDisplay: ft.video && (!isFinite(ft.video.display) || ft.drawEnd <= ft.video.display),
       nextCompose: ft.nextCompose,
-      isDrawnBeforeNextCompose: !isFinite(ft.nextCompose) || ft.drawEnd <= ft.nextCompose,
       nextDisplay: ft.nextDisplay,
-      isDrawnBeforeNextDisplay: !isFinite(ft.nextDisplay) || ft.drawEnd <= ft.nextDisplay,
       isDrawn: isFinite(ft.drawEnd)
     }));
 
-    let averageMinTimes = offsettedFrameTimes.map(ft => ft.video ? Math.min(ft.video.decode || Infinity, ft.video.compose || Infinity) : ft.drawStart).filter(isFinite).sort((a,b)=>a-b);
+    const averageMinTimes = offsettedFrameTimes
+      .map((ft) => ft.video ? Math.min(ft.video.decode || Infinity, ft.video.compose || Infinity) : ft.drawStart)
+      .filter(isFinite)
+      .sort((a, b) => a - b);
+
     let min = 0, max = 0;
     if (averageMinTimes.length > 0) {
       const minPercentile90Length = Math.max(1, Math.floor(averageMinTimes.length * 0.9));
       const averageMinTimesPercentile90 = averageMinTimes.slice(-minPercentile90Length);
       min = Math.round(Math.min(...averageMinTimesPercentile90) / displayFrameDuration) * displayFrameDuration;
     }
-    
-    let averageMaxTimes = offsettedFrameTimes.map(ft => Math.max(ft.video ? (ft.video.display || -999) : -999, ft.drawEnd || -999, ft.nextCompose || -999, ft.nextDisplay || -999)).filter(isFinite).sort((a,b)=>a-b);
+
+    const averageMaxTimes = offsettedFrameTimes
+      .map((ft) => Math.max(ft.video?.display ?? -999, ft.drawEnd || -999, ft.nextCompose || -999, ft.nextDisplay || -999))
+      .filter(isFinite)
+      .sort((a, b) => a - b);
+
     if (averageMaxTimes.length > 0) {
       const maxPercentile90Length = Math.max(1, Math.floor(averageMaxTimes.length * 0.9));
       const averageMaxTimesPercentile90 = averageMaxTimes.slice(0, maxPercentile90Length);
@@ -1195,25 +1108,22 @@
     const range = Math.max(1, max - min + displayFrameDuration);
     const yScale = height / range;
     const yLine = 1 / yScale;
-    
     const offset = min - displayFrameDuration / 2;
 
-    const frameRects = frameDurations.map((fd, i) => {
-      let rects = [];
-      if (!fd.isDrawn) {
-        rects.push(['#800', xSize, min - displayFrameDuration / 2, range]);
-      }
+    const frameRects = frameDurations.map((fd) => {
+      const rects = [];
+      if (!fd.isDrawn) rects.push(['#800', xSize, min - displayFrameDuration / 2, range]);
       if (fd.decodeToPresent.length) rects.push(['#06f', xSize, fd.decodeToPresent[0], fd.decodeToPresent[1]]);
       if (fd.composeToReceive.length) rects.push(['#666', 1, fd.composeToReceive[0], fd.composeToReceive[1]]);
       if (fd.presentToCompose.length) rects.push(['#f80', 1, fd.presentToCompose[0], fd.presentToCompose[1]]);
       rects.push(['#a0b', 1, fd.drawEndToDisplay[0], fd.drawEndToDisplay[1]]);
       if (fd.receiveToDrawStart.length) rects.push([fd.isDrawnBeforeVideoDisplay ? '#0b0' : '#db0', xSize, fd.receiveToDrawStart[0], fd.receiveToDrawStart[1]]);
       rects.push([fd.isDrawnBeforeVideoDisplay ? '#0f0' : '#ff0', xSize, fd.drawStartTodrawEnd[0], fd.drawStartTodrawEnd[1]]);
-      
+
       if (isFinite(fd.nextCompose)) rects.push(['#666', 1, fd.nextCompose, yLine]);
       if (isFinite(fd.nextDisplay)) rects.push(['#fff', 1, fd.nextDisplay, yLine]);
       if (isFinite(fd.videoDisplay)) rects.push(['#0f0', 1, fd.videoDisplay, yLine]);
-      
+
       return rects;
     });
 
@@ -1223,7 +1133,7 @@
       for (const [color, xFrameSize, y, ySize] of rectLines) {
         if (isNaN(y) || isNaN(ySize) || ySize === 0) continue;
         ctx.fillStyle = color;
-        ctx.fillRect(x + Math.floor((xSize - xFrameSize)/2), Math.round((y - offset) * yScale), xFrameSize, Math.max(1, Math.round(ySize * yScale)));
+        ctx.fillRect(x + Math.floor((xSize - xFrameSize) / 2), Math.round((y - offset) * yScale), xFrameSize, Math.max(1, Math.round(ySize * yScale)));
       }
     }
   }
@@ -1252,41 +1162,38 @@
     };
 
     const onMouseDown = (e) => {
-      // Don't drag if clicking buttons or actions
-      if (e.target.closest('.aura-stats-actions') || e.target.closest('button')) {
-        return;
-      }
+      if (e.target.closest('.aura-stats-actions') || e.target.closest('button')) return;
       e.stopPropagation();
       isDragging = true;
       startX = e.clientX;
       startY = e.clientY;
-      
+
       if (!el.style.left) {
         el.style.left = `${el.offsetLeft}px`;
         el.style.top = `${el.offsetTop}px`;
         el.style.right = 'auto';
         el.style.bottom = 'auto';
       }
-      
+
       initialX = el.offsetLeft;
       initialY = el.offsetTop;
-      
+
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     };
 
     el.addEventListener('mousedown', onMouseDown);
-    el.addEventListener('click', e => e.stopPropagation());
-    el.addEventListener('dblclick', e => e.stopPropagation());
-    
+    el.addEventListener('click', (e) => e.stopPropagation());
+    el.addEventListener('dblclick', (e) => e.stopPropagation());
+
     dragCleanups.push(() => {
       if (isDragging) onMouseUp();
     });
   }
 
   function applyState() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    const isWatchPage = window.CineGlowPlayer && window.CineGlowPlayer.isWatchPage;
+    if (isKilled || window.CineGlowKilled) return;
+    const isWatchPage = window.CineGlowPlayer?.isWatchPage;
     if (settings.statsEnabled && isWatchPage) {
       createOverlay();
       if (video && !updateInterval) startMonitoring();
@@ -1296,32 +1203,46 @@
     }
   }
 
-  // --- Emergency Kill-Switch Teardown ---
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'sync') {
+      if ('statsEnabled' in changes) {
+        settings.statsEnabled = changes.statsEnabled.newValue;
+        applyState();
+      }
+      if ('enableInPiP' in changes) {
+        settings.enableInPiP = changes.enableInPiP.newValue;
+      }
+    }
+  };
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
+
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     settings.statsEnabled = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    window.CineGlowKilled = true;
 
-    // 1. Stop all interval and animation loops (rafLoopId, rvfcId, updateInterval)
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    window.removeEventListener('message', handleStatsMessage);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
     stopMonitoring();
-
-    // 2. Unmount overlay from DOM
+    document.getElementById('cineglow-stats-host')?.remove();
+    document.getElementById('aura-stats-overlay')?.remove();
+    document.getElementById('cineglow-stats-overlay')?.remove();
     removeOverlay();
 
-    // 3. Clear buffers
     video = null;
     videoFrameTimes = [];
     frameTimes = [];
     nerdStats = null;
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -1332,11 +1253,9 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
   window.CineGlowStatsTeardown = teardownKillSwitch;
 
@@ -1345,7 +1264,7 @@
       video = window.CineGlowPlayer.video;
       applyState();
     }
-    
+
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       if (isKilled) return;
       const state = e.detail;
@@ -1355,7 +1274,7 @@
         applyState();
         return;
       }
-      
+
       if (video !== state.video) {
         stopMonitoring();
         video = state.video;
@@ -1368,29 +1287,22 @@
   }
 
   async function loadSettings() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     try {
-      const stored = await chrome.storage.sync.get(['statsEnabled', 'enableInPiP']);
+      const [stored, localStored] = await Promise.all([
+        chrome.storage.sync.get(['statsEnabled', 'enableInPiP']),
+        chrome.storage.local?.get(['cineglow_hud_graph_collapsed']).catch(() => ({}))
+      ]);
       settings.statsEnabled = !!stored.statsEnabled;
       settings.enableInPiP = !!stored.enableInPiP;
+      if (typeof localStored?.cineglow_hud_graph_collapsed === 'boolean') {
+        isGraphCollapsed = localStored.cineglow_hud_graph_collapsed;
+      }
       applyState();
     } catch (err) {
       console.warn('[Aura] Could not load stats settings:', err);
     }
   }
-
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (area === 'sync') {
-      if ('statsEnabled' in changes) {
-        settings.statsEnabled = changes.statsEnabled.newValue;
-        applyState();
-      }
-      if ('enableInPiP' in changes) {
-        settings.enableInPiP = changes.enableInPiP.newValue;
-      }
-    }
-  });
 
   loadSettings();
 })();

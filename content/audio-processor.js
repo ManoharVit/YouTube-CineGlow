@@ -40,9 +40,14 @@
   let onVideoPlaybackResume = null;
   let boundResumeVideo = null;
 
+  const AUDIO_KEYS = [
+    'audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost',
+    'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'audioReactive'
+  ];
+
   function isDspEnabled() {
     const boost = Number(settings.audioBoost);
-    const hasVolumeBoost = !isNaN(boost) && boost !== 100 && boost > 0;
+    const hasVolumeBoost = Number.isFinite(boost) && boost !== 100 && boost >= 0;
     const hasNormalizer = Boolean(settings.audioNormalizer);
     const hasBassBoost = Number(settings.bassBoost) !== 0;
     const hasVocalBoost = Number(settings.vocalBoost) !== 0;
@@ -56,12 +61,15 @@
     return hasNormalizer || hasVolumeBoost || hasBassBoost || hasVocalBoost || hasEq;
   }
 
+  function needsAudioGraph() {
+    return isDspEnabled() || Boolean(settings.audioReactive);
+  }
+
   async function loadSettings() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
-      const keys = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'audioReactive'];
-      const stored = await chrome.storage.sync.get(keys);
-      for (const k of keys) {
+      const stored = await chrome.storage.sync.get(AUDIO_KEYS);
+      for (const k of AUDIO_KEYS) {
         if (stored[k] !== undefined) settings[k] = stored[k];
       }
       attachToPlayer();
@@ -71,12 +79,11 @@
     }
   }
 
-  chrome.storage.onChanged.addListener((changes, area) => {
+  const handleStorageChange = (changes, area) => {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (area === 'sync') {
       let changed = false;
-      const keys = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'audioReactive'];
-      for (const k of keys) {
+      for (const k of AUDIO_KEYS) {
         if (changes[k] !== undefined) {
           settings[k] = changes[k].newValue;
           changed = true;
@@ -87,11 +94,16 @@
         updateAudioParams();
       }
     }
-  });
+  };
+
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener(handleStorageChange);
+  }
 
   function initAudio(video, force = false) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!video) return;
+
     // FP-6.1: In attachToPlayer() / initAudio(), only instantiate AudioContext and mediaElementSource
     // when at least one audio DSP feature is enabled, avoiding unnecessary 5.1/7.1 downmixing & autoplay silence
     if (!force && !isDspEnabled()) {
@@ -106,18 +118,32 @@
       return;
     }
     if (currentVideo === video && source && sourceUsesDsp) return;
-    
+
     try {
       if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
+        const AudioContextClass = (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) ||
+                                  (typeof globalThis !== 'undefined' && (globalThis.AudioContext || globalThis.webkitAudioContext));
+        if (!AudioContextClass) {
+          console.warn('[CineGlow Audio] Web Audio API not supported in this environment');
+          return;
+        }
+        audioCtx = new AudioContextClass({ latencyHint: 'playback' });
+
+        // Preserve 5.1 / 7.1 surround channel layout when supported by output hardware
+        if (audioCtx.destination && audioCtx.destination.maxChannelCount > 2) {
+          try {
+            audioCtx.destination.channelCount = audioCtx.destination.maxChannelCount;
+            audioCtx.destination.channelCountMode = 'explicit';
+          } catch (_) {}
+        }
+
         // 1. Normalizer (Compressor + Dry/Wet Crossfader)
         compressor = audioCtx.createDynamicsCompressor();
-        compressor.threshold.value = -24; 
-        compressor.knee.value = 30;       
-        compressor.ratio.value = 12;      
-        compressor.attack.value = 0.003;  
-        compressor.release.value = 0.25;  
+        compressor.threshold.value = -24;
+        compressor.knee.value = 30;
+        compressor.ratio.value = 12;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.25;
 
         normalizerGain = audioCtx.createGain(); // Dry path (when normalizer is OFF)
         compressedGain = audioCtx.createGain(); // Wet path (when normalizer is ON)
@@ -175,7 +201,7 @@
 
         // 5b. Makeup Gain Node on Compressor Wet Path (+8 dB to +10 dB, +9 dB = 2.818x linear) (FP-6.2)
         makeupGainNode = audioCtx.createGain();
-        makeupGainNode.gain.value = Math.pow(10, 9.0 / 20); // +9 dB makeup gain to eliminate 15-20 dB normalizer volume drop
+        makeupGainNode.gain.value = Math.pow(10, 9.0 / 20); // +9 dB makeup gain to eliminate normalizer volume drop
 
         // 6. Safety Brickwall Limiter (prevents digital clipping on heavy bass/volume boost)
         limiterNode = audioCtx.createDynamicsCompressor();
@@ -190,7 +216,7 @@
         analyser.fftSize = 1024;
         const bufferLength = analyser.frequencyBinCount;
         dataArray = new Uint8Array(bufferLength);
-        
+
         window.CineGlowAudioAnalyser = analyser;
         window.CineGlowAudioDataArray = dataArray;
         window.CineGlowAudioCtx = audioCtx;
@@ -213,14 +239,14 @@
         eqFilter1000.connect(eqFilter4000);
         eqFilter4000.connect(eqFilter12000);
 
-        // Connect EQ into Volume Gain, then through Limiter to Analyser & Destination
+        // Connect EQ into Volume Gain, then through Limiter to Destination & Side-Chain Analyser
         eqFilter12000.connect(gainNode);
         gainNode.connect(limiterNode);
+        limiterNode.connect(audioCtx.destination);
         limiterNode.connect(analyser);
-        analyser.connect(audioCtx.destination);
 
         // Auto-resume AudioContext on user interaction to comply with autoplay policy
-        if (!onUserInteractionResume) {
+        if (!onUserInteractionResume && typeof window !== 'undefined') {
           onUserInteractionResume = () => {
             if (audioCtx && audioCtx.state === 'suspended') {
               audioCtx.resume();
@@ -239,7 +265,7 @@
         } catch (_) {}
         source = null;
       }
-      
+
       // Retain and reuse each video's existing MediaElementAudioSourceNode
       let videoSource = videoSources.get(video);
       if (!videoSource) {
@@ -253,12 +279,12 @@
 
       videoSource.connect(normalizerGain);
       videoSource.connect(compressor);
-      
+
       source = videoSource;
       sourceUsesDsp = true;
       currentVideo = video;
       video.cineGlowAudioAttached = true;
-      
+
       // Auto-resume AudioContext on playback to comply with autoplay policy
       if (!video._cineGlowResumeAttached) {
         onVideoPlaybackResume = () => {
@@ -276,7 +302,7 @@
       if (!video.paused && audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
-      
+
       updateAudioParams();
     } catch (err) {
       console.error('[CineGlow Audio] Failed to initialize AudioContext:', err);
@@ -380,6 +406,13 @@
       window.CineGlowAudioGainNode = null;
     }
 
+    // 3. Detach storage listener
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged?.removeListener) {
+      try {
+        chrome.storage.onChanged.removeListener(handleStorageChange);
+      } catch (_) {}
+    }
+
     // 4. Detach video flags
     if (currentVideo) {
       currentVideo.cineGlowAudioAttached = false;
@@ -451,8 +484,11 @@
     attachToPlayer();
   } else if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('load', () => {
-      if (typeof window !== 'undefined' && window.CineGlowPlayer) attachToPlayer();
-    });
+      if (typeof window !== 'undefined' && window.CineGlowPlayer) {
+        window.CineGlowPlayer.addEventListener('state-change', attachToPlayer);
+        attachToPlayer();
+      }
+    }, { once: true });
   }
 
   window.CineGlowAudioComputeEffectiveGain = computeEffectiveGain;

@@ -397,7 +397,10 @@ describe('Tier 1: Feature Coverage (70 Tests)', () => {
       assert.strictEqual(responseResult.success, true);
       assert.ok(responseResult.xml.includes('test'));
       assert.ok(harness.networkSpy.outboundRequests.length > 0);
-      assert.ok(harness.networkSpy.outboundRequests[0].url.includes('biggest_bucket.storage.googleapis.com'));
+      assert.ok(
+        harness.networkSpy.outboundRequests[0].url.includes('storage.googleapis.com/biggest_bucket') ||
+        harness.networkSpy.outboundRequests[0].url.includes('biggest_bucket.storage.googleapis.com')
+      );
     });
   });
 
@@ -1941,7 +1944,7 @@ describe('Tier 2: Boundary & Corner Cases (70 Tests)', () => {
       const zipPath = path.join(REPO_ROOT, 'YouTube-CineGlow-v2.4.0.zip');
       const buffer = fs.readFileSync(zipPath);
       const hash = crypto.createHash('sha256').update(buffer).digest('hex');
-      assert.strictEqual(hash, '31065db6f34cd233bd04790ed7395e1c1d7087dcc8c7c6c9c7b82e3b059b7832');
+      assert.strictEqual(hash, 'ce77a620df5da614d065eb883e0e589622622182b18819f5dac7afde4ab425f8');
     });
 
     test('T2-F11-05: Production Code Console Log Sanitization', () => {
@@ -3039,5 +3042,8 @@ describe('Tier 4: Real-World Enterprise Workload Scenarios (7 Scenarios)', () =>
 
     const ytQuality = JSON.parse(harness.window.localStorage.getItem('yt-player-quality'));
     assert.strictEqual(JSON.parse(ytQuality.data).quality, 'hd720');
+
+    harness.window.CineGlowAdBlock?.teardownKillSwitch?.();
+    harness.window.CineGlowQuality?.teardownKillSwitch?.();
   });
 });

@@ -5,7 +5,7 @@
 **Package Archive:** [`YouTube-CineGlow-v2.4.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.4.0.zip)  
 **Package Size:** `163 KB`  
 **File Count:** 46 entries (40 files, 6 directories)  
-**SHA-256 Checksum:** `31065db6f34cd233bd04790ed7395e1c1d7087dcc8c7c6c9c7b82e3b059b7832`  
+**SHA-256 Checksum:** `ce77a620df5da614d065eb883e0e589622622182b18819f5dac7afde4ab425f8`  
 **Last Updated:** November 12, 2026  
 
 ---
@@ -61,7 +61,8 @@ Version 2.4.0:
 | `alarms` | Permission | Required to schedule non-persistent background tasks and periodic state sync in full compliance with MV3 service worker lifecycle. |
 | `https://*.youtube.com/*` | Host Permission | Required to inject the ambient glow rendering canvas, audio processor graph, and player control toolbar into YouTube watch pages. Enforces pure HTTPS transport. |
 | `https://returnyoutubedislikeapi.com/*` | Host Permission | Optional feature: fetches public community dislike counts from the official Return YouTube Dislike API when enabled by the user (subject to enterprise policy override). |
-| `https://biggest_bucket.storage.googleapis.com/*` | Host Permission | Optional feature: fetches archived community annotation XML files from isolated bucket origin when Classic Annotations is enabled (subject to enterprise policy override). |
+| `https://sponsor.ajay.app/*` | Host Permission | Optional feature: queries SponsorBlock community segments for creator promotions and sponsor segments when enabled by the user (subject to enterprise policy override). |
+| `https://storage.googleapis.com/*` | Host Permission | Optional feature: fetches archived community annotation XML files from path-style GCS bucket origin when Classic Annotations is enabled (subject to enterprise policy override). |
 
 ---
 

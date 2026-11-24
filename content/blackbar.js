@@ -1,19 +1,20 @@
 /*
  * Aura - Black Bar Detection and Removal (Auto-Crop)
- * Production Architecture: OffscreenCanvas + Synchronous Low-Overhead Frame Analysis
- * Note: Avoids Blob Web Workers to comply strictly with YouTube Content Security Policy (script-src/worker-src).
+ * Architecture: OffscreenCanvas + requestVideoFrameCallback Frame Analysis
  */
 (() => {
   'use strict';
 
-  let settings = { ...AURA_DEFAULTS };
+  let settings = { ...(typeof AURA_DEFAULTS !== 'undefined' ? AURA_DEFAULTS : {}) };
   let video = null;
   let videoId = null;
   let isAdShowing = false;
-  let intervalId = null;
+  let rvfcId = 0;
+  let fallbackIntervalId = 0;
+  let lastScanAt = 0;
+  let lastUnfocusedScan = 0;
   let isKilled = false;
-  
-  // Downsampled OffscreenCanvas (64x64) eliminates GPU readback stalls
+
   const SCAN_WIDTH = 64;
   const SCAN_HEIGHT = 64;
   let offscreenCanvas = null;
@@ -28,17 +29,17 @@
     }
   }
 
-  const canvas = offscreenCanvas || document.createElement('canvas');
-  canvas.width = SCAN_WIDTH;
-  canvas.height = SCAN_HEIGHT;
-  const ctx = offscreenCtx || (canvas.getContext && canvas.getContext('2d', { willReadFrequently: true }));
+  const canvas = offscreenCanvas || (typeof document !== 'undefined' && document.createElement ? document.createElement('canvas') : null);
+  if (canvas) {
+    canvas.width = SCAN_WIDTH;
+    canvas.height = SCAN_HEIGHT;
+  }
+  const ctx = offscreenCtx || (canvas && canvas.getContext ? canvas.getContext('2d', { willReadFrequently: true }) : null);
 
   const STABLE_THRESHOLD = 8;
-  const STABILITY_REQUIRED = STABLE_THRESHOLD;
   let stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let stabilityCount = 0;
-  let lastUnfocusedScan = 0;
 
   function calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height) {
     if (topBar === height || leftBar === width) return;
@@ -56,22 +57,20 @@
   function handleCropResult(result) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!video || !settings.removeBlackBars) return;
-    
-    // Ignore unreasonable crops (no real video has >25% black bars on one side)
-    // Also ignore highly asymmetric crops (real black bars are roughly equal on both sides)
+
     if (result.cropTop > 0.25 || result.cropBottom > 0.25 || result.cropLeft > 0.25 || result.cropRight > 0.25) {
-      return; 
+      return;
     }
     if (Math.abs(result.cropTop - result.cropBottom) > 0.05) return;
     if (Math.abs(result.cropLeft - result.cropRight) > 0.05) return;
-    
+
     const tolerance = 0.02;
-    const isSameCandidate = 
+    const isSameCandidate =
       Math.abs(result.cropTop - candidateCrop.top) < tolerance &&
       Math.abs(result.cropBottom - candidateCrop.bottom) < tolerance &&
       Math.abs(result.cropLeft - candidateCrop.left) < tolerance &&
       Math.abs(result.cropRight - candidateCrop.right) < tolerance;
-      
+
     if (isSameCandidate) {
       stabilityCount++;
       if (stabilityCount === STABLE_THRESHOLD) {
@@ -89,18 +88,19 @@
   }
 
   function applyCrop(crop) {
-    const isDifferent = 
+    const isDifferent =
       Math.abs(crop.top - stableCrop.top) > 0.01 ||
       Math.abs(crop.bottom - stableCrop.bottom) > 0.01 ||
       Math.abs(crop.left - stableCrop.left) > 0.01 ||
       Math.abs(crop.right - stableCrop.right) > 0.01;
-      
+
     if (isDifferent) {
       stableCrop = { ...crop };
-      
       if (crop.top || crop.right || crop.bottom || crop.left) {
-        window.CineGlowCrop = stableCrop;
-        video.style.clipPath = `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`;
+        if (typeof window !== 'undefined') window.CineGlowCrop = stableCrop;
+        if (video) {
+          video.style.clipPath = `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`;
+        }
       } else {
         resetCrop();
       }
@@ -108,7 +108,7 @@
   }
 
   function resetCrop() {
-    window.CineGlowCrop = null;
+    if (typeof window !== 'undefined') window.CineGlowCrop = null;
     stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     stabilityCount = 0;
@@ -121,7 +121,7 @@
     const threshold = 15;
     function isBlack(x, y) {
       const i = (y * width + x) * 4;
-      return data[i] <= threshold && data[i+1] <= threshold && data[i+2] <= threshold;
+      return data[i] <= threshold && data[i + 1] <= threshold && data[i + 2] <= threshold;
     }
     function isRowBlack(y) {
       const startX = Math.floor(width * 0.05);
@@ -149,6 +149,7 @@
       }
       return true;
     }
+
     let topBar = height;
     for (let y = 0; y < height; y++) {
       if (!isRowBlack(y)) { topBar = y; break; }
@@ -168,63 +169,74 @@
     calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height);
   }
 
-  function scanFrame() {
+  function scanFrame(now = (typeof Date !== 'undefined' ? Date.now() : performance.now())) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!settings.removeBlackBars || isAdShowing || !video || video.readyState < 2 || video.paused) {
-      return;
-    }
-    if (typeof document !== 'undefined' && document.hidden) {
-      return;
-    }
+    if (!settings.removeBlackBars || isAdShowing || !video || video.readyState < 2 || video.paused) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+
     if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
-      const now = Date.now();
       if (now - lastUnfocusedScan < 2000) {
         return;
       }
       lastUnfocusedScan = now;
     }
-    
+
     try {
-      if (!ctx) return;
+      if (!ctx || !canvas) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      if (!imageData || !imageData.data) return;
-
+      if (!imageData?.data) return;
       processScan(imageData.data, canvas.width, canvas.height);
-    } catch (err) {
-      console.debug('[Aura] BlackBar drawImage failed:', err);
+    } catch (_) {}
+  }
+
+  function onVideoFrame(now) {
+    rvfcId = 0;
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || !settings.removeBlackBars || !video || isAdShowing) return;
+    const currentTime = typeof Date !== 'undefined' ? Date.now() : now;
+    const minInterval = (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) ? 2000 : 500;
+    if (currentTime - lastScanAt >= minInterval) {
+      lastScanAt = currentTime;
+      scanFrame(currentTime);
+    }
+    if (video && typeof video.requestVideoFrameCallback === 'function') {
+      rvfcId = video.requestVideoFrameCallback(onVideoFrame);
     }
   }
 
   function startScanning() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!intervalId) {
-      intervalId = setInterval(() => {
-        if (!video || video.paused) return;
-        scanFrame();
-      }, 500);
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || !settings.removeBlackBars || !video) return;
+    if (typeof video.requestVideoFrameCallback === 'function') {
+      if (!rvfcId) {
+        rvfcId = video.requestVideoFrameCallback(onVideoFrame);
+      }
+    } else if (!fallbackIntervalId) {
+      fallbackIntervalId = setInterval(() => scanFrame(), 500);
+      if (fallbackIntervalId && typeof fallbackIntervalId.unref === 'function') {
+        fallbackIntervalId.unref();
+      }
     }
   }
 
   function stopScanning() {
-    if (intervalId) {
-      clearInterval(intervalId);
-      intervalId = null;
+    if (rvfcId && video && typeof video.cancelVideoFrameCallback === 'function') {
+      try { video.cancelVideoFrameCallback(rvfcId); } catch (_) {}
+      rvfcId = 0;
     }
+    if (fallbackIntervalId) {
+      clearInterval(fallbackIntervalId);
+      fallbackIntervalId = 0;
+    }
+    lastScanAt = 0;
     lastUnfocusedScan = 0;
   }
 
-  function handlePlayerState(state) {
+  function syncScanningState() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    const nextAdShowing = !!state.isAdShowing;
-    if (state.video !== video || state.videoId !== videoId || nextAdShowing !== isAdShowing) {
-      resetCrop();
-      video = state.video;
-      videoId = state.videoId;
-      isAdShowing = nextAdShowing;
-    }
-    
-    if (state.isWatchPage && video && !isAdShowing) {
+    const isWatchPage = (typeof window !== 'undefined' && window.CineGlowPlayer)
+      ? window.CineGlowPlayer.isWatchPage
+      : (typeof location !== 'undefined' && location.pathname === '/watch');
+    if (settings.removeBlackBars && isWatchPage && video && !isAdShowing) {
       startScanning();
     } else {
       stopScanning();
@@ -232,23 +244,71 @@
     }
   }
 
-  // --- Emergency Kill-Switch Teardown ---
+  function handlePlayerState(state) {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || !state) return;
+    const nextAdShowing = Boolean(state.isAdShowing);
+    if (state.video !== video || state.videoId !== videoId || nextAdShowing !== isAdShowing) {
+      stopScanning();
+      resetCrop();
+      video = state.video;
+      videoId = state.videoId;
+      isAdShowing = nextAdShowing;
+    }
+    syncScanningState();
+  }
+
+  const onPlayerStateChange = (e) => handlePlayerState(e?.detail);
+
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area !== 'sync') return;
+    let changed = false;
+    const defaults = typeof AURA_DEFAULTS !== 'undefined' ? AURA_DEFAULTS : {};
+    for (const [key, { newValue }] of Object.entries(changes)) {
+      if (key in defaults) {
+        settings[key] = newValue ?? defaults[key];
+        changed = true;
+      }
+    }
+    if (changed) {
+      syncScanningState();
+    }
+  };
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener(handleStorageChange);
+  }
+
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     settings.removeBlackBars = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    if (typeof window !== 'undefined') {
+      window.CineGlowKilled = true;
+      window.CineGlowCrop = null;
+    }
 
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged?.removeListener) {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    }
+    if (typeof window !== 'undefined' && window.CineGlowPlayer?.removeEventListener) {
+      window.CineGlowPlayer.removeEventListener('state-change', onPlayerStateChange);
+    }
     stopScanning();
     resetCrop();
-    window.CineGlowCrop = null;
     video = null;
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
         if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
@@ -267,53 +327,34 @@
     }, { once: true });
   }
 
-  window.CineGlowCropTeardown = teardownKillSwitch;
+  if (typeof window !== 'undefined') {
+    window.CineGlowCropTeardown = teardownKillSwitch;
+  }
 
-  if (window.CineGlowPlayer) {
-    window.CineGlowPlayer.addEventListener('state-change', (e) => handlePlayerState(e.detail));
+  if (typeof window !== 'undefined' && window.CineGlowPlayer) {
+    window.CineGlowPlayer.addEventListener('state-change', onPlayerStateChange);
     handlePlayerState(window.CineGlowPlayer);
   }
 
   async function loadSettings() {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     try {
-      const stored = await chrome.storage.sync.get(AURA_DEFAULTS);
-      settings = { ...AURA_DEFAULTS, ...stored };
-    } catch (err) {}
-    
-    if (!settings.removeBlackBars) {
-      resetCrop();
-    }
-  }
-
-  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (area !== 'sync') return;
-      let changed = false;
-      for (const [key, { newValue }] of Object.entries(changes)) {
-        if (key in AURA_DEFAULTS) {
-          settings[key] = newValue ?? AURA_DEFAULTS[key];
-          changed = true;
+      const defaults = typeof AURA_DEFAULTS !== 'undefined' ? AURA_DEFAULTS : {};
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const [local, managed, stored] = await Promise.all([
+          chrome.storage.local?.get(['auraKillSwitchActive']).catch(() => ({})),
+          chrome.storage.managed?.get(['KillSwitch']).catch(() => ({})),
+          chrome.storage.sync?.get(defaults).catch(() => ({}))
+        ]);
+        if (local?.auraKillSwitchActive || managed?.KillSwitch) {
+          teardownKillSwitch();
+          return;
         }
+        settings = { ...defaults, ...stored };
       }
-      if (changed && !settings.removeBlackBars) {
-        resetCrop();
-      }
-    });
-  }
+    } catch (_) {}
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
+    syncScanningState();
   }
 
   loadSettings();

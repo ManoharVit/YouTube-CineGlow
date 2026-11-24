@@ -428,6 +428,40 @@ describe('Speed Button & Playback Speed Persistence Across Navigation', () => {
     assert.strictEqual(stored.preferredSpeed, 1.0, 'preferredSpeed 1.0 must be persisted to storage');
   });
 
+  test('clicking reset button inside speed menu flyout resets speed to 1.0x', async () => {
+    loadSpeedButton();
+    await new Promise(r => setTimeout(r, 25));
+
+    const speedApi = globalThis.window.CineGlowSpeed;
+    speedApi.setPlaybackSpeed(2.5);
+    assert.strictEqual(speedApi.preferredSpeed, 2.5);
+    await new Promise(r => setTimeout(r, 90));
+
+    const btn = player.querySelector('.cineglow-speed-button');
+    assert.ok(btn, 'Speed button must be mounted');
+
+    // Open menu
+    btn.dispatchEvent(new Event('click'));
+    const menu = player.querySelector('.cineglow-speed-menu');
+    assert.ok(menu, 'Speed menu must open on click');
+
+    const resetBtn = menu.querySelector('.cineglow-speed-reset-btn');
+    assert.ok(resetBtn, 'Reset button must exist in speed menu');
+
+    // Click reset button
+    resetBtn.dispatchEvent(new Event('click'));
+
+    assert.strictEqual(speedApi.currentSpeed, 1.0, 'currentSpeed must reset to 1.0');
+    assert.strictEqual(speedApi.preferredSpeed, 1.0, 'preferredSpeed must reset to 1.0');
+    assert.strictEqual(video.playbackRate, 1.0, 'video.playbackRate must reset to 1.0');
+
+    const valSpan = menu.querySelector('.cineglow-speed-current-val');
+    assert.strictEqual(valSpan.textContent, '1.0×', 'Display must show 1.0×');
+
+    const stored = await env.chrome.storage.sync.get('preferredSpeed');
+    assert.strictEqual(stored.preferredSpeed, 1.0, 'preferredSpeed 1.0 must be persisted to storage');
+  });
+
   test('dragging slider updates playback speed and labels without resetting active slider value', async () => {
     loadSpeedButton();
     await new Promise(r => setTimeout(r, 25));

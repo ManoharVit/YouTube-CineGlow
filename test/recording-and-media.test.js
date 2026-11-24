@@ -3,7 +3,7 @@ const { test, describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { setupMockEnvironment, MockVideoElement } = require('./helpers/mock-dom');
+const { setupMockEnvironment, MockElement, MockVideoElement } = require('./helpers/mock-dom');
 
 describe('Media Recording & Codec Selection Pipeline', () => {
   let env;
@@ -257,5 +257,65 @@ describe('Media Recording & Codec Selection Pipeline', () => {
 
     // Allow revokeObjectURL timeouts to settle cleanly
     await new Promise(r => setTimeout(r, 1050));
+  });
+
+  test('updateHUD mounts isolated Shadow DOM with complete styling, host positioning, blinking dot, and separated badge tag', () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    env.elements.set('#movie_player', player);
+    env.elements.set('movie_player', player);
+    env.document.body.appendChild(player);
+
+    const recorder = loadRecorder();
+
+    recorder.setCurrentFormat('mkv');
+    recorder.setCurrentFps(30);
+
+    // Call updateHUD for 12 seconds elapsed
+    recorder.updateHUD(12);
+
+    const hudHost = recorder.getHUDHost();
+    assert.ok(hudHost, 'hudHost must be created and appended');
+    assert.strictEqual(hudHost.id, 'cineglow-hud-host');
+    assert.strictEqual(hudHost.style.position, 'absolute');
+    assert.strictEqual(hudHost.style.top, '18px');
+    assert.strictEqual(hudHost.style.right, '22px');
+    assert.strictEqual(hudHost.style.zIndex, '70');
+
+    // Shadow DOM style verification
+    const shadowRoot = hudHost.shadowRoot;
+    assert.ok(shadowRoot, 'hudHost must have Shadow DOM attached');
+    const styleEl = shadowRoot.children.find(c => c.tagName === 'STYLE');
+    assert.ok(styleEl, 'Shadow DOM must contain encapsulated <style> tag');
+    assert.ok(styleEl.textContent.includes('.cineglow-rec-hud'), 'Style must define .cineglow-rec-hud');
+    assert.ok(styleEl.textContent.includes('.cineglow-rec-dot'), 'Style must define .cineglow-rec-dot');
+    assert.ok(styleEl.textContent.includes('cineglow-rec-blink'), 'Style must define blinking animation');
+    assert.ok(styleEl.textContent.includes('.cineglow-rec-badge-tag'), 'Style must define .cineglow-rec-badge-tag');
+
+    // HUD Element structure verification
+    const hudEl = recorder.getHUDElement();
+    assert.ok(hudEl, 'hudEl must be mounted inside shadow root');
+    assert.strictEqual(hudEl.className, 'cineglow-rec-hud');
+    assert.strictEqual(hudEl.style.display, 'inline-flex');
+    assert.strictEqual(hudEl.style.gap, '8px');
+
+    const dot = hudEl.children.find(c => c.className === 'cineglow-rec-dot');
+    assert.ok(dot, 'Recording dot must exist');
+    assert.strictEqual(dot.style.background, '#ef4444');
+    assert.strictEqual(dot.style.width, '9px');
+    assert.strictEqual(dot.style.height, '9px');
+
+    const recText = hudEl.children.find(c => c.className === 'cineglow-rec-hud-text');
+    assert.ok(recText, 'REC timer text element must exist');
+    assert.strictEqual(recText.textContent, 'REC 0:12');
+
+    const tag = hudEl.children.find(c => c.className === 'cineglow-rec-badge-tag');
+    assert.ok(tag, 'Format and FPS badge tag must exist');
+    assert.ok(tag.textContent.startsWith('MKV • 30 FPS'), `Badge tag text must include MKV • 30 FPS, got: ${tag.textContent}`);
+    assert.strictEqual(tag.style.marginLeft, '4px', 'Badge tag must have 4px margin separation from timer text');
+
+    // Clean up
+    recorder.hideHUD();
+    assert.strictEqual(recorder.getHUDElement(), null);
+    assert.strictEqual(recorder.getHUDHost(), null);
   });
 });

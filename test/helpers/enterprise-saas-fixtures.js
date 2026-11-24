@@ -58,6 +58,14 @@ function matchesSelector(element, selector) {
     return matchesSelector(element, `[${attrClause}]`);
   }
 
+  // Tag with class (e.g., video.html5-main-video)
+  const tagClassMatch = sel.match(/^([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)$/);
+  if (tagClassMatch) {
+    const [, tag, cls] = tagClassMatch;
+    if (element.tagName && element.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+    return element.classList && element.classList.contains(cls);
+  }
+
   // Tag name selector
   if (element.tagName && element.tagName.toLowerCase() === sel.toLowerCase()) {
     return true;

@@ -4,61 +4,39 @@
   const PIP_BUTTON_CLASS = 'cineglow-pip-button';
   const PIP_ACTIVE_CLASS = 'cineglow-pip-active';
 
-  // SVG paths for the two visual states.
-  // "Enter PiP" icon: small window inside a larger frame.
   const ENTER_PIP_PATH = 'M25,17 L17,17 L17,23 L25,23 L25,17 L25,17 Z M29,25 L29,10.98 C29,9.88 28.1,9 27,9 L9,9 C7.9,9 7,9.88 7,10.98 L7,25 C7,26.1 7.9,27 9,27 L27,27 C28.1,27 29,26.1 29,25 L29,25 Z M27,25.02 L9,25.02 L9,10.97 L27,10.97 L27,25.02 L27,25.02 Z';
-  // "Exit PiP" icon: filled small window to indicate active state.
   const EXIT_PIP_PATH = 'M19,11 L11,11 L11,17 L19,17 L19,11 Z M29,25 L29,10.98 C29,9.88 28.1,9 27,9 L9,9 C7.9,9 7,9.88 7,10.98 L7,25 C7,26.1 7.9,27 9,27 L27,27 C28.1,27 29,26.1 29,25 L29,25 Z M27,25.02 L9,25.02 L9,10.97 L27,10.97 L27,25.02 L27,25.02 Z';
+
+  const lifecycle = new AbortController();
+  const { signal } = lifecycle;
 
   let currentButton = null;
   let pathEl = null;
-  let abortController = null;
   let isKilled = false;
-
-  function updateButtonState(isActive) {
-    if (!currentButton || !pathEl) return;
-    if (isActive) {
-      currentButton.classList.add(PIP_ACTIVE_CLASS);
-      currentButton.title = 'Exit Picture-in-Picture';
-      currentButton.setAttribute('aria-label', 'Exit Picture-in-Picture');
-      pathEl.setAttributeNS(null, 'd', EXIT_PIP_PATH);
-    } else {
-      currentButton.classList.remove(PIP_ACTIVE_CLASS);
-      currentButton.title = 'Picture-in-Picture';
-      currentButton.setAttribute('aria-label', 'Picture-in-Picture');
-      pathEl.setAttributeNS(null, 'd', ENTER_PIP_PATH);
-    }
-  }
-
-  function removeExistingButton() {
-    document.querySelectorAll(`.${PIP_BUTTON_CLASS}`).forEach(el => el.remove());
-    currentButton = null;
-    pathEl = null;
-
-    const toolbar = document.querySelector('.cineglow-floating-toolbar');
-    if (toolbar) {
-      const remaining = toolbar.querySelectorAll ? toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button') : [];
-      const hasChildren = typeof toolbar.hasChildNodes === 'function' ? toolbar.hasChildNodes() : (toolbar.children && toolbar.children.length > 0);
-      if (!hasChildren || remaining.length === 0) {
-        if (typeof toolbar._autohideTeardown === 'function') {
-          toolbar._autohideTeardown();
-        }
-        toolbar.remove();
-      }
-    }
-  }
+  let pipTransitionTimer = 0;
 
   function initToolbarAutohide(player, toolbar) {
-    if (toolbar._autohideInitialized) return;
+    if (!player || !toolbar || toolbar._autohideInitialized) return;
     toolbar._autohideInitialized = true;
 
+    const ac = new AbortController();
     let hideTimeout = 0;
+    let observedChrome = null;
+
+    const bindChromeObserver = () => {
+      const chromeBottom = player.querySelector('.ytp-chrome-bottom');
+      if (chromeBottom && chromeBottom !== observedChrome) {
+        observedChrome = chromeBottom;
+        chromeObserver.disconnect();
+        chromeObserver.observe(chromeBottom, { attributes: true, attributeFilter: ['style', 'class'] });
+      }
+    };
 
     const syncVisibility = () => {
-      // NEVER hide if hovered, focused, or if any menu is open
-      const isHovered = toolbar.matches(':hover') || toolbar.querySelector(':hover');
-      const isMenuOpen = toolbar.classList.contains('cineglow-menu-open') || 
-                         toolbar.querySelector('.cineglow-rec-menu, .cineglow-speed-menu');
+      bindChromeObserver();
+      const isHovered = toolbar.matches(':hover') || Boolean(toolbar.querySelector(':hover'));
+      const isMenuOpen = toolbar.classList.contains('cineglow-menu-open') ||
+                         Boolean(toolbar.querySelector('.cineglow-rec-menu, .cineglow-speed-menu'));
       const isFocused = toolbar.matches(':focus-within');
 
       if (isHovered || isMenuOpen || isFocused) {
@@ -66,67 +44,40 @@
         return;
       }
 
-      const isAutohide = player.classList.contains('ytp-autohide') || 
+      const isAutohide = player.classList.contains('ytp-autohide') ||
                          player.classList.contains('ytp-hide-controls');
-      const chromeBottom = player.querySelector('.ytp-chrome-bottom');
-      const isChromeHidden = chromeBottom && (
-        chromeBottom.hidden ||
-        chromeBottom.style.display === 'none' ||
-        chromeBottom.classList.contains('ytp-chrome-hidden')
-      );
+      const isChromeHidden = Boolean(observedChrome && (
+        observedChrome.hidden ||
+        observedChrome.style.display === 'none' ||
+        observedChrome.classList.contains('ytp-chrome-hidden')
+      ));
 
-      if (isAutohide || isChromeHidden) {
-        toolbar.classList.add('cineglow-toolbar-hidden');
-      } else {
-        toolbar.classList.remove('cineglow-toolbar-hidden');
-      }
+      toolbar.classList.toggle('cineglow-toolbar-hidden', isAutohide || isChromeHidden);
     };
 
-    const observer = new MutationObserver(() => syncVisibility());
-    observer.observe(player, { attributes: true, attributeFilter: ['class'] });
+    const playerObserver = new MutationObserver(syncVisibility);
+    playerObserver.observe(player, { attributes: true, attributeFilter: ['class'] });
 
-    const chromeBottom = player.querySelector('.ytp-chrome-bottom');
-    if (chromeBottom) {
-      observer.observe(chromeBottom, { attributes: true, attributeFilter: ['style', 'class'] });
-    }
+    const chromeObserver = new MutationObserver(syncVisibility);
+    bindChromeObserver();
 
-    const onToolbarMouseEnter = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    const onToolbarMouseMove = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
+    const showToolbar = () => toolbar.classList.remove('cineglow-toolbar-hidden');
     const onToolbarMouseLeave = () => {
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(syncVisibility, 200);
     };
 
-    const onPlayerMouseEnter = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    const onPlayerMouseMove = () => {
-      toolbar.classList.remove('cineglow-toolbar-hidden');
-    };
-
-    toolbar.addEventListener('mouseenter', onToolbarMouseEnter);
-    toolbar.addEventListener('mousemove', onToolbarMouseMove);
-    toolbar.addEventListener('mouseleave', onToolbarMouseLeave);
-    player.addEventListener('mouseenter', onPlayerMouseEnter);
-    player.addEventListener('mousemove', onPlayerMouseMove);
+    toolbar.addEventListener('mouseenter', showToolbar, { passive: true, signal: ac.signal });
+    toolbar.addEventListener('mousemove', showToolbar, { passive: true, signal: ac.signal });
+    toolbar.addEventListener('mouseleave', onToolbarMouseLeave, { passive: true, signal: ac.signal });
+    player.addEventListener('mouseenter', showToolbar, { passive: true, signal: ac.signal });
+    player.addEventListener('mousemove', showToolbar, { passive: true, signal: ac.signal });
 
     const teardownAutohide = () => {
       clearTimeout(hideTimeout);
-      if (observer) {
-        try { observer.disconnect(); } catch (_) {}
-      }
-      try { toolbar.removeEventListener('mouseenter', onToolbarMouseEnter); } catch (_) {}
-      try { toolbar.removeEventListener('mousemove', onToolbarMouseMove); } catch (_) {}
-      try { toolbar.removeEventListener('mouseleave', onToolbarMouseLeave); } catch (_) {}
-      try { player.removeEventListener('mouseenter', onPlayerMouseEnter); } catch (_) {}
-      try { player.removeEventListener('mousemove', onPlayerMouseMove); } catch (_) {}
+      playerObserver.disconnect();
+      chromeObserver.disconnect();
+      ac.abort();
       toolbar._autohideInitialized = false;
       delete toolbar._autohideTeardown;
       delete toolbar._teardownAutohide;
@@ -134,63 +85,65 @@
 
     toolbar._autohideTeardown = teardownAutohide;
     toolbar._teardownAutohide = teardownAutohide;
-
     syncVisibility();
   }
 
-  /**
-   * Wait for .cineglow-floating-toolbar on the right side of the player.
-   * Creates it if it doesn't exist yet and removes legacy center controls.
-   */
-  function waitForFloatingToolbar(player, signal) {
-    return new Promise((resolve) => {
-      const getToolbar = () => {
-        // Remove legacy center controls
-        const legacy = player.querySelectorAll('.cineglow-center-controls');
-        legacy.forEach(el => el.remove());
+  function getOrCreateToolbar(player) {
+    if (!player) return null;
+    player.querySelectorAll('.cineglow-center-controls').forEach((el) => el.remove());
 
-        let toolbar = player.querySelector('.cineglow-floating-toolbar');
-        if (toolbar) return toolbar;
-
-        toolbar = document.createElement('div');
-        toolbar.className = 'cineglow-floating-toolbar cineglow-vertical-toolbar';
-        player.appendChild(toolbar);
-        initToolbarAutohide(player, toolbar);
-        return toolbar;
-      };
-
-      const existing = getToolbar();
-      if (existing) {
-        resolve(existing);
-        return;
-      }
-
-      const observer = new MutationObserver(() => {
-        const el = getToolbar();
-        if (el) {
-          observer.disconnect();
-          resolve(el);
-        }
-      });
-
-      signal.addEventListener('abort', () => {
-        observer.disconnect();
-        resolve(null);
-      }, { once: true });
-
-      observer.observe(player, { childList: true, subtree: true });
-    });
+    let toolbar = player.querySelector('.cineglow-floating-toolbar');
+    if (!toolbar) {
+      toolbar = document.createElement('div');
+      toolbar.className = 'cineglow-floating-toolbar cineglow-vertical-toolbar';
+      player.appendChild(toolbar);
+    }
+    initToolbarAutohide(player, toolbar);
+    return toolbar;
   }
 
-  async function injectPipButton(playerManager) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    const { player, isWatchPage } = playerManager;
-
-    if (abortController) {
-      abortController.abort();
+  function cleanupToolbarIfEmpty() {
+    const toolbar = document.querySelector('.cineglow-floating-toolbar');
+    if (!toolbar) return;
+    const remaining = toolbar.querySelectorAll(
+      '.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button'
+    ).length;
+    if (!toolbar.hasChildNodes() || remaining === 0) {
+      toolbar._autohideTeardown?.();
+      toolbar.remove();
     }
-    abortController = new AbortController();
-    const signal = abortController.signal;
+  }
+
+  window.CineGlowToolbar = window.CineGlowToolbar || {
+    getOrCreateToolbar,
+    cleanupToolbarIfEmpty
+  };
+
+  function updateButtonState(isActive) {
+    if (!currentButton || !pathEl) return;
+    if (isActive) {
+      currentButton.classList.add(PIP_ACTIVE_CLASS);
+      currentButton.title = 'Exit Picture-in-Picture';
+      currentButton.setAttribute('aria-label', 'Exit Picture-in-Picture');
+      pathEl.setAttribute('d', EXIT_PIP_PATH);
+    } else {
+      currentButton.classList.remove(PIP_ACTIVE_CLASS);
+      currentButton.title = 'Picture-in-Picture';
+      currentButton.setAttribute('aria-label', 'Picture-in-Picture');
+      pathEl.setAttribute('d', ENTER_PIP_PATH);
+    }
+  }
+
+  function removeExistingButton() {
+    document.querySelectorAll(`.${PIP_BUTTON_CLASS}`).forEach((el) => el.remove());
+    currentButton = null;
+    pathEl = null;
+    cleanupToolbarIfEmpty();
+  }
+
+  function injectPipButton(playerManager) {
+    if (isKilled || window.CineGlowKilled || !playerManager) return;
+    const { player, isWatchPage } = playerManager;
 
     if (!isWatchPage || !player) {
       removeExistingButton();
@@ -203,31 +156,30 @@
 
     removeExistingButton();
 
-    const toolbar = await waitForFloatingToolbar(player, signal);
-    if (!toolbar || signal.aborted) return;
+    const toolbar = window.CineGlowToolbar.getOrCreateToolbar(player);
+    if (!toolbar) return;
 
-    // Build button
     const pipButton = document.createElement('button');
+    pipButton.type = 'button';
     pipButton.className = `ytp-button ${PIP_BUTTON_CLASS}`;
     pipButton.title = 'Picture-in-Picture';
     pipButton.setAttribute('aria-label', 'Picture-in-Picture');
 
     const xmlns = 'http://www.w3.org/2000/svg';
     const svgElem = document.createElementNS(xmlns, 'svg');
-    svgElem.setAttributeNS(null, 'height', '100%');
-    svgElem.setAttributeNS(null, 'version', '1.1');
-    svgElem.setAttributeNS(null, 'viewBox', '0 0 36 36');
-    svgElem.setAttributeNS(null, 'width', '100%');
+    svgElem.setAttribute('height', '100%');
+    svgElem.setAttribute('width', '100%');
+    svgElem.setAttribute('viewBox', '0 0 36 36');
     svgElem.style.display = 'block';
     svgElem.style.margin = 'auto';
 
     const groupEl = document.createElementNS(xmlns, 'g');
-    groupEl.setAttributeNS(null, 'transform', 'translate(-1, -1)');
+    groupEl.setAttribute('transform', 'translate(-1, -1)');
 
     pathEl = document.createElementNS(xmlns, 'path');
-    pathEl.setAttributeNS(null, 'class', 'ytp-svg-fill');
-    pathEl.setAttributeNS(null, 'd', ENTER_PIP_PATH);
-    pathEl.setAttributeNS(null, 'fill', '#fff');
+    pathEl.setAttribute('class', 'ytp-svg-fill');
+    pathEl.setAttribute('d', ENTER_PIP_PATH);
+    pathEl.setAttribute('fill', '#fff');
 
     groupEl.appendChild(pathEl);
     svgElem.appendChild(groupEl);
@@ -237,86 +189,58 @@
       e.preventDefault();
       e.stopPropagation();
 
-      const currentVideo = window.CineGlowPlayer ? window.CineGlowPlayer.video : null;
+      const currentVideo = window.CineGlowPlayer?.video;
       if (!currentVideo) return;
 
       try {
         if (document.pictureInPictureElement === currentVideo) {
           await document.exitPictureInPicture();
         } else {
-          if (typeof window !== 'undefined') {
-            window._cineglowPipTransition = true;
-            setTimeout(() => {
-              window._cineglowPipTransition = false;
-            }, 500);
+          if (currentVideo.disablePictureInPicture) {
+            currentVideo.disablePictureInPicture = false;
           }
+          window._cineglowPipTransition = true;
+          clearTimeout(pipTransitionTimer);
+          pipTransitionTimer = setTimeout(() => {
+            window._cineglowPipTransition = false;
+          }, 500);
           await currentVideo.requestPictureInPicture();
         }
       } catch (error) {
-        if (typeof window !== 'undefined') {
-          window._cineglowPipTransition = false;
-        }
+        clearTimeout(pipTransitionTimer);
+        window._cineglowPipTransition = false;
         console.error('[CineGlow] PiP Error:', error);
       }
-    });
+    }, { signal });
 
-    // PiP button must strictly be at the bottom of the stack
     toolbar.appendChild(pipButton);
-
     currentButton = pipButton;
-
-    updateButtonState(!!document.pictureInPictureElement);
+    updateButtonState(Boolean(document.pictureInPictureElement));
   }
 
-  // --- Emergency Kill-Switch Teardown ---
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
-    if (typeof window !== 'undefined') {
-      window.CineGlowKilled = true;
-      window._cineglowPipTransition = false;
-    }
+    window.CineGlowKilled = true;
+    clearTimeout(pipTransitionTimer);
+    window._cineglowPipTransition = false;
 
-    if (abortController) {
-      abortController.abort();
-      abortController = null;
-    }
+    lifecycle.abort();
     removeExistingButton();
-    const toolbar = document.querySelector('.cineglow-floating-toolbar');
-    if (toolbar) {
-      if (typeof toolbar._autohideTeardown === 'function') {
-        toolbar._autohideTeardown();
-      }
-      const remaining = toolbar.querySelectorAll ? toolbar.querySelectorAll('.cineglow-record-wrapper, .cineglow-pip-button, .cineglow-screenshot-button, .cineglow-speed-button') : [];
-      const hasChildren = typeof toolbar.hasChildNodes === 'function' ? toolbar.hasChildNodes() : (toolbar.children && toolbar.children.length > 0);
-      if (!hasChildren || remaining.length === 0) {
-        toolbar.remove();
-      }
-    }
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
-  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
-        teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
-          window._cineglowKillEventFired = true;
-          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
-        }
-        if (typeof sendResponse === 'function') {
-          sendResponse({ success: true, script: 'pip-button.js' });
-        }
-      }
-    });
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
+  chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
+    if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
       teardownKillSwitch();
-    }, { once: true });
-  }
+      if (!window._cineglowKillEventFired) {
+        window._cineglowKillEventFired = true;
+        window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+      }
+      sendResponse?.({ success: true, script: 'pip-button.js' });
+    }
+  });
 
+  window.addEventListener('cineglow:kill-switch', teardownKillSwitch, { once: true });
   window.CineGlowPipTeardown = teardownKillSwitch;
 
   if (window.CineGlowPlayer) {
@@ -331,21 +255,9 @@
         removeExistingButton();
       }
       updateButtonState(state.isPiP);
-    });
+    }, { signal });
 
     injectPipButton(window.CineGlowPlayer);
   }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
 })();
+

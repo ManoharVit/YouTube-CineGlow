@@ -1,4 +1,5 @@
 // Runs in the MAIN world at document_start to safely bypass CSP restrictions
+// Author: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 (() => {
   'use strict';
 
@@ -6,6 +7,8 @@
   let adBlockEnabled = true;
   let mainWorldAdInterval = null;
   let adMutationObserver = null;
+  let bootstrapObserver = null;
+  let observedPlayer = null;
   let preAdSpeed = 1.0;
   let acceleratedVideo = null;
   let preferredPlaybackSpeed = 1.0;
@@ -13,6 +16,7 @@
   let userWasMuted = false;
   let isSkippingMainWorld = false;
   let lastMainWorldSkipClickTime = 0;
+  let theaterTimer = null;
   let origJSONParse = null;
   let origFetch = null;
   let origOpen = null;
@@ -47,73 +51,58 @@
   ].join(', ');
 
   // --- Phase 1: Stub YouTube Ad Globals BEFORE any YouTube code runs ---
-  // This must happen at the very top, before document_start scripts parse
-
-  // 1A. Stub googletag (GPT ad library) safely
   try {
-    if (typeof window !== 'undefined') {
-      let gTag = { cmd: [] };
-      Object.defineProperty(window, 'googletag', {
-        configurable: true,
-        enumerable: false,
-        get: () => gTag,
-        set: (v) => { if (v && typeof v === 'object') gTag = v; }
-      });
-    }
+    let gTag = { cmd: [] };
+    Object.defineProperty(window, 'googletag', {
+      configurable: true,
+      enumerable: false,
+      get: () => gTag,
+      set: (v) => { if (v && typeof v === 'object') gTag = v; }
+    });
   } catch (_) {}
 
-  // 1B. Stub ytAds / yt.ads so the ad module thinks ads are unavailable
   try {
-    if (typeof window !== 'undefined') {
-      Object.defineProperty(window, 'ytAds', {
-        configurable: true,
-        enumerable: false,
-        get: () => undefined,
-        set: () => {}
-      });
-    }
+    Object.defineProperty(window, 'ytAds', {
+      configurable: true,
+      enumerable: false,
+      get: () => undefined,
+      set: () => {}
+    });
   } catch (_) {}
 
-  // 1C. Force adBlocksFound to always return 0 (anti-adblock evasion)
   try {
-    if (typeof window !== 'undefined') {
-      Object.defineProperty(window, 'adBlocksFound', {
-        configurable: true,
-        enumerable: false,
-        get: () => 0,
-        set: () => {}
-      });
-      window.yt = window.yt || {};
-      Object.defineProperty(window.yt, 'adBlocksFound', {
-        configurable: true,
-        enumerable: false,
-        get: () => 0,
-        set: () => {}
-      });
-    }
+    Object.defineProperty(window, 'adBlocksFound', {
+      configurable: true,
+      enumerable: false,
+      get: () => 0,
+      set: () => {}
+    });
+    window.yt = window.yt || {};
+    Object.defineProperty(window.yt, 'adBlocksFound', {
+      configurable: true,
+      enumerable: false,
+      get: () => 0,
+      set: () => {}
+    });
   } catch (_) {}
 
-  // 1D. Force hasAllowedInstreamAd to true (bypass ad requirement checks)
   try {
-    if (typeof window !== 'undefined') {
-      Object.defineProperty(window, 'hasAllowedInstreamAd', {
-        configurable: true,
-        enumerable: false,
-        get: () => true,
-        set: () => {}
-      });
-      window.yt = window.yt || {};
-      Object.defineProperty(window.yt, 'hasAllowedInstreamAd', {
-        configurable: true,
-        enumerable: false,
-        get: () => true,
-        set: () => {}
-      });
-    }
+    Object.defineProperty(window, 'hasAllowedInstreamAd', {
+      configurable: true,
+      enumerable: false,
+      get: () => true,
+      set: () => {}
+    });
+    window.yt = window.yt || {};
+    Object.defineProperty(window.yt, 'hasAllowedInstreamAd', {
+      configurable: true,
+      enumerable: false,
+      get: () => true,
+      set: () => {}
+    });
   } catch (_) {}
 
   // --- Phase 2: Deep Player Response Pruning ---
-  // Comprehensive list of ALL ad-related keys in YouTube player responses
   const AD_KEYS_TO_DELETE = [
     'adPlacements', 'playerAds', 'adSlots', 'adBreakHeartbeatParams',
     'adSlotRenderer', 'companionSlot', 'adBreakParams',
@@ -144,7 +133,6 @@
         }
       }
 
-      // Deep prune nested player responses
       if (data.playerResponse && typeof data.playerResponse === 'object') {
         prunePlayerAds(data.playerResponse);
       }
@@ -152,46 +140,34 @@
         prunePlayerAds(data.raw_player_response);
       }
 
-      // Prune ad config from playerConfig
       if (data.playerConfig) {
         if (data.playerConfig.adConfig) delete data.playerConfig.adConfig;
         if (data.playerConfig.adsConfig) delete data.playerConfig.adsConfig;
       }
 
-      // Preserve data.attestation: required by YouTube Web-Environment-Integrity for chunk stream playback
-
-      // Prune overlay/engagement ad renderers from response
-      if (data.overlay && data.overlay.playerOverlayRenderer) {
-        const ovr = data.overlay.playerOverlayRenderer;
-        if (ovr.decoratedPlayerBarRenderer) {
-          const dpbr = ovr.decoratedPlayerBarRenderer.decoratedPlayerBarRenderer;
-          if (dpbr && dpbr.playerBar) {
-            // Remove ad markers from progress bar
-            const pb = dpbr.playerBar.multiMarkersPlayerBarRenderer || dpbr.playerBar.chapteredPlayerBarRenderer;
-            if (pb && pb.adBreakMarkerRenderer) delete pb.adBreakMarkerRenderer;
-          }
-        }
+      if (data.overlay?.playerOverlayRenderer?.decoratedPlayerBarRenderer) {
+        const dpbr = data.overlay.playerOverlayRenderer.decoratedPlayerBarRenderer.decoratedPlayerBarRenderer;
+        const pb = dpbr?.playerBar?.multiMarkersPlayerBarRenderer || dpbr?.playerBar?.chapteredPlayerBarRenderer;
+        if (pb && pb.adBreakMarkerRenderer) delete pb.adBreakMarkerRenderer;
       }
 
-      // Prune engagementPanels with ad content
       if (Array.isArray(data.engagementPanels)) {
         data.engagementPanels = data.engagementPanels.filter(
-          p => !p?.engagementPanelSectionListRenderer?.targetId?.includes('ads')
+          (p) => !p?.engagementPanelSectionListRenderer?.targetId?.includes('ads')
         );
       }
-
     } catch (_) {}
     return data;
   }
 
-  // --- Phase 3: Global JSON.parse Hook (Core Technique) ---
+  // --- Phase 3: Global JSON.parse Hook (covers fetch().json() and inline JSON) ---
   try {
     if (typeof JSON !== 'undefined' && typeof JSON.parse === 'function') {
       origJSONParse = JSON.parse;
       JSON.parse = function parse(...args) {
         if (!adBlockEnabled || (isKilled && origJSONParse)) return origJSONParse.apply(this, args);
         const result = origJSONParse.apply(this, args);
-        if (result && typeof result === 'object') {
+        if (!isKilled && adBlockEnabled && result && typeof result === 'object') {
           prunePlayerAds(result);
         }
         return result;
@@ -201,82 +177,73 @@
 
   // --- Phase 4: Intercept and Sanitize YouTube Global Config Objects ---
   try {
-    if (typeof window !== 'undefined') {
-      // 4A. ytInitialPlayerResponse
-      let _rawInitial = window.ytInitialPlayerResponse;
-      if (_rawInitial) prunePlayerAds(_rawInitial);
-      Object.defineProperty(window, 'ytInitialPlayerResponse', {
-        configurable: true,
-        enumerable: true,
-        get: () => _rawInitial,
-        set: (val) => { _rawInitial = prunePlayerAds(val); }
-      });
+    let _rawInitial = window.ytInitialPlayerResponse;
+    if (_rawInitial) prunePlayerAds(_rawInitial);
+    Object.defineProperty(window, 'ytInitialPlayerResponse', {
+      configurable: true,
+      enumerable: true,
+      get: () => _rawInitial,
+      set: (val) => { _rawInitial = prunePlayerAds(val); }
+    });
 
-      // 4B. ytInitialData
-      let _rawInitialData = window.ytInitialData;
-      if (_rawInitialData) prunePlayerAds(_rawInitialData);
-      Object.defineProperty(window, 'ytInitialData', {
-        configurable: true,
-        enumerable: true,
-        get: () => _rawInitialData,
-        set: (val) => { _rawInitialData = prunePlayerAds(val); }
-      });
+    let _rawInitialData = window.ytInitialData;
+    if (_rawInitialData) prunePlayerAds(_rawInitialData);
+    Object.defineProperty(window, 'ytInitialData', {
+      configurable: true,
+      enumerable: true,
+      get: () => _rawInitialData,
+      set: (val) => { _rawInitialData = prunePlayerAds(val); }
+    });
 
-      // 4C. ytplayer
-      let _rawYtPlayer = window.ytplayer;
-      if (_rawYtPlayer && _rawYtPlayer.config && _rawYtPlayer.config.args) {
-        prunePlayerAds(_rawYtPlayer.config.args.raw_player_response);
-        prunePlayerAds(_rawYtPlayer.config.args);
-      }
-      Object.defineProperty(window, 'ytplayer', {
-        configurable: true,
-        enumerable: true,
-        get: () => _rawYtPlayer,
-        set: (val) => {
-          if (!isKilled && adBlockEnabled && val && val.config && val.config.args) {
-            prunePlayerAds(val.config.args.raw_player_response);
-            prunePlayerAds(val.config.args);
-            // Null out the ad module reference
-            if (val.config.args.ad3_module) val.config.args.ad3_module = null;
-            if (val.config.args.ad_pings) val.config.args.ad_pings = null;
-          }
-          _rawYtPlayer = val;
-        }
-      });
-
-      // 4D. Neutralize yt.config_ anti-adblock popup
-      const neutralizeYtConfig = () => {
-        if (isKilled || !adBlockEnabled) return;
-        try {
-          if (window.yt && window.yt.config_) {
-            if (window.yt.config_.openPopupConfig &&
-                window.yt.config_.openPopupConfig.supportedPopups) {
-              window.yt.config_.openPopupConfig.supportedPopups.adBlockMessageViewModel = false;
-              window.yt.config_.openPopupConfig.supportedPopups.adBlockMessageViewModelOld = false;
-            }
-            // Disable ad-block experiment flags
-            if (window.yt.config_.EXPERIMENT_FLAGS) {
-              const flags = window.yt.config_.EXPERIMENT_FLAGS;
-              flags.web_gel_timeout_cap = false;
-              flags.web_display_mode = undefined;
-              flags.ab_det_el_h = false;
-              flags.ab_det_gen_re = false;
-            }
-          }
-        } catch (_) {}
-      };
-
-      // Try immediately and also on a timer (yt.config_ loads async)
-      neutralizeYtConfig();
-      setTimeout(neutralizeYtConfig, 500);
-      setTimeout(neutralizeYtConfig, 1500);
-      setTimeout(neutralizeYtConfig, 3000);
+    let _rawYtPlayer = window.ytplayer;
+    if (_rawYtPlayer?.config?.args) {
+      prunePlayerAds(_rawYtPlayer.config.args.raw_player_response);
+      prunePlayerAds(_rawYtPlayer.config.args);
     }
+    Object.defineProperty(window, 'ytplayer', {
+      configurable: true,
+      enumerable: true,
+      get: () => _rawYtPlayer,
+      set: (val) => {
+        if (!isKilled && adBlockEnabled && val?.config?.args) {
+          prunePlayerAds(val.config.args.raw_player_response);
+          prunePlayerAds(val.config.args);
+          if (val.config.args.ad3_module) val.config.args.ad3_module = null;
+          if (val.config.args.ad_pings) val.config.args.ad_pings = null;
+        }
+        _rawYtPlayer = val;
+      }
+    });
+
+    const neutralizeYtConfig = () => {
+      if (isKilled || !adBlockEnabled) return;
+      try {
+        if (window.yt?.config_) {
+          if (window.yt.config_.openPopupConfig?.supportedPopups) {
+            window.yt.config_.openPopupConfig.supportedPopups.adBlockMessageViewModel = false;
+            window.yt.config_.openPopupConfig.supportedPopups.adBlockMessageViewModelOld = false;
+          }
+          if (window.yt.config_.EXPERIMENT_FLAGS) {
+            const flags = window.yt.config_.EXPERIMENT_FLAGS;
+            flags.web_gel_timeout_cap = false;
+            flags.web_display_mode = undefined;
+            flags.ab_det_el_h = false;
+            flags.ab_det_gen_re = false;
+          }
+        }
+      } catch (_) {}
+    };
+
+    neutralizeYtConfig();
+    const t1 = setTimeout(neutralizeYtConfig, 500);
+    const t2 = setTimeout(neutralizeYtConfig, 1500);
+    const t3 = setTimeout(neutralizeYtConfig, 3000);
+    if (t1?.unref) t1.unref();
+    if (t2?.unref) t2.unref();
+    if (t3?.unref) t3.unref();
   } catch (_) {}
 
-  // --- Phase 5: Comprehensive Network Interception ---
-
-  // 5A. URLs to block entirely (return empty response)
+  // --- Phase 5: Ad Endpoint Blocking ---
   const BLOCK_URL_PATTERNS = [
     '/youtubei/v1/player/ad_break',
     '/ptracking',
@@ -284,75 +251,35 @@
     '/pagead/',
     '/pcs/activeview',
     'doubleclick.net',
-    'googlesyndication.com',
-  ];
-
-  // 5B. URLs whose responses need ad data stripped
-  const PRUNE_URL_PATTERNS = [
-    '/youtubei/v1/player',
-    '/youtubei/v1/next',
-    '/youtubei/v1/browse',
+    'googlesyndication.com'
   ];
 
   function shouldBlockUrl(url) {
-    if (!adBlockEnabled) return false;
-    return BLOCK_URL_PATTERNS.some(p => url.includes(p));
+    if (!adBlockEnabled || !url) return false;
+    return BLOCK_URL_PATTERNS.some((p) => url.includes(p));
   }
 
-  function shouldPruneUrl(url) {
-    if (!adBlockEnabled) return false;
-    // Must check block first — don't prune what we block
-    return !shouldBlockUrl(url) && PRUNE_URL_PATTERNS.some(p => url.includes(p));
-  }
-
-  // 5C. Intercept window.fetch
-  if (typeof window !== 'undefined' && typeof window.fetch === 'function' && typeof Response !== 'undefined') {
+  if (typeof window.fetch === 'function' && typeof Response !== 'undefined') {
     origFetch = window.fetch;
-    window.fetch = async function fetch(...args) {
+    window.fetch = function fetch(...args) {
       if (isKilled && origFetch) {
         return origFetch.apply(this, args);
       }
-      try {
-        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-
-        // Block ad-related fetches entirely
-        if (shouldBlockUrl(url)) {
-          return new Response('{}', {
+      const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+      if (shouldBlockUrl(url)) {
+        return Promise.resolve(
+          new Response('{}', {
             status: 200,
             statusText: 'OK',
             headers: { 'Content-Type': 'application/json' }
-          });
-        }
-      } catch (_) {}
-
-      const response = await origFetch.apply(this, args);
-
-      try {
-        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-        if (shouldPruneUrl(url)) {
-          const clone = response.clone();
-          const text = await clone.text();
-          try {
-            const json = JSON.parse(text);
-            if (json && typeof json === 'object') {
-              prunePlayerAds(json);
-              return new Response(JSON.stringify(json), {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
-              });
-            }
-          } catch (_) {
-            // Not JSON, return original
-          }
-        }
-      } catch (_) {}
-      return response;
+          })
+        );
+      }
+      return origFetch.apply(this, args);
     };
   }
 
-  // 5D. Intercept XMLHttpRequest
-  if (typeof window !== 'undefined' && typeof window.XMLHttpRequest !== 'undefined') {
+  if (typeof window.XMLHttpRequest !== 'undefined') {
     origOpen = XMLHttpRequest.prototype.open;
     origSend = XMLHttpRequest.prototype.send;
 
@@ -370,14 +297,16 @@
       }
       if (this._cineglowUrl && shouldBlockUrl(this._cineglowUrl)) {
         try {
+          const mockPayload = this.responseType === 'json' ? {} : '{}';
           Object.defineProperty(this, 'responseText', { value: '{}', writable: false, configurable: true });
-          Object.defineProperty(this, 'response', { value: '{}', writable: false, configurable: true });
+          Object.defineProperty(this, 'response', { value: mockPayload, writable: false, configurable: true });
           Object.defineProperty(this, 'status', { value: 200, writable: false, configurable: true });
           Object.defineProperty(this, 'readyState', { value: 4, writable: false, configurable: true });
-          setTimeout(() => {
+          queueMicrotask(() => {
             this.dispatchEvent(new Event('readystatechange'));
             this.dispatchEvent(new Event('load'));
-          }, 0);
+            this.dispatchEvent(new Event('loadend'));
+          });
           return;
         } catch (_) {}
       }
@@ -385,8 +314,11 @@
     };
   }
 
-  function isAdActive() {
-    const player = document.getElementById('movie_player') || document.querySelector('#shorts-player, .html5-video-player');
+  function getPlayerElement() {
+    return document.getElementById('movie_player') || document.querySelector('#shorts-player, .html5-video-player');
+  }
+
+  function isAdActive(player = getPlayerElement()) {
     return Boolean(
       player && (
         player.classList.contains('ad-showing') ||
@@ -395,38 +327,64 @@
     );
   }
 
+  function restoreVideoAfterAd(player = getPlayerElement()) {
+    const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
+    if (!video) return;
+
+    // Only restore if CineGlow actively muted or accelerated playback during an ad
+    const hadAdMutation = Boolean(adMuted || acceleratedVideo || video.hasAttribute?.('data-cineglow-ad-muted'));
+    if (!hadAdMutation) return;
+
+    if (adMuted || video.hasAttribute?.('data-cineglow-ad-muted')) {
+      if (!userWasMuted) {
+        video.muted = false;
+      }
+      video.removeAttribute?.('data-cineglow-ad-muted');
+      adMuted = false;
+    }
+    userWasMuted = false;
+    if (acceleratedVideo === video && video.playbackRate === 16.0) {
+      video.playbackRate = preAdSpeed || preferredPlaybackSpeed || 1.0;
+    }
+    acceleratedVideo = null;
+  }
+
   // --- Phase 6: Zero-Latency Main-World Ad Skipping ---
   function skipMainWorldAd() {
-    if (isKilled) return;
-    if (!adBlockEnabled) return;
-    if (isSkippingMainWorld) return;
+    if (isKilled || !adBlockEnabled || isSkippingMainWorld) return;
     isSkippingMainWorld = true;
 
     try {
-      const player = document.getElementById('movie_player') || document.querySelector('#shorts-player, .html5-video-player');
-      const isAd = isAdActive();
+      const player = getPlayerElement();
+      if (player) attachPlayerObserver(player);
 
-      if (isAd) {
-        // A. Try YouTube internal skipAd() method
+      try {
+        const watermarks = document.querySelectorAll(
+          '.iv-branding, .branding-img-container, .branding-context-container, .ytp-featured-watermark, [class*="branding-img"], [class*="branding-context"]'
+        );
+        watermarks.forEach((w) => { try { w.remove(); } catch (_) {} });
+      } catch (_) {}
+
+      if (isAdActive(player)) {
         if (player && typeof player.skipAd === 'function') {
           try { player.skipAd(); } catch (_) {}
-          if (!isAdActive()) return;
+          if (!isAdActive(player)) {
+            restoreVideoAfterAd(player);
+            return;
+          }
         }
 
-        // B. Fast-forward and mute HTML5 video
         const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
         if (video) {
           if (!adMuted) {
             if (video.playbackRate > 0 && video.playbackRate !== 16.0) {
               preAdSpeed = video.playbackRate;
             }
-            const alreadyMutedByCineGlow = typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted');
+            const alreadyMutedByCineGlow = Boolean(video.hasAttribute?.('data-cineglow-ad-muted'));
             userWasMuted = video.muted && !alreadyMutedByCineGlow;
             if (!video.muted || alreadyMutedByCineGlow) {
               video.muted = true;
-              if (typeof video.setAttribute === 'function') {
-                video.setAttribute('data-cineglow-ad-muted', 'true');
-              }
+              video.setAttribute?.('data-cineglow-ad-muted', 'true');
               adMuted = true;
             }
           }
@@ -434,16 +392,15 @@
           video.playbackRate = 16.0;
         }
 
-        // C. Click the active skip button strictly inside if (isAdActive()) and scoped to player
         if (player) {
           const now = Date.now();
           if (now - lastMainWorldSkipClickTime > 150) {
-            let btn = typeof player.querySelector === 'function' ? player.querySelector(MAIN_SKIP_BUTTON_SELECTOR) : null;
+            const btn = player.querySelector?.(MAIN_SKIP_BUTTON_SELECTOR);
             if (btn) {
               lastMainWorldSkipClickTime = now;
               try {
-                if (btn.tagName !== 'BUTTON' && typeof btn.querySelector === 'function') {
-                  const childBtn = btn.querySelector('button, [role="button"]');
+                if (btn.tagName !== 'BUTTON') {
+                  const childBtn = btn.querySelector?.('button, [role="button"]');
                   if (childBtn) childBtn.click();
                 }
                 btn.click();
@@ -452,38 +409,19 @@
           }
         }
 
-        // D. Force-remove ad overlay elements from DOM (FP-1.3: preserve creator info cards/teasers)
         try {
           const overlays = document.querySelectorAll(
             '.ytp-ad-player-overlay, .ytp-ad-player-overlay-layout, ' +
             '.ytp-ad-player-overlay-instream-info, .ytp-ad-message-container, ' +
             '.ytp-ad-overlay-container, .ytp-ad-survey, .ytp-ad-preview-container'
           );
-          overlays.forEach(el => {
+          overlays.forEach((el) => {
             el.style.display = 'none';
             try { el.remove(); } catch (_) {}
           });
         } catch (_) {}
-
       } else {
-        // Ad finished — restore audio and playback rate
-        const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
-        if (video) {
-          if (adMuted || (typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted'))) {
-            if (!userWasMuted) {
-              video.muted = false;
-            }
-            if (typeof video.removeAttribute === 'function') {
-              video.removeAttribute('data-cineglow-ad-muted');
-            }
-            adMuted = false;
-          }
-          userWasMuted = false;
-          if (acceleratedVideo === video && video.playbackRate === 16.0) {
-            video.playbackRate = preAdSpeed || preferredPlaybackSpeed || 1.0;
-          }
-          acceleratedVideo = null;
-        }
+        restoreVideoAfterAd(player);
       }
     } catch (_) {
     } finally {
@@ -491,100 +429,227 @@
     }
   }
 
-  // Active continuous monitoring loop (50ms interval for maximum responsiveness)
-  if (typeof window !== 'undefined') {
-    mainWorldAdInterval = setInterval(skipMainWorldAd, 50);
-    if (mainWorldAdInterval && typeof mainWorldAdInterval === 'object' && typeof mainWorldAdInterval.unref === 'function') {
-      mainWorldAdInterval.unref();
+  function attachPlayerObserver(player = getPlayerElement()) {
+    if (isKilled || !adBlockEnabled || !player || observedPlayer === player) return;
+    if (bootstrapObserver) {
+      bootstrapObserver.disconnect();
+      bootstrapObserver = null;
+    }
+    if (!adMutationObserver && typeof MutationObserver !== 'undefined') {
+      adMutationObserver = new MutationObserver(() => {
+        skipMainWorldAd();
+      });
+    }
+    if (adMutationObserver) {
+      adMutationObserver.disconnect();
+      observedPlayer = player;
+      adMutationObserver.observe(player, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+      });
     }
   }
 
-  // Zero-latency MutationObserver targeting class changes on player
-  if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
-    adMutationObserver = new MutationObserver(() => {
-      skipMainWorldAd();
-    });
-    const attachObserver = () => {
-      const p = document.getElementById('movie_player') || document.querySelector('.html5-video-player') || document.documentElement;
+  // Temporary bootstrap observer that self-disconnects the instant #movie_player mounts
+  function startBootstrapObserver() {
+    if (isKilled || !adBlockEnabled || observedPlayer || typeof MutationObserver === 'undefined') return;
+    const existing = getPlayerElement();
+    if (existing) {
+      attachPlayerObserver(existing);
+      return;
+    }
+    bootstrapObserver = new MutationObserver(() => {
+      const p = getPlayerElement();
       if (p) {
-        adMutationObserver.observe(p, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        attachPlayerObserver(p);
+        skipMainWorldAd();
       }
-    };
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', attachObserver, { once: true });
-    } else {
-      attachObserver();
+    });
+    const root = document.body || document.documentElement;
+    if (root) {
+      bootstrapObserver.observe(root, { childList: true, subtree: true });
     }
   }
 
-  if (typeof document !== 'undefined') {
-    document.addEventListener('yt-action', skipMainWorldAd, { passive: true });
-    document.addEventListener('yt-navigate-finish', skipMainWorldAd, { passive: true });
+  function syncAdLoop() {
+    if (isKilled || !adBlockEnabled || document.hidden) {
+      if (mainWorldAdInterval) {
+        clearInterval(mainWorldAdInterval);
+        mainWorldAdInterval = null;
+      }
+      return;
+    }
+    if (!mainWorldAdInterval) {
+      mainWorldAdInterval = setInterval(skipMainWorldAd, 100);
+      if (mainWorldAdInterval && typeof mainWorldAdInterval.unref === 'function') {
+        mainWorldAdInterval.unref();
+      }
+    }
+  }
+
+  // --- MAIN-world Polymer Theater Sync (readable only in MAIN world) ---
+  function syncTheaterState() {
+    if (isKilled) return;
+    try {
+      const watchFlexy = document.querySelector('ytd-watch-flexy, ytd-watch-grid');
+      const isTheater = Boolean(
+        watchFlexy && (
+          watchFlexy.hasAttribute('theater') ||
+          watchFlexy.hasAttribute('theater-requested_') ||
+          watchFlexy.theater ||
+          watchFlexy.theaterRequested_
+        )
+      );
+      if (document.documentElement) {
+        if (isTheater) {
+          document.documentElement.setAttribute('data-cineglow-theater', 'true');
+        } else {
+          document.documentElement.removeAttribute('data-cineglow-theater');
+        }
+      }
+    } catch (_) {}
+  }
+
+  function scheduleTheaterSync() {
+    clearTimeout(theaterTimer);
+    theaterTimer = setTimeout(syncTheaterState, 100);
+    if (theaterTimer && typeof theaterTimer.unref === 'function') {
+      theaterTimer.unref();
+    }
+  }
+
+  function handleTheaterKeydown(e) {
+    if (e.key === 't' || e.key === 'T') {
+      if (e.target?.matches?.('input, textarea, [contenteditable]') || e.target?.closest?.('ytd-searchbox, ytd-commentbox, yt-searchbox')) return;
+      scheduleTheaterSync();
+    }
+  }
+
+  function handleTheaterClick(e) {
+    if (e.target?.closest?.('.ytp-size-button')) {
+      scheduleTheaterSync();
+    }
+  }
+
+  function handleVisibilityChange() {
+    syncAdLoop();
+    if (!document.hidden) skipMainWorldAd();
+  }
+
+  function resumePlaybackIfStalled() {
+    if (isKilled) return;
+    const player = getPlayerElement();
+    const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
+    if (!video || !player || isAdActive(player)) return;
+    if (video.paused && video.currentTime < 0.5 && !video.ended) {
+      try {
+        if (typeof player.playVideo === 'function') {
+          const state = typeof player.getPlayerState === 'function' ? player.getPlayerState() : -1;
+          if (state === -1 || state === 5) {
+            player.playVideo();
+          }
+        } else {
+          video.play().catch(() => {});
+        }
+      } catch (_) {}
+    }
+  }
+
+  function handleNavigateFinish() {
+    startBootstrapObserver();
+    skipMainWorldAd();
+    syncTheaterState();
+    setTimeout(resumePlaybackIfStalled, 250);
+    setTimeout(resumePlaybackIfStalled, 600);
+  }
+
+  syncAdLoop();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startBootstrapObserver, { once: true });
+  } else {
+    startBootstrapObserver();
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
+  document.addEventListener('yt-navigate-finish', handleNavigateFinish, { passive: true });
+  document.addEventListener('yt-page-data-updated', syncTheaterState, { passive: true });
+  document.addEventListener('click', handleTheaterClick, { passive: true });
+  window.addEventListener('keydown', handleTheaterKeydown, { passive: true });
+
+  function isTrustedSameWindowMessage(event) {
+    if (event.source !== window) return false;
+    if (event.origin && window.location?.origin && event.origin !== window.location.origin) return false;
+    return true;
   }
 
   function handleForceSkipMessage(event) {
-    if (isKilled) return;
-    if (event.source === window && event.data?.type === 'CINEGLOW_FORCE_SKIP_AD') {
+    if (isKilled || !isTrustedSameWindowMessage(event)) return;
+    if (event.data?.type === 'CINEGLOW_FORCE_SKIP_AD') {
       skipMainWorldAd();
     }
   }
 
   function handleAdBlockStateMessage(event) {
-    if (isKilled) return;
-    if (event.source !== window) return;
+    if (isKilled || !isTrustedSameWindowMessage(event)) return;
     if (event.data?.type === 'CINEGLOW_SET_ADBLOCK_STATE') {
       const enabled = event.data?.enabled !== undefined
         ? event.data.enabled
         : (event.data?.payload?.enabled !== undefined ? event.data.payload.enabled : true);
       adBlockEnabled = Boolean(enabled);
+      syncAdLoop();
       if (!adBlockEnabled) {
+        if (bootstrapObserver) {
+          bootstrapObserver.disconnect();
+          bootstrapObserver = null;
+        }
+        if (adMutationObserver) {
+          adMutationObserver.disconnect();
+          observedPlayer = null;
+        }
+        restoreVideoAfterAd();
+      } else {
+        startBootstrapObserver();
+        skipMainWorldAd();
+      }
+    }
+  }
+
+  function handlePreferredSpeedMessage(event) {
+    if (isKilled || !isTrustedSameWindowMessage(event)) return;
+    if (event.data?.type === 'CINEGLOW_SET_PREFERRED_SPEED') {
+      const speed = event.data?.speed;
+      if (typeof speed === 'number' && speed > 0 && speed <= 15) {
+        preferredPlaybackSpeed = speed;
+        preAdSpeed = speed;
+
         try {
-          const player = document.getElementById('movie_player') || document.querySelector('#shorts-player, .html5-video-player');
-          const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
-          if (video) {
-            if (adMuted || (typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted'))) {
-              if (!userWasMuted) {
-                video.muted = false;
-              }
-              if (typeof video.removeAttribute === 'function') {
-                video.removeAttribute('data-cineglow-ad-muted');
-              }
-              adMuted = false;
+          const player = document.getElementById('movie_player');
+          if (player && typeof player.setPlaybackRate === 'function') {
+            if (typeof player.getPlaybackRate !== 'function' || player.getPlaybackRate() !== speed) {
+              player.setPlaybackRate(speed);
             }
-            userWasMuted = false;
-            if (acceleratedVideo === video && video.playbackRate === 16.0) {
-              video.playbackRate = preAdSpeed || preferredPlaybackSpeed || 1.0;
-            }
-            acceleratedVideo = null;
+          }
+          const video = document.querySelector('#movie_player video.html5-main-video') || document.querySelector('video');
+          if (video && video.playbackRate !== speed) {
+            video.playbackRate = speed;
+            video.defaultPlaybackRate = speed;
           }
         } catch (_) {}
       }
     }
   }
 
-  function handlePreferredSpeedMessage(event) {
-    if (isKilled) return;
-    if (event.source !== window) return;
-    if (event.data?.type === 'CINEGLOW_SET_PREFERRED_SPEED') {
-      const speed = event.data?.speed;
-      if (typeof speed === 'number' && speed > 0 && speed <= 15) {
-        preferredPlaybackSpeed = speed;
-        preAdSpeed = speed;
-      }
-    }
-  }
-
   function handleKillSwitchMessage(event) {
-    if (event.source === window && event.data?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+    if (!isTrustedSameWindowMessage(event)) return;
+    if (event.data?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
       teardownMainWorld();
     }
   }
 
-  // --- Existing Non-Ad Features (Quality, Stats, Theater) ---
-
   function handleQualityMessage(event) {
-    if (isKilled) return;
-    if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'AURA_SET_QUALITY') return;
+    if (isKilled || !isTrustedSameWindowMessage(event) || event.data?.type !== 'AURA_SET_QUALITY') return;
     let quality = event.data.quality;
     const player = document.getElementById('movie_player');
 
@@ -592,7 +657,7 @@
       try {
         if (quality === 'highres' && typeof player.getAvailableQualityLevels === 'function') {
           const levels = player.getAvailableQualityLevels();
-          const best = levels.find(q => q !== 'auto' && q !== 'highres');
+          const best = levels.find((q) => q !== 'auto' && q !== 'highres');
           if (best) quality = best;
         }
         player.setPlaybackQualityRange(quality, quality);
@@ -606,8 +671,7 @@
   }
 
   function handleStatsMessage(event) {
-    if (isKilled) return;
-    if (event.source !== window || event.origin !== window.location.origin || event.data?.type !== 'CINEGLOW_GET_STATS_NERDS') return;
+    if (isKilled || !isTrustedSameWindowMessage(event) || event.data?.type !== 'CINEGLOW_GET_STATS_NERDS') return;
     try {
       const player = document.getElementById('movie_player');
       let stats = null;
@@ -627,7 +691,7 @@
       if (stats && player) {
         try {
           const resp = typeof player.getPlayerResponse === 'function' ? player.getPlayerResponse() : window.ytInitialPlayerResponse;
-          const adaptive = resp && resp.streamingData && resp.streamingData.adaptiveFormats;
+          const adaptive = resp?.streamingData?.adaptiveFormats;
           if (Array.isArray(adaptive)) {
             let itag = null;
             if (stats.codecs) {
@@ -636,7 +700,7 @@
             }
             if (!itag && stats.fmt) itag = String(stats.fmt);
             if (itag) {
-              const fmt = adaptive.find(f => String(f.itag) === String(itag));
+              const fmt = adaptive.find((f) => String(f.itag) === String(itag));
               if (fmt) {
                 stats.videoBitrate = fmt.bitrate || fmt.averageBitrate || null;
                 stats.averageBitrate = fmt.averageBitrate || null;
@@ -650,76 +714,32 @@
 
       window.postMessage({
         type: 'CINEGLOW_STATS_NERDS_RESPONSE',
-        stats: stats
+        stats
       }, window.location.origin);
     } catch (_) {}
-  }
-
-  function syncTheaterState() {
-    if (isKilled) return;
-    try {
-      const watchFlexy = document.querySelector('ytd-watch-flexy, ytd-watch-grid');
-      const isTheater = !!(
-        watchFlexy && (
-          watchFlexy.hasAttribute('theater') ||
-          watchFlexy.hasAttribute('theater-requested_') ||
-          watchFlexy.theater ||
-          watchFlexy.theaterRequested_
-        )
-      );
-      if (document.documentElement) {
-        if (isTheater) {
-          document.documentElement.setAttribute('data-cineglow-theater', 'true');
-        } else {
-          document.documentElement.removeAttribute('data-cineglow-theater');
-        }
-      }
-    } catch (_) {}
-  }
-
-  function handleKeydown(e) {
-    if (e.key === 't' || e.key === 'T') {
-      setTimeout(syncTheaterState, 80);
-      setTimeout(syncTheaterState, 350);
-    }
   }
 
   function teardownMainWorld() {
     if (isKilled) return;
     isKilled = true;
+    clearTimeout(theaterTimer);
     if (mainWorldAdInterval) {
       clearInterval(mainWorldAdInterval);
       mainWorldAdInterval = null;
+    }
+    if (bootstrapObserver) {
+      bootstrapObserver.disconnect();
+      bootstrapObserver = null;
     }
     if (adMutationObserver) {
       adMutationObserver.disconnect();
       adMutationObserver = null;
     }
+    observedPlayer = null;
 
-    // Restore video playback/audio state if killed during an active ad
-    try {
-      const player = document.getElementById('movie_player') || document.querySelector('#shorts-player, .html5-video-player');
-      const video = (player && player.querySelector('video')) || document.querySelector('video.html5-main-video') || document.querySelector('video');
-      if (video) {
-        if (adMuted || (typeof video.hasAttribute === 'function' && video.hasAttribute('data-cineglow-ad-muted'))) {
-          if (!userWasMuted) {
-            video.muted = false;
-          }
-          if (typeof video.removeAttribute === 'function') {
-            video.removeAttribute('data-cineglow-ad-muted');
-          }
-          adMuted = false;
-        }
-        userWasMuted = false;
-        if (acceleratedVideo === video && video.playbackRate === 16.0) {
-          video.playbackRate = preAdSpeed || preferredPlaybackSpeed || 1.0;
-        }
-        acceleratedVideo = null;
-      }
-    } catch (_) {}
+    restoreVideoAfterAd();
 
-    // Restore native prototypes and functions
-    if (origFetch && typeof window !== 'undefined') {
+    if (origFetch) {
       try { window.fetch = origFetch; } catch (_) {}
     }
     if (origOpen && typeof XMLHttpRequest !== 'undefined') {
@@ -728,24 +748,25 @@
     if (origSend && typeof XMLHttpRequest !== 'undefined') {
       try { XMLHttpRequest.prototype.send = origSend; } catch (_) {}
     }
-    if (origJSONParse && typeof JSON !== 'undefined') {
+    if (origJSONParse) {
       try { JSON.parse = origJSONParse; } catch (_) {}
     }
     if (origFnToString && typeof Function !== 'undefined' && Function.prototype) {
       try { Function.prototype.toString = origFnToString; } catch (_) {}
     }
 
+    document.documentElement?.removeAttribute('data-cineglow-theater');
     window.removeEventListener('message', handleQualityMessage);
     window.removeEventListener('message', handleStatsMessage);
     window.removeEventListener('message', handleForceSkipMessage);
     window.removeEventListener('message', handleAdBlockStateMessage);
     window.removeEventListener('message', handlePreferredSpeedMessage);
     window.removeEventListener('message', handleKillSwitchMessage);
-    window.removeEventListener('keydown', handleKeydown);
-    document.removeEventListener('yt-action', syncTheaterState);
-    document.removeEventListener('yt-navigate-finish', syncTheaterState);
-    document.removeEventListener('yt-action', skipMainWorldAd);
-    document.removeEventListener('yt-navigate-finish', skipMainWorldAd);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('yt-navigate-finish', handleNavigateFinish);
+    document.removeEventListener('yt-page-data-updated', syncTheaterState);
+    document.removeEventListener('click', handleTheaterClick);
+    window.removeEventListener('keydown', handleTheaterKeydown);
   }
 
   window.addEventListener('message', handleQualityMessage);
@@ -754,9 +775,6 @@
   window.addEventListener('message', handleAdBlockStateMessage);
   window.addEventListener('message', handlePreferredSpeedMessage);
   window.addEventListener('message', handleKillSwitchMessage);
-  document.addEventListener('yt-action', syncTheaterState, { passive: true });
-  document.addEventListener('yt-navigate-finish', syncTheaterState, { passive: true });
-  window.addEventListener('keydown', handleKeydown, { passive: true });
 
   window.addEventListener('cineglow:kill-switch', () => {
     teardownMainWorld();

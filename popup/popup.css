@@ -39,6 +39,8 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
 
 body {
@@ -49,22 +51,6 @@ body {
   color: var(--text-main);
   font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   user-select: none;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-xs);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
 }
 
 /* ---------- 1. Top App Bar ---------- */
@@ -225,7 +211,6 @@ body {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: none;
 }
 
 .nav-pill:focus-visible {
@@ -263,14 +248,11 @@ main {
 }
 
 summary {
-  list-style: none !important;
-  list-style-type: none !important;
+  list-style: none;
   outline: none;
 }
-summary::-webkit-details-marker,
-summary::marker {
-  display: none !important;
-  content: "" !important;
+summary::-webkit-details-marker {
+  display: none;
 }
 
 .section-summary {
@@ -367,7 +349,7 @@ details[open] .chevron-btn {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 2px 0 2px 0;
+  padding: 2px 0;
 }
 
 .preset-row-label {
@@ -406,7 +388,6 @@ details[open] .chevron-btn {
 .glow-preset-pill.active {
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  box-shadow: none;
 }
 
 .glow-preset-pill:focus-visible {
@@ -439,7 +420,6 @@ details[open] .chevron-btn {
   color: var(--text-muted);
 }
 
-/* Clean understated typographic readout */
 .val-badge {
   display: inline-flex;
   align-items: baseline;
@@ -461,7 +441,6 @@ details[open] .chevron-btn {
   text-align: right;
   outline: none;
   padding: 0;
-  -moz-appearance: textfield;
 }
 
 .val-badge input[type="number"]::-webkit-outer-spin-button,
@@ -616,7 +595,6 @@ input[type="range"]:focus-visible {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Ambient glow strictly reserved for active lighting edges */
 .dir-btn.active {
   background: #818cf8;
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.9), 0 0 2px #c7d2fe;
@@ -761,7 +739,6 @@ input[type="range"]:focus-visible {
 
 .switch input:checked + .track {
   background: var(--accent-indigo);
-  box-shadow: none; /* No diffuse glowing halo */
 }
 
 .switch input:checked + .track .thumb {
@@ -773,7 +750,6 @@ input[type="range"]:focus-visible {
   outline-offset: 2px;
 }
 
-/* Master switch (slightly larger) */
 .hero-switch .track {
   width: 34px;
   height: 19px;
@@ -1018,7 +994,6 @@ input[type="range"]:focus-visible {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.24);
   color: #fff;
-  box-shadow: none;
 }
 
 .audio-preset-pill:focus-visible {
@@ -1042,7 +1017,6 @@ input[type="range"]:focus-visible {
   background: rgba(239, 68, 68, 0.14);
   border-color: rgba(239, 68, 68, 0.3);
   color: #fca5a5;
-  text-decoration: none;
 }
 
 .audio-reset-link:focus-visible {
@@ -1243,3 +1217,4 @@ input[type="range"]:focus-visible {
   outline: 2px solid var(--accent-indigo-light);
   outline-offset: 2px;
 }
+

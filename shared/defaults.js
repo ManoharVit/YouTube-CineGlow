@@ -45,7 +45,8 @@ const AURA_DEFAULTS = Object.freeze({
   audioReactive: true,
   lightsOut: false,
   lightsOutOpacity: 85,  // % dimming amount (50% to 100%)
-  abLoopEnabled: false, // interactive A-B section repeat looper
+  screenXMode: false,    // ScreenX 4-sided edge extrusion (270° frame expansion)
+  abLoopEnabled: false,  // interactive A-B section repeat looper
   abLoopAutoClear: false, // auto-clear loop on video navigation
   ultrawideZoom: false,
   videoBrightness: 100,  // %
@@ -57,5 +58,14 @@ const AURA_DEFAULTS = Object.freeze({
   returnDislikes: false, // restore public dislike count & rating
   hideShorts: false,     // hide YouTube Shorts shelves & feeds
   restoreAnnotations: false, // restore classic YouTube video annotations
-  hideEndCards: false      // hide video end cards, suggestions & subscribe overlays by default
+  hideEndCards: false    // hide video end cards, suggestions & subscribe overlays by default
 });
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.AURA_DEFAULTS = AURA_DEFAULTS;
+}
+
+if (typeof module === 'object' && typeof module.exports === 'object') {
+  module.exports = { AURA_DEFAULTS };
+}
+

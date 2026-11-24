@@ -22,6 +22,12 @@ html.aura-active #aura-ambient-canvas {
   opacity: var(--aura-opacity, 0.85);
 }
 
+html.aura-screenx-mode #aura-ambient-canvas {
+  image-rendering: auto !important;
+  mask-image: radial-gradient(ellipse 96% 90% at 50% 50%, #000 75%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 96% 90% at 50% 50%, #000 75%, transparent 100%);
+}
+
 /*
  * For the glow (which sits behind the page) to be visible, the opaque layers between
  * the root and the player must be transparent. The root keeps YouTube's theme color.
@@ -36,38 +42,63 @@ html.aura-active ytd-app #content,
 html.aura-active ytd-page-manager,
 html.aura-active :is(ytd-watch-flexy, ytd-watch-grid),
 html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) #columns,
-html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) #full-bleed-container,
+html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) :is(#full-bleed-container, #player-theater-container, #player-full-bleed-container, #player-wide-container),
 html.aura-active :is(ytd-watch-flexy, ytd-watch-grid) #player-container-outer,
 html.aura-active ytd-player,
 html.aura-active ytd-player #container,
 html.aura-active #movie_player,
 html.aura-active .html5-video-player,
 html.aura-active .html5-video-container,
-html.aura-active #player-container,
-html.aura-active #secondary,
-html.aura-active #secondary-inner,
-html.aura-active ytd-watch-next-secondary-results-renderer,
-html.aura-active #below,
-html.aura-active ytd-watch-metadata,
-html.aura-active ytd-engagement-panel-section-list-renderer {
+html.aura-active #player-container {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
-/* Make playlist panel fully transparent so pure glow shows through, without backdrop-filter to prevent stacking bugs */
-html.aura-active ytd-playlist-panel-renderer,
-html.aura-active ytd-live-chat-frame {
+/* Dark Theme: make sidebar, metadata, playlist, and chat containers transparent so ambient glow shines through */
+html.aura-active[dark]:not([dark="false"]) :is(
+  #secondary,
+  #secondary-inner,
+  ytd-watch-next-secondary-results-renderer,
+  #below,
+  ytd-watch-metadata,
+  ytd-engagement-panel-section-list-renderer,
+  ytd-playlist-panel-renderer,
+  ytd-live-chat-frame
+) {
   background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
-/* Force YouTube's native ambient colored boxes to be transparent so our glow shines through */
-html.aura-active ytd-playlist-panel-renderer[use-color-palette] #container,
-html.aura-active ytd-playlist-panel-renderer[use-color-palette] .header,
-html.aura-active ytd-playlist-panel-renderer[use-color-palette] #items,
-html.aura-active ytd-playlist-panel-renderer #container,
-html.aura-active ytd-playlist-panel-renderer .header,
-html.aura-active ytd-playlist-panel-renderer #items {
+/* Light Theme readability guard: keep dark foreground text legible over dark video glow frames */
+html.aura-active:not([dark]) :is(
+  #secondary-inner,
+  #below,
+  ytd-watch-metadata,
+  ytd-engagement-panel-section-list-renderer,
+  ytd-playlist-panel-renderer #container,
+  ytd-live-chat-frame
+),
+html.aura-active[dark="false"] :is(
+  #secondary-inner,
+  #below,
+  ytd-watch-metadata,
+  ytd-engagement-panel-section-list-renderer,
+  ytd-playlist-panel-renderer #container,
+  ytd-live-chat-frame
+) {
+  background: rgba(255, 255, 255, 0.88) !important;
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* Force YouTube's native ambient colored boxes to be transparent in Dark Theme so our glow shines through */
+html.aura-active[dark]:not([dark="false"]) ytd-playlist-panel-renderer[use-color-palette] #container,
+html.aura-active[dark]:not([dark="false"]) ytd-playlist-panel-renderer[use-color-palette] .header,
+html.aura-active[dark]:not([dark="false"]) ytd-playlist-panel-renderer[use-color-palette] #items,
+html.aura-active[dark]:not([dark="false"]) ytd-playlist-panel-renderer #container,
+html.aura-active[dark]:not([dark="false"]) ytd-playlist-panel-renderer .header,
+html.aura-active[dark]:not([dark="false"]) ytd-playlist-panel-renderer #items {
   background: transparent !important;
   background-color: transparent !important;
 }
@@ -121,8 +152,10 @@ ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
 .ad-showing ytd-companion-slot-renderer,
 ytd-enforcement-message-view-model,
 tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
-:is(body:has(ytd-enforcement-message-view-model), html:has(ytd-enforcement-message-view-model)) :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim),
-:is(tp-yt-paper-dialog:has(ytd-enforcement-message-view-model), ytd-enforcement-message-view-model) ~ :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim)
+tp-yt-paper-dialog:not([aria-hidden="true"]):has(ytd-enforcement-message-view-model) ~ :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop),
+:is(tp-yt-paper-dialog:not([aria-hidden="true"]):has(ytd-enforcement-message-view-model), ytd-enforcement-message-view-model) ~ :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop),
+body:has(> tp-yt-paper-dialog:not([aria-hidden="true"]):has(ytd-enforcement-message-view-model)) > :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim),
+ytd-popup-container:has(> tp-yt-paper-dialog:not([aria-hidden="true"]):has(ytd-enforcement-message-view-model)) > :is(tp-yt-iron-overlay-backdrop, iron-overlay-backdrop, .scrim)
 ) {
   display: none !important;
   height: 0 !important;
@@ -131,10 +164,30 @@ tp-yt-paper-dialog:has(ytd-enforcement-message-view-model),
 }
 
 /* 
- * Remove channel watermark/logo from the bottom right of the video player
+ * Remove channel watermark/logo and branding subscribe button from the bottom right of the video player.
+ * Strictly scoped behind html.aura-adblock #movie_player so DisableAdBlock/KillSwitch and video info overlays stay intact.
  */
-.ytp-watermark {
+html.aura-adblock #movie_player :is(
+  .ytp-watermark,
+  .annotation-type-custom.iv-branding,
+  .iv-branding,
+  .ytp-featured-watermark,
+  a.ytp-featured-watermark,
+  button.ytp-featured-watermark,
+  .ytp-branding-logo,
+  .ytp-branding-logo-container,
+  .branding-img-container,
+  .branding-img,
+  .branding-context-container,
+  .iv-branding-context-name,
+  .iv-branding-context-subscribe
+) {
   display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Hide Scrollbar Feature */
@@ -209,11 +262,12 @@ html.aura-hide-theater.aura-in-theater
   display: block !important;
 }
 
-/* 4. 100vh Full-Viewport Stage */
+/* 4. 100vh Full-Viewport Stage (use width: 100% to avoid 100vw horizontal overflow when scrollbar is visible) */
 html.aura-hide-theater.aura-in-theater
   :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   :is(#full-bleed-container, #player-theater-container, #player-wide-container) {
-  width: 100vw !important;
+  width: 100% !important;
+  max-width: 100% !important;
   height: 100vh !important;
   max-height: 100vh !important;
   min-height: 100vh !important;
@@ -224,21 +278,21 @@ html.aura-hide-theater.aura-in-theater
   justify-content: center !important;
   box-sizing: border-box !important;
   background: transparent !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
-/* 5. 92vh / 94vw 16:9 Player Box for Even 4-Sided Ambient Glow */
+/* 5. 92vh / 94% 16:9 Player Box for Even 4-Sided Ambient Glow */
 html.aura-hide-theater.aura-in-theater
   :is(ytd-watch-flexy, ytd-watch-grid):not([hidden])
   :is(#player-full-bleed-container, #player-container) {
-  width: min(94vw, calc(92vh * (16 / 9))) !important;
+  width: min(94%, calc(92vh * (16 / 9))) !important;
   height: min(92vh, calc(94vw * (9 / 16))) !important;
-  max-width: 94vw !important;
+  max-width: 94% !important;
   max-height: 92vh !important;
   position: relative !important;
   inset: auto !important;
   margin: 0 auto !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 /* 6. Fill the Centered Player Box Without Inline Offset Drift */
@@ -250,7 +304,7 @@ html.aura-hide-theater.aura-in-theater
   max-width: 100% !important;
   max-height: 100% !important;
   margin: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 html.aura-hide-theater.aura-in-theater
@@ -280,56 +334,48 @@ html.aura-hide-theater.aura-in-theater
 
 
 /* AdBlock UI hiding */
-html.aura-adblock .ytp-suggested-action-badge {
-  display: none !important;
-  height: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  opacity: 0 !important;
-}
-html.aura-adblock ytd-shopping-shopping-module-renderer,
+html.aura-adblock ytd-shopping-module-renderer,
 html.aura-adblock .ytd-merch-shelf-renderer,
 html.aura-adblock .ytp-shopping-button {
   display: none !important;
 }
 
-/* Lights Out Mode: fade out UI during playback with dynamic opacity */
-html.aura-lights-out-active #masthead-container,
-html.aura-lights-out-active #secondary,
-html.aura-lights-out-active #related,
-html.aura-lights-out-active #below,
-html.aura-lights-out-active #chat-container,
-html.aura-lights-out-active #panels,
-html.aura-lights-out-active ytd-engagement-panel-section-list-renderer,
-html.aura-lights-out.aura-playing #masthead-container,
-html.aura-lights-out.aura-playing #secondary,
-html.aura-lights-out.aura-playing #related,
-html.aura-lights-out.aura-playing #below,
-html.aura-lights-out.aura-playing #chat-container,
-html.aura-lights-out.aura-playing #panels,
-html.aura-lights-out.aura-playing ytd-engagement-panel-section-list-renderer {
+/* Lights Out Mode: fade out watch-page UI strictly when active, preserving hover reveal and preventing invisible clicks */
+html.aura-watch-page.aura-lights-out-active #masthead-container,
+html.aura-watch-page.aura-lights-out-active #secondary,
+html.aura-watch-page.aura-lights-out-active #related,
+html.aura-watch-page.aura-lights-out-active #below,
+html.aura-watch-page.aura-lights-out-active #chat-container,
+html.aura-watch-page.aura-lights-out-active #panels,
+html.aura-watch-page.aura-lights-out-active ytd-engagement-panel-section-list-renderer {
   opacity: var(--cineglow-dim-opacity, 0.15) !important;
   transition: opacity 0.4s ease !important;
 }
 
-html.aura-lights-out-active #masthead-container:hover,
-html.aura-lights-out-active #secondary:hover,
-html.aura-lights-out-active #related:hover,
-html.aura-lights-out-active #below:hover,
-html.aura-lights-out-active #chat-container:hover,
-html.aura-lights-out-active #panels:hover,
-html.aura-lights-out-active ytd-engagement-panel-section-list-renderer:hover,
-html.aura-lights-out.aura-playing #masthead-container:hover,
-html.aura-lights-out.aura-playing #secondary:hover,
-html.aura-lights-out.aura-playing #related:hover,
-html.aura-lights-out.aura-playing #below:hover,
-html.aura-lights-out.aura-playing #chat-container:hover,
-html.aura-lights-out.aura-playing #panels:hover,
-html.aura-lights-out.aura-playing ytd-engagement-panel-section-list-renderer:hover {
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero #masthead-container,
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero #secondary,
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero #related,
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero #below,
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero #chat-container,
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero #panels,
+html.aura-watch-page.aura-lights-out-active.aura-lights-out-zero ytd-engagement-panel-section-list-renderer {
+  pointer-events: none !important;
+}
+
+html.aura-watch-page.aura-lights-out-active #masthead-container:hover,
+html.aura-watch-page.aura-lights-out-active #secondary:hover,
+html.aura-watch-page.aura-lights-out-active #related:hover,
+html.aura-watch-page.aura-lights-out-active #below:hover,
+html.aura-watch-page.aura-lights-out-active #chat-container:hover,
+html.aura-watch-page.aura-lights-out-active #panels:hover,
+html.aura-watch-page.aura-lights-out-active ytd-engagement-panel-section-list-renderer:hover {
   opacity: 1 !important;
 }
 
-/* Ultrawide Zoom-to-Fit Feature */
+/* Ultrawide Zoom-to-Fit Feature (clipped cleanly inside player container) */
+html.aura-ultrawide-zoom :is(#player-container, #ytd-player, #movie_player, .html5-video-container) {
+  overflow: hidden !important;
+}
 html.aura-ultrawide-zoom video.html5-main-video {
   transform: scale(1.34) !important;
 }
@@ -680,23 +726,31 @@ html.aura-ultrawide-zoom video.html5-main-video {
   100% { box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.8); }
 }
 
-/* On-Screen Recording HUD */
+/* On-Screen Recording HUD Host & Container */
+.cineglow-hud-host {
+  position: absolute !important;
+  top: 18px !important;
+  right: 22px !important;
+  z-index: 70 !important;
+  pointer-events: none !important;
+  display: block !important;
+}
+
 .cineglow-rec-hud {
-  position: absolute;
-  top: 18px;
-  right: 22px;
-  background: rgba(15, 15, 18, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  position: relative;
+  background: rgba(15, 15, 18, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(239, 68, 68, 0.45);
   padding: 6px 14px;
   border-radius: 20px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   z-index: 70;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   pointer-events: none;
+  user-select: none;
   animation: cineglow-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -706,6 +760,8 @@ html.aura-ultrawide-zoom video.html5-main-video {
   border-radius: 50%;
   background: #ef4444;
   box-shadow: 0 0 8px #ef4444;
+  display: inline-block;
+  flex-shrink: 0;
   animation: cineglow-rec-blink 1s infinite alternate ease-in-out;
 }
 
@@ -715,18 +771,34 @@ html.aura-ultrawide-zoom video.html5-main-video {
 }
 
 .cineglow-rec-hud-text {
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'YouTube Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.cineglow-rec-badge-tag {
+  font-family: 'YouTube Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.14);
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: 4px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .cineglow-rec-saved-text {
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'YouTube Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13px;
   font-weight: 700;
   color: #4ade80;
+  white-space: nowrap;
 }
 
 /* Video Recording Flyout Menu */
@@ -1209,18 +1281,6 @@ html.aura-ultrawide-zoom video.html5-main-video {
   transform: translateX(-50%) translateY(0);
 }
 
-.cineglow-rec-badge-tag {
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.12);
-  padding: 2px 7px;
-  border-radius: 10px;
-  margin-left: 3px;
-  letter-spacing: 0.2px;
-}
-
 /* PiP active state */
 .cineglow-pip-button.cineglow-pip-active .ytp-svg-fill {
   fill: #3ea6ff;
@@ -1290,8 +1350,8 @@ ytd-reel-video-renderer #dislike-button .cineglow-dislike-count {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Hide YouTube Shorts */
-html[cineglow-hide-shorts="true"] grid-shelf-view-model:has(a[href*="/shorts/"]),
+/* Hide YouTube Shorts (exact Shorts paths only; avoids matching /@shorts* creator handles) */
+html[cineglow-hide-shorts="true"] grid-shelf-view-model:has(a:is([href^="/shorts/"], [href*="youtube.com/shorts/"])),
 html[cineglow-hide-shorts="true"] reel-shelf-view-model,
 html[cineglow-hide-shorts="true"] yt-reel-shelf-view-model,
 html[cineglow-hide-shorts="true"] ytd-reel-shelf-renderer,
@@ -1299,23 +1359,23 @@ html[cineglow-hide-shorts="true"] ytd-rich-shelf-renderer[is-shorts],
 html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
 html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(reel-shelf-view-model),
 html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(yt-reel-shelf-view-model),
-html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(grid-shelf-view-model:has(a[href*="/shorts/"])),
+html[cineglow-hide-shorts="true"] ytd-rich-section-renderer:has(grid-shelf-view-model:has(a:is([href^="/shorts/"], [href*="youtube.com/shorts/"]))),
 html[cineglow-hide-shorts="true"] ytm-shorts-lockup-view-model,
 html[cineglow-hide-shorts="true"] ytm-shorts-lockup-view-model-v2,
-html[cineglow-hide-shorts="true"] yt-lockup-view-model:has(a[href*="/shorts/"]),
-html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(a[href*="/shorts/"]),
+html[cineglow-hide-shorts="true"] yt-lockup-view-model:has(a:is([href^="/shorts/"], [href*="youtube.com/shorts/"])),
+html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(a:is([href^="/shorts/"], [href*="youtube.com/shorts/"])),
 html[cineglow-hide-shorts="true"] ytd-rich-item-renderer:has(ytm-shorts-lockup-view-model),
-html[cineglow-hide-shorts="true"] ytd-video-renderer:has(#thumbnail[href*="/shorts/"]),
-html[cineglow-hide-shorts="true"] ytd-compact-video-renderer:has(a[href*="/shorts/"]),
-html[cineglow-hide-shorts="true"] ytd-guide-entry-renderer:has(a[href*="/shorts"]),
-html[cineglow-hide-shorts="true"] ytd-mini-guide-entry-renderer:has(a[href*="/shorts"]),
-html[cineglow-hide-shorts="true"] yt-guide-entry-view-model:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] ytd-video-renderer:has(#thumbnail:is([href^="/shorts/"], [href*="youtube.com/shorts/"])),
+html[cineglow-hide-shorts="true"] ytd-compact-video-renderer:has(a:is([href^="/shorts/"], [href*="youtube.com/shorts/"])),
+html[cineglow-hide-shorts="true"] ytd-guide-entry-renderer:has(a:is([href="/shorts"], [href^="/shorts/"], [href*="youtube.com/shorts/"])),
+html[cineglow-hide-shorts="true"] ytd-mini-guide-entry-renderer:has(a:is([href="/shorts"], [href^="/shorts/"], [href*="youtube.com/shorts/"])),
+html[cineglow-hide-shorts="true"] yt-guide-entry-view-model:has(a:is([href="/shorts"], [href^="/shorts/"], [href*="youtube.com/shorts/"])),
 html[cineglow-hide-shorts="true"] a#endpoint[title="Shorts"],
-html[cineglow-hide-shorts="true"] a#endpoint[href*="/shorts"],
-html[cineglow-hide-shorts="true"] ytm-pivot-bar-item-renderer:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] a#endpoint:is([href="/shorts"], [href^="/shorts/"], [href*="youtube.com/shorts/"]),
+html[cineglow-hide-shorts="true"] ytm-pivot-bar-item-renderer:has(a:is([href="/shorts"], [href^="/shorts/"], [href*="youtube.com/shorts/"])),
 html[cineglow-hide-shorts="true"] yt-tab-shape[tab-title="Shorts"],
-html[cineglow-hide-shorts="true"] yt-tab-shape:has(a[href*="/shorts"]),
-html[cineglow-hide-shorts="true"] ytd-browse[page-subtype="channels"] ytd-tab-renderer:has(a[href*="/shorts"]),
+html[cineglow-hide-shorts="true"] yt-tab-shape:has(a:is([href="/shorts"], [href^="/shorts/"], [href*="youtube.com/shorts/"], [href$="/shorts"])),
+html[cineglow-hide-shorts="true"] ytd-browse[page-subtype="channels"] ytd-tab-renderer:has(a:is([href^="/shorts/"], [href*="youtube.com/shorts/"], [href$="/shorts"])),
 html[cineglow-hide-shorts="true"] ytd-reel-video-renderer {
   display: none !important;
 }

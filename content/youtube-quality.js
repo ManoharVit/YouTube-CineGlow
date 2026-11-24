@@ -16,41 +16,35 @@
 
   let forcedQualityPolicy = null;
   let isKilled = false;
+  let applyTimer = null;
+  let followUpTimer = null;
+  let lastAppliedKey = '';
 
   async function loadSettings() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     try {
       if (typeof chrome !== 'undefined' && chrome.storage) {
-        if (chrome.storage.local) {
-          const local = await chrome.storage.local.get(['auraKillSwitchActive']).catch(() => ({}));
-          if (local && local.auraKillSwitchActive) {
-            teardownKillSwitch();
-            return;
-          }
-        }
-        if (chrome.storage.managed) {
-          const managed = await chrome.storage.managed.get(['ForceDefaultQuality', 'KillSwitch']).catch(() => ({}));
-          if (managed) {
-            if (managed.KillSwitch) {
-              teardownKillSwitch();
-              return;
-            }
-            if (managed.ForceDefaultQuality) {
-              forcedQualityPolicy = managed.ForceDefaultQuality;
-            }
-          }
-        }
-        if (chrome.storage.sync) {
-          const stored = await chrome.storage.sync.get({
+        const [local, managed, stored] = await Promise.all([
+          chrome.storage.local?.get(['auraKillSwitchActive']).catch(() => ({})),
+          chrome.storage.managed?.get(['ForceDefaultQuality', 'KillSwitch']).catch(() => ({})),
+          chrome.storage.sync?.get({
             qualityEnabled: defaultQualityEnabled,
             preferredQuality: defaultPreferredQuality
-          });
-          if (stored && stored.qualityEnabled !== undefined) {
-            settings.qualityEnabled = stored.qualityEnabled;
-          }
-          if (stored && stored.preferredQuality !== undefined) {
-            settings.preferredQuality = stored.preferredQuality;
-          }
+          }).catch(() => ({}))
+        ]);
+
+        if (local?.auraKillSwitchActive || managed?.KillSwitch) {
+          teardownKillSwitch();
+          return;
+        }
+        if (managed?.ForceDefaultQuality) {
+          forcedQualityPolicy = managed.ForceDefaultQuality;
+        }
+        if (stored?.qualityEnabled !== undefined) {
+          settings.qualityEnabled = stored.qualityEnabled;
+        }
+        if (stored?.preferredQuality !== undefined) {
+          settings.preferredQuality = stored.preferredQuality;
         }
       }
     } catch (err) {
@@ -63,53 +57,123 @@
     }
   }
 
-  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (area === 'managed') {
-        if ('ForceDefaultQuality' in changes) {
-          forcedQualityPolicy = changes.ForceDefaultQuality.newValue || null;
-          if (forcedQualityPolicy) {
-            settings.preferredQuality = forcedQualityPolicy;
-            settings.qualityEnabled = true;
-            applyQuality();
-          }
-        }
-        if ('KillSwitch' in changes && changes.KillSwitch.newValue === true) {
-          teardownKillSwitch();
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'managed') {
+      if ('ForceDefaultQuality' in changes) {
+        forcedQualityPolicy = changes.ForceDefaultQuality.newValue || null;
+        if (forcedQualityPolicy) {
+          settings.preferredQuality = forcedQualityPolicy;
+          settings.qualityEnabled = true;
+          lastAppliedKey = '';
+          applyQuality(true);
         }
       }
-      if (area === 'local' && changes.auraKillSwitchActive && changes.auraKillSwitchActive.newValue === true) {
+      if (changes.KillSwitch?.newValue === true) {
         teardownKillSwitch();
       }
-      if (area === 'sync') {
-        if (changes.qualityEnabled) settings.qualityEnabled = changes.qualityEnabled.newValue;
-        if (changes.preferredQuality) {
-          if (forcedQualityPolicy) {
-            settings.preferredQuality = forcedQualityPolicy;
-          } else {
-            settings.preferredQuality = changes.preferredQuality.newValue;
-          }
-        }
-        if (settings.qualityEnabled) {
-          applyQuality();
-        }
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+    }
+    if (area === 'sync') {
+      if (changes.qualityEnabled) settings.qualityEnabled = changes.qualityEnabled.newValue;
+      if (changes.preferredQuality) {
+        settings.preferredQuality = forcedQualityPolicy || changes.preferredQuality.newValue;
       }
-    });
+      if (settings.qualityEnabled) {
+        lastAppliedKey = '';
+        applyQuality(true);
+      }
+    }
+  };
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
+
+  function applyQuality(force = false) {
+    if (isKilled || window.CineGlowKilled) return;
+    if (!settings.qualityEnabled || !settings.preferredQuality) return;
+
+    const state = window.CineGlowPlayer;
+    if (state && (!state.isWatchPage || !state.video || state.isAdShowing)) return;
+
+    const applyKey = `${state?.videoId || 'unknown'}:${settings.preferredQuality}`;
+    if (!force && applyKey === lastAppliedKey) return;
+    lastAppliedKey = applyKey;
+
+    try {
+      const now = Date.now();
+      const ytQualityObj = {
+        data: JSON.stringify({
+          quality: settings.preferredQuality,
+          previousQuality: 'auto'
+        }),
+        expiration: now + 30 * 24 * 60 * 60 * 1000,
+        creation: now
+      };
+      window.localStorage.setItem('yt-player-quality', JSON.stringify(ytQualityObj));
+    } catch (_) {}
+
+    window.postMessage({
+      type: 'AURA_SET_QUALITY',
+      quality: settings.preferredQuality
+    }, window.location.origin);
+  }
+
+  function scheduleApplyQuality(delay = 350) {
+    clearTimeout(applyTimer);
+    clearTimeout(followUpTimer);
+    applyTimer = setTimeout(() => {
+      applyQuality(true);
+      followUpTimer = setTimeout(() => applyQuality(true), 1200);
+      if (followUpTimer && typeof followUpTimer.unref === 'function') {
+        followUpTimer.unref();
+      }
+    }, delay);
+    if (applyTimer && typeof applyTimer.unref === 'function') {
+      applyTimer.unref();
+    }
+  }
+
+  let lastVideo = null;
+  let lastVideoId = null;
+  let wasAdShowing = false;
+
+  const onPlayerStateChange = (e) => {
+    if (isKilled || window.CineGlowKilled) return;
+    const state = e.detail;
+    const adJustEnded = wasAdShowing && !state.isAdShowing;
+    wasAdShowing = Boolean(state.isAdShowing);
+
+    if (state.video !== lastVideo || state.videoId !== lastVideoId || adJustEnded) {
+      lastVideo = state.video;
+      lastVideoId = state.videoId;
+      lastAppliedKey = '';
+      if (state.isWatchPage && state.video && !state.isAdShowing) {
+        scheduleApplyQuality(350);
+      }
+    }
+  };
+
+  if (window.CineGlowPlayer) {
+    window.CineGlowPlayer.addEventListener('state-change', onPlayerStateChange);
   }
 
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     settings.qualityEnabled = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    window.CineGlowKilled = true;
+    clearTimeout(applyTimer);
+    clearTimeout(followUpTimer);
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerStateChange);
   }
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -120,83 +184,19 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
-
-  // The main world script (content/main-world.js) is injected by manifest.json
-  // and listens for the 'AURA_SET_QUALITY' message.
-
-  function applyQuality() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!settings.qualityEnabled || !settings.preferredQuality) return;
-    
-    // 1. Set YouTube's internal localStorage preference. 
-    // This is the most reliable way to force quality, as YouTube reads this on load.
-    try {
-      const now = Date.now();
-      const ytQualityObj = {
-        data: JSON.stringify({
-          quality: settings.preferredQuality,
-          previousQuality: "auto"
-        }),
-        expiration: now + (30 * 24 * 60 * 60 * 1000), // 30 days
-        creation: now
-      };
-      window.localStorage.setItem('yt-player-quality', JSON.stringify(ytQualityObj));
-    } catch (err) {
-      console.warn('[Aura Quality] Could not set localStorage:', err);
-    }
-
-    // 2. The main world script is already running, just send message to force it immediately via API
-    window.postMessage({
-      type: 'AURA_SET_QUALITY',
-      quality: settings.preferredQuality
-    }, window.location.origin);
-  }
-
-  let lastVideo = null;
-  let lastVideoId = null;
-  if (window.CineGlowPlayer) {
-    window.CineGlowPlayer.addEventListener('state-change', (e) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      const state = e.detail;
-      if (state.video !== lastVideo || state.videoId !== lastVideoId) {
-        lastVideo = state.video;
-        lastVideoId = state.videoId;
-        if (state.isWatchPage && state.video) {
-          setTimeout(applyQuality, 500);
-        }
-      }
-    });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
   window.CineGlowQuality = {
     settings,
     loadSettings,
-    applyQuality,
+    applyQuality: () => applyQuality(true),
     teardownKillSwitch,
     isForcedByPolicy: () => !!forcedQualityPolicy
   };
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
-
-  // Initial load
   loadSettings().then(() => {
-    applyQuality();
+    applyQuality(true);
   });
-
 })();

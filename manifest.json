@@ -15,7 +15,8 @@
   "host_permissions": [
     "https://*.youtube.com/*",
     "https://returnyoutubedislikeapi.com/*",
-    "https://biggest_bucket.storage.googleapis.com/*"
+    "https://sponsor.ajay.app/*",
+    "https://storage.googleapis.com/*"
   ],
   "storage": {
     "managed_schema": "managed-schema.json"
@@ -35,14 +36,48 @@
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],
+      "exclude_matches": [
+        "*://studio.youtube.com/*",
+        "*://accounts.youtube.com/*",
+        "*://consent.youtube.com/*"
+      ],
       "js": ["content/main-world.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/defaults.js", "content/player-manager.js", "content/blackbar.js", "content/content.js", "content/lights-out.js", "content/ab-loop.js", "content/youtube-ads.js", "content/youtube-quality.js", "content/stats-overlay.js", "content/pip-button.js", "content/audio-processor.js", "content/smart-pause.js", "content/screenshot-button.js", "content/record-button.js", "content/speed-button.js", "content/return-dislikes.js", "content/hide-shorts.js", "content/annotations.js", "content/hide-endcards.js", "content/sponsor-skip.js"],
-      "css": ["content/content.css", "content/stats-overlay.css", "content/annotations.css"],
+      "exclude_matches": [
+        "*://studio.youtube.com/*",
+        "*://accounts.youtube.com/*",
+        "*://consent.youtube.com/*"
+      ],
+      "js": [
+        "shared/defaults.js",
+        "content/player-manager.js",
+        "content/blackbar.js",
+        "content/content.js",
+        "content/lights-out.js",
+        "content/ab-loop.js",
+        "content/youtube-ads.js",
+        "content/youtube-quality.js",
+        "content/stats-overlay.js",
+        "content/pip-button.js",
+        "content/audio-processor.js",
+        "content/smart-pause.js",
+        "content/screenshot-button.js",
+        "content/record-button.js",
+        "content/speed-button.js",
+        "content/return-dislikes.js",
+        "content/hide-shorts.js",
+        "content/annotations.js",
+        "content/hide-endcards.js",
+        "content/sponsor-skip.js"
+      ],
+      "css": [
+        "content/content.css",
+        "content/annotations.css"
+      ],
       "run_at": "document_idle"
     }
   ],

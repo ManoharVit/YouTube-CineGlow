@@ -1,19 +1,25 @@
 /*
  * CineGlow Pro - Interactive A-B Section Looper (Continuous Segment Repeat)
- * Production Architecture: Shadow DOM HUD, Timeline Progress Bar Overlay, Hotkeys
+ * Architecture: Shadow DOM HUD, Precision Loop Boundary Timer, Timeline Overlay
  */
 (() => {
   'use strict';
 
+  const lifecycle = new AbortController();
+  const { signal } = lifecycle;
+
   let settings = typeof AURA_DEFAULTS !== 'undefined' ? { ...AURA_DEFAULTS } : { abLoopEnabled: true };
   let video = null;
+  let videoAbortController = null;
   let player = null;
+  let currentVideoId = null;
   let isKilled = false;
 
-  let pointA = null; // in seconds
-  let pointB = null; // in seconds
+  let pointA = null;
+  let pointB = null;
   let isLooping = false;
   let loopCount = 0;
+  let loopBoundaryTimer = 0;
 
   let hostEl = null;
   let shadowRoot = null;
@@ -33,6 +39,31 @@
     const mins = Math.floor(s / 60);
     const secs = s % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  function clearLoopBoundaryTimer() {
+    if (loopBoundaryTimer) {
+      clearTimeout(loopBoundaryTimer);
+      loopBoundaryTimer = 0;
+    }
+  }
+
+  function scheduleNextLoopCheck() {
+    clearLoopBoundaryTimer();
+    if (isKilled || !video || !isLooping || pointA === null || pointB === null) return;
+    if (video.paused || video.ended) return;
+
+    const remainingSec = pointB - video.currentTime;
+    if (remainingSec <= 0) {
+      onTimeUpdate();
+      return;
+    }
+    const rate = Math.max(0.1, video.playbackRate || 1);
+    const delayMs = Math.max(10, Math.min(30_000, (remainingSec / rate) * 1000));
+    loopBoundaryTimer = setTimeout(() => {
+      loopBoundaryTimer = 0;
+      onTimeUpdate();
+    }, delayMs);
   }
 
   function ensureShadowHUD() {
@@ -72,7 +103,6 @@
           gap: 8px;
           background: rgba(15, 15, 20, 0.88);
           backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 20px;
           padding: 6px 14px;
@@ -84,9 +114,7 @@
           user-select: none;
           transition: opacity 0.25s ease, transform 0.25s ease;
         }
-        .cineglow-ab-hud.visible {
-          display: flex;
-        }
+        .cineglow-ab-hud.visible { display: flex; }
         .cineglow-ab-badge {
           display: inline-flex;
           align-items: center;
@@ -99,14 +127,8 @@
           padding: 2px 6px;
           letter-spacing: 0.5px;
         }
-        .cineglow-ab-badge.looping {
-          background: #00e676;
-          color: #000;
-        }
-        .cineglow-ab-times {
-          font-variant-numeric: tabular-nums;
-          color: rgba(255, 255, 255, 0.9);
-        }
+        .cineglow-ab-badge.looping { background: #00e676; color: #000; }
+        .cineglow-ab-times { font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.9); }
         .cineglow-ab-counter {
           background: rgba(255, 255, 255, 0.12);
           border-radius: 8px;
@@ -124,10 +146,7 @@
           line-height: 1;
           border-radius: 4px;
         }
-        .cineglow-ab-btn:hover {
-          color: #fff;
-          background: rgba(255, 255, 255, 0.2);
-        }
+        .cineglow-ab-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.2); }
         .cineglow-ab-toast {
           display: none;
           position: absolute;
@@ -135,7 +154,6 @@
           left: 0;
           background: rgba(255, 0, 85, 0.95);
           backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
           border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 14px;
           padding: 6px 14px;
@@ -148,9 +166,7 @@
           pointer-events: none;
           z-index: 10001;
         }
-        .cineglow-ab-toast.visible {
-          display: block;
-        }
+        .cineglow-ab-toast.visible { display: block; }
       `;
 
       badgeEl = document.createElement('span');
@@ -178,7 +194,7 @@
       toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleLoop();
-      });
+      }, { signal });
 
       clearBtn = document.createElement('button');
       clearBtn.type = 'button';
@@ -189,7 +205,7 @@
       clearBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         resetLoop();
-      });
+      }, { signal });
 
       hudEl.appendChild(style);
       hudEl.appendChild(badgeEl);
@@ -224,11 +240,9 @@
     toastEl.textContent = message;
     toastEl.classList.add('visible');
 
-    if (toastTimer) clearTimeout(toastTimer);
+    clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
-      if (toastEl) {
-        toastEl.classList.remove('visible');
-      }
+      toastEl?.classList.remove('visible');
     }, durationMs);
   }
 
@@ -240,6 +254,7 @@
     if (pointA === null && pointB === null) {
       hud.classList.remove('visible');
       removeProgressBarOverlay();
+      clearLoopBoundaryTimer();
       return;
     }
 
@@ -264,6 +279,7 @@
     }
 
     renderProgressBarOverlay();
+    scheduleNextLoopCheck();
   }
 
   function renderProgressBarOverlay() {
@@ -278,16 +294,16 @@
     if (!rangeOverlayEl) {
       rangeOverlayEl = document.createElement('div');
       rangeOverlayEl.className = 'cineglow-ab-range-overlay';
-      rangeOverlayEl.style.position = 'absolute';
-      rangeOverlayEl.style.top = '0';
-      rangeOverlayEl.style.bottom = '0';
-      rangeOverlayEl.style.height = '100%';
-      rangeOverlayEl.style.background = isLooping ? 'rgba(0, 230, 118, 0.45)' : 'rgba(255, 0, 85, 0.4)';
-      rangeOverlayEl.style.borderLeft = '2px solid #ff0055';
-      rangeOverlayEl.style.borderRight = pointB !== null ? '2px solid #00e676' : 'none';
-      rangeOverlayEl.style.pointerEvents = 'none';
-      rangeOverlayEl.style.zIndex = '35';
-      rangeOverlayEl.style.transition = 'background 0.2s ease';
+      Object.assign(rangeOverlayEl.style, {
+        position: 'absolute',
+        top: '0',
+        bottom: '0',
+        height: '100%',
+        borderLeft: '2px solid #ff0055',
+        pointerEvents: 'none',
+        zIndex: '35',
+        transition: 'background 0.2s ease'
+      });
       progressBar.appendChild(rangeOverlayEl);
     }
 
@@ -316,7 +332,7 @@
     if (pointB !== null && pointB <= pointA) {
       pointB = null;
     }
-    isLooping = (pointA !== null && pointB !== null);
+    isLooping = pointA !== null && pointB !== null;
     loopCount = 0;
     updateHUD();
   }
@@ -351,70 +367,75 @@
     pointB = null;
     isLooping = false;
     loopCount = 0;
+    clearLoopBoundaryTimer();
     updateHUD();
+  }
+
+  function jumpToLoopStart(resumePlayback = false) {
+    if (!video || pointA === null) return;
+    video.currentTime = pointA;
+    loopCount++;
+    updateHUD();
+    if (resumePlayback && video.paused) {
+      video.play().catch(() => {});
+    }
   }
 
   function onTimeUpdate() {
     if (isKilled || !video || !isLooping || pointA === null || pointB === null) return;
     if (video.currentTime >= pointB) {
-      video.currentTime = pointA;
-      loopCount++;
-      updateHUD();
+      jumpToLoopStart(false);
+    } else {
+      scheduleNextLoopCheck();
+    }
+  }
+
+  function onVideoEnded() {
+    clearLoopBoundaryTimer();
+    if (isKilled || !video || !isLooping || pointA === null || pointB === null) return;
+    if (Number.isFinite(video.duration) && pointB >= video.duration - 0.35) {
+      jumpToLoopStart(true);
     }
   }
 
   function isInputFocused(e) {
     if (e && typeof e.composedPath === 'function') {
       try {
-        const path = e.composedPath();
-        if (Array.isArray(path)) {
-          for (const node of path) {
-            if (!node || (node.nodeType !== undefined && node.nodeType !== 1)) continue;
-            const tag = (node.tagName || '').toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || node.isContentEditable) {
-              return true;
-            }
-            if (typeof node.getAttribute === 'function') {
-              const role = node.getAttribute('role');
-              if (role === 'textbox' || role === 'combobox' || role === 'searchbox') {
-                return true;
-              }
-            }
-            if (tag === 'ytd-commentbox' ||
-                tag === 'ytd-searchbox' ||
-                tag === 'yt-searchbox' ||
-                tag === 'ytd-comment-simplebox-renderer' ||
-                tag === 'yt-live-chat-text-input-field-renderer') {
-              return true;
-            }
+        for (const node of e.composedPath()) {
+          if (!node || (node.nodeType !== undefined && node.nodeType !== 1)) continue;
+          const tag = (node.tagName || '').toLowerCase();
+          if (tag === 'input' || tag === 'textarea' || node.isContentEditable) return true;
+          const role = node.getAttribute?.('role');
+          if (role === 'textbox' || role === 'combobox' || role === 'searchbox') return true;
+          if (
+            tag === 'ytd-commentbox' ||
+            tag === 'ytd-searchbox' ||
+            tag === 'yt-searchbox' ||
+            tag === 'ytd-comment-simplebox-renderer' ||
+            tag === 'yt-live-chat-text-input-field-renderer'
+          ) {
+            return true;
           }
         }
       } catch (_) {}
     }
 
     let el = document.activeElement;
-    while (el && el.shadowRoot && el.shadowRoot.activeElement) {
+    while (el?.shadowRoot?.activeElement) {
       el = el.shadowRoot.activeElement;
     }
     if (!el) return false;
     const tag = (el.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || el.isContentEditable) return true;
-    if (typeof el.getAttribute === 'function') {
-      const role = el.getAttribute('role');
-      if (role === 'textbox' || role === 'combobox' || role === 'searchbox') return true;
-    }
+    const role = el.getAttribute?.('role');
+    if (role === 'textbox' || role === 'combobox' || role === 'searchbox') return true;
     if (tag === 'ytd-commentbox' || tag === 'ytd-searchbox' || tag === 'yt-searchbox' || tag === 'ytd-comment-simplebox-renderer') {
       return true;
     }
-    if (typeof el.closest === 'function') {
-      if (el.closest('ytd-commentbox, ytd-searchbox, yt-searchbox, ytd-comment-simplebox-renderer, #search-form')) {
-        return true;
-      }
-    }
-    return false;
+    return Boolean(el.closest?.('ytd-commentbox, ytd-searchbox, yt-searchbox, ytd-comment-simplebox-renderer, #search-form'));
   }
 
-  function onKeyDown(e) {
+  window.addEventListener('keydown', (e) => {
     if (isKilled || !settings.abLoopEnabled || isInputFocused(e) || e.ctrlKey || e.metaKey || e.altKey) return;
 
     if (e.key === '[') {
@@ -427,43 +448,76 @@
       e.preventDefault();
       toggleLoop();
     } else if ((e.key === 'Backspace' || e.key === 'Escape') && (pointA !== null || pointB !== null)) {
-      if (e.target && e.target.closest && e.target.closest('#movie_player')) {
+      if (e.target?.closest?.('#movie_player')) {
         e.preventDefault();
         resetLoop();
       }
     }
+  }, { passive: false, signal });
+
+  function bindVideo(nextVideo) {
+    if (video === nextVideo) return;
+    if (videoAbortController) {
+      videoAbortController.abort();
+      videoAbortController = null;
+    }
+    video = nextVideo;
+    if (video) {
+      videoAbortController = new AbortController();
+      const vSig = videoAbortController.signal;
+      video.addEventListener('timeupdate', onTimeUpdate, { passive: true, signal: vSig });
+      video.addEventListener('seeked', scheduleNextLoopCheck, { passive: true, signal: vSig });
+      video.addEventListener('ratechange', scheduleNextLoopCheck, { passive: true, signal: vSig });
+      video.addEventListener('play', scheduleNextLoopCheck, { passive: true, signal: vSig });
+      video.addEventListener('playing', scheduleNextLoopCheck, { passive: true, signal: vSig });
+      video.addEventListener('pause', clearLoopBoundaryTimer, { passive: true, signal: vSig });
+      video.addEventListener('ended', onVideoEnded, { passive: true, signal: vSig });
+    }
   }
 
   function handlePlayerState(state) {
-    if (isKilled) return;
-    if (state.video !== video) {
-      if (video) {
-        video.removeEventListener('timeupdate', onTimeUpdate);
-      }
-      video = state.video;
-      if (video) {
-        video.addEventListener('timeupdate', onTimeUpdate);
-      }
+    if (isKilled || !state) return;
+    const videoChanged = state.video !== video;
+    const videoIdChanged = Boolean(state.videoId && state.videoId !== currentVideoId);
+
+    if (videoChanged) {
+      bindVideo(state.video);
+    }
+    if (videoIdChanged || (videoChanged && !state.videoId)) {
+      currentVideoId = state.videoId || null;
       resetLoop();
     }
+
     player = state.player || document.getElementById('movie_player');
     if (!state.isWatchPage) {
+      currentVideoId = null;
       resetLoop();
     }
   }
+
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || area !== 'sync') return;
+    if (changes.abLoopEnabled) {
+      settings.abLoopEnabled = Boolean(changes.abLoopEnabled.newValue);
+      if (!changes.abLoopEnabled.newValue) {
+        resetLoop();
+      }
+    }
+  };
 
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
-    if (video) {
-      video.removeEventListener('timeupdate', onTimeUpdate);
-    }
-    window.removeEventListener('keydown', onKeyDown);
+    window.CineGlowKilled = true;
+
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    clearLoopBoundaryTimer();
+    bindVideo(null);
+    lifecycle.abort();
     removeProgressBarOverlay();
-    if (hostEl) {
-      hostEl.remove();
-      hostEl = null;
-    }
+
+    hostEl?.remove();
+    hostEl = null;
     shadowRoot = null;
     hudEl = null;
     badgeEl = null;
@@ -471,38 +525,22 @@
     counterEl = null;
     toggleBtn = null;
     clearBtn = null;
-    if (toastTimer) {
-      clearTimeout(toastTimer);
-      toastTimer = null;
-    }
-    if (toastEl) {
-      try { toastEl.remove(); } catch (_) {}
-      toastEl = null;
-    }
-    video = null;
+
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    toastEl?.remove();
+    toastEl = null;
     player = null;
   }
 
-  // Register listeners
-  window.addEventListener('keydown', onKeyDown, { passive: false });
-
-  if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
-        teardownKillSwitch();
-        if (typeof sendResponse === 'function') {
-          sendResponse({ success: true, script: 'ab-loop.js' });
-        }
-      }
-    });
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
+  chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
+    if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
       teardownKillSwitch();
-    }, { once: true });
-  }
+      sendResponse?.({ success: true, script: 'ab-loop.js' });
+    }
+  });
 
+  window.addEventListener('cineglow:kill-switch', teardownKillSwitch, { once: true });
   window.CineGlowABLoopTeardown = teardownKillSwitch;
   window.CineGlowABLoop = {
     setPointA,
@@ -518,50 +556,19 @@
   };
 
   if (window.CineGlowPlayer) {
-    window.CineGlowPlayer.addEventListener('state-change', (e) => handlePlayerState(e.detail));
+    window.CineGlowPlayer.addEventListener('state-change', (e) => handlePlayerState(e.detail), { signal });
     handlePlayerState(window.CineGlowPlayer);
   } else {
     const v = document.querySelector('video');
-    if (v) {
-      video = v;
-      video.addEventListener('timeupdate', onTimeUpdate);
+    if (v) bindVideo(v);
+  }
+
+  chrome.storage?.sync?.get({ abLoopEnabled: true }).then((items) => {
+    if (!isKilled && typeof items?.abLoopEnabled === 'boolean') {
+      settings.abLoopEnabled = items.abLoopEnabled;
     }
-  }
+  }).catch(() => {});
 
-  // Storage listener and initial sync for popup integration
-  if (typeof chrome !== 'undefined' && chrome.storage?.sync?.get) {
-    try {
-      chrome.storage.sync.get({ abLoopEnabled: true }, (items) => {
-        if (chrome.runtime?.lastError) return;
-        if (items && typeof items.abLoopEnabled === 'boolean') {
-          settings.abLoopEnabled = items.abLoopEnabled;
-        }
-      });
-    } catch (_) {}
-  }
-
-  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || area !== 'sync') return;
-      if (changes.abLoopEnabled) {
-        settings.abLoopEnabled = Boolean(changes.abLoopEnabled.newValue);
-        if (!changes.abLoopEnabled.newValue) {
-          resetLoop();
-        }
-      }
-    });
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
 })();
+

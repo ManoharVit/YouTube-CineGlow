@@ -36,7 +36,6 @@ const EQ_PRESETS = {
   electro: { eq60: 6,  eq250: 3,  eq1000: -1, eq4000: 2,  eq12000: 4 }
 };
 
-// Glow Presets: Subtle, Balanced (Default), Vivid
 const GLOW_PRESETS = {
   subtle:   { opacity: 50, spread: 100, smoothness: 70, blur: 30, saturation: 100, contrast: 100, brightness: 90 },
   balanced: { opacity: 75, spread: 150, smoothness: 60, blur: 40, saturation: 110, contrast: 100, brightness: 100 },
@@ -44,8 +43,45 @@ const GLOW_PRESETS = {
 };
 const glowPresetBtns = document.querySelectorAll('.glow-preset-pill');
 
+let activeManagedPolicies = null;
+
+function applyManagedOverrides(targetSettings) {
+  if (!activeManagedPolicies || typeof activeManagedPolicies !== 'object') return targetSettings;
+  if (activeManagedPolicies.DisableAdBlock) {
+    targetSettings.adblockEnabled = false;
+  }
+  if (activeManagedPolicies.DisableThirdPartyAPIs) {
+    targetSettings.returnDislikes = false;
+    targetSettings.restoreAnnotations = false;
+  }
+  if (activeManagedPolicies.ForceDefaultQuality) {
+    targetSettings.preferredQuality = activeManagedPolicies.ForceDefaultQuality;
+  }
+  return targetSettings;
+}
+
+function syncManagedControlLocks() {
+  const policies = activeManagedPolicies || {};
+  if (adblockEnabledEl) {
+    adblockEnabledEl.disabled = Boolean(policies.DisableAdBlock);
+    adblockEnabledEl.title = policies.DisableAdBlock ? 'Managed by organization policy' : '';
+  }
+  if (returnDislikesEl) {
+    returnDislikesEl.disabled = Boolean(policies.DisableThirdPartyAPIs);
+    returnDislikesEl.title = policies.DisableThirdPartyAPIs ? 'Managed by organization policy' : '';
+  }
+  if (restoreAnnotationsEl) {
+    restoreAnnotationsEl.disabled = Boolean(policies.DisableThirdPartyAPIs);
+    restoreAnnotationsEl.title = policies.DisableThirdPartyAPIs ? 'Managed by organization policy' : '';
+  }
+  if (preferredQualityEl) {
+    preferredQualityEl.disabled = Boolean(policies.ForceDefaultQuality);
+    preferredQualityEl.title = policies.ForceDefaultQuality ? 'Managed by organization policy' : '';
+  }
+}
+
 function updateActiveGlowPresetPill(activeKey) {
-  glowPresetBtns.forEach(btn => {
+  glowPresetBtns.forEach((btn) => {
     const isActive = btn.getAttribute('data-preset') === activeKey;
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
@@ -77,7 +113,7 @@ function formatDb(val) {
 }
 
 function updateActivePresetPill(activeKey) {
-  eqPresetBtns.forEach(btn => {
+  eqPresetBtns.forEach((btn) => {
     const isActive = btn.getAttribute('data-preset') === activeKey;
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
@@ -123,6 +159,7 @@ const hideInTheaterEl = document.getElementById('hideInTheater');
 const enableInPiPEl = document.getElementById('enableInPiP');
 const removeBlackBarsEl = document.getElementById('removeBlackBars');
 const audioReactiveEl = document.getElementById('audioReactive');
+const screenXModeEl = document.getElementById('screenXMode');
 const lightsOutEl = document.getElementById('lightsOut');
 const lightsOutOpacityEl = document.getElementById('lightsOutOpacity');
 const lightsOutOpacityValEl = document.getElementById('lightsOutOpacityVal');
@@ -144,13 +181,12 @@ const controlsEl = document.getElementById('controls');
 const resetEl = document.getElementById('reset');
 const masterStatusTag = document.getElementById('masterStatusTag');
 
-// Section Reset Buttons
 const glowResetEl = document.getElementById('glowReset');
 const videoResetEl = document.getElementById('videoReset');
 const audioResetEl = document.getElementById('audioReset');
 const toolsResetEl = document.getElementById('toolsReset');
 
-const GLOW_KEYS = ['opacity', 'spread', 'smoothness', 'blur', 'saturation', 'contrast', 'brightness', 'fadeInDuration', 'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'enableInPiP', 'audioReactive', 'fps'];
+const GLOW_KEYS = ['opacity', 'spread', 'smoothness', 'blur', 'saturation', 'contrast', 'brightness', 'fadeInDuration', 'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'enableInPiP', 'audioReactive', 'screenXMode', 'fps'];
 const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'videoBrightness', 'videoContrast', 'videoSepia', 'removeBlackBars', 'ultrawideZoom', 'lightsOut', 'lightsOutOpacity'];
 const AUDIO_KEYS = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset'];
 const TOOLS_KEYS = ['adblockEnabled', 'sponsorBlockEnabled', 'sponsorBlockMode', 'statsEnabled', 'abLoopEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
@@ -163,12 +199,23 @@ async function save(partial) {
   }
 }
 
-// Throttle slider writes: storage.sync has a write quota (MAX_WRITE_OPERATIONS_PER_MINUTE = 120).
-// A 550ms interval guarantees maximum 109 writes/min under continuous dragging.
 const pending = {};
 let flushTimer = 0;
 let lastFlushTime = 0;
 const SYNC_THROTTLE_MS = 550;
+
+function flushPendingNow() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = 0;
+  }
+  const keys = Object.keys(pending);
+  if (keys.length === 0) return;
+  lastFlushTime = Date.now();
+  const batch = { ...pending };
+  for (const k of keys) delete pending[k];
+  save(batch);
+}
 
 function queueSave(key, value) {
   pending[key] = value;
@@ -177,16 +224,15 @@ function queueSave(key, value) {
   const elapsed = Date.now() - lastFlushTime;
   const delay = elapsed >= SYNC_THROTTLE_MS ? 50 : (SYNC_THROTTLE_MS - elapsed);
 
-  flushTimer = setTimeout(async () => {
-    flushTimer = 0;
-    lastFlushTime = Date.now();
-    const batch = { ...pending };
-    for (const k of Object.keys(pending)) delete pending[k];
-    if (Object.keys(batch).length > 0) {
-      await save(batch);
-    }
-  }, delay);
+  flushTimer = setTimeout(flushPendingNow, delay);
 }
+
+window.addEventListener('pagehide', flushPendingNow);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    flushPendingNow();
+  }
+});
 
 function cancelPendingWrites(keys) {
   if (!keys) {
@@ -216,7 +262,8 @@ async function resetSectionKeys(keys) {
   for (const k of keys) {
     partial[k] = AURA_DEFAULTS[k];
   }
-  const merged = { ...current, ...partial };
+  applyManagedOverrides(partial);
+  const merged = applyManagedOverrides({ ...current, ...partial });
   render(merged);
   await save(partial);
 }
@@ -247,14 +294,14 @@ function render(settings) {
   enabledEl.checked = settings.enabled;
   updateMasterStatus(settings.enabled);
   adblockEnabledEl.checked = settings.adblockEnabled;
-  if (sponsorBlockEnabledEl) sponsorBlockEnabledEl.checked = !!settings.sponsorBlockEnabled;
+  if (sponsorBlockEnabledEl) sponsorBlockEnabledEl.checked = Boolean(settings.sponsorBlockEnabled);
   if (sponsorBlockModeEl) sponsorBlockModeEl.value = settings.sponsorBlockMode || 'skip';
   if (sponsorBlockCountEl) sponsorBlockCountEl.textContent = settings.sponsorBlockCount ?? 0;
   if (autoPauseModeEl) autoPauseModeEl.value = settings.autoPauseMode || 'off';
-  if (returnDislikesEl) returnDislikesEl.checked = !!settings.returnDislikes;
-  if (hideShortsEl) hideShortsEl.checked = !!settings.hideShorts;
-  if (restoreAnnotationsEl) restoreAnnotationsEl.checked = !!settings.restoreAnnotations;
-  if (hideEndCardsEl) hideEndCardsEl.checked = !!settings.hideEndCards;
+  if (returnDislikesEl) returnDislikesEl.checked = Boolean(settings.returnDislikes);
+  if (hideShortsEl) hideShortsEl.checked = Boolean(settings.hideShorts);
+  if (restoreAnnotationsEl) restoreAnnotationsEl.checked = Boolean(settings.restoreAnnotations);
+  if (hideEndCardsEl) hideEndCardsEl.checked = Boolean(settings.hideEndCards);
   if (preferredSpeedEl) {
     const spd = settings.preferredSpeed ?? 1.0;
     preferredSpeedEl.value = Math.min(Math.max(spd, 0.1), 2.0);
@@ -303,12 +350,13 @@ function render(settings) {
   enableInPiPEl.checked = settings.enableInPiP;
   removeBlackBarsEl.checked = settings.removeBlackBars;
   audioReactiveEl.checked = settings.audioReactive;
+  if (screenXModeEl) screenXModeEl.checked = Boolean(settings.screenXMode);
   lightsOutEl.checked = settings.lightsOut;
   if (lightsOutOpacityEl) {
     lightsOutOpacityEl.value = settings.lightsOutOpacity ?? 85;
     if (lightsOutOpacityValEl) lightsOutOpacityValEl.textContent = (settings.lightsOutOpacity ?? 85) + '%';
   }
-  if (abLoopEnabledEl) abLoopEnabledEl.checked = !!settings.abLoopEnabled;
+  if (abLoopEnabledEl) abLoopEnabledEl.checked = Boolean(settings.abLoopEnabled);
   ultrawideZoomEl.checked = settings.ultrawideZoom;
   glowTopEl.classList.toggle('active', settings.glowTop);
   glowRightEl.classList.toggle('active', settings.glowRight);
@@ -319,7 +367,7 @@ function render(settings) {
   glowBottomEl.setAttribute('aria-pressed', settings.glowBottom ? 'true' : 'false');
   glowLeftEl.setAttribute('aria-pressed', settings.glowLeft ? 'true' : 'false');
   adblockCountEl.textContent = settings.adblockCount;
-  
+
   controlsEl.classList.toggle('disabled', !settings.enabled);
   for (const key of SLIDER_KEYS) {
     const el = document.getElementById(key);
@@ -336,7 +384,7 @@ function renderDeactivatedBanner() {
     controls.style.display = 'none';
   }
   let banner = document.getElementById('cineglow-killswitch-banner');
-  if (!banner && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+  if (!banner && typeof document !== 'undefined') {
     banner = document.createElement('div');
     banner.id = 'cineglow-killswitch-banner';
     banner.className = 'cineglow-deactivated-banner';
@@ -344,7 +392,7 @@ function renderDeactivatedBanner() {
     banner.style.cssText = 'margin: 16px; padding: 16px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #fca5a5; font-size: 13px; line-height: 1.5; text-align: center; font-weight: 500;';
     banner.textContent = 'CineGlow Pro Disabled: Deactivated by enterprise policy or emergency kill-switch';
     const header = document.querySelector('.app-header');
-    if (header && header.parentNode) {
+    if (header?.parentNode) {
       header.parentNode.insertBefore(banner, header.nextSibling);
     } else if (document.body) {
       document.body.appendChild(banner);
@@ -359,24 +407,22 @@ function renderDeactivatedBanner() {
 
 async function init() {
   let settings = { ...AURA_DEFAULTS };
-  let managedPolicies = null;
   try {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.managed) {
-      managedPolicies = await chrome.storage.managed.get(null).catch(() => null);
+    if (chrome.storage?.managed) {
+      activeManagedPolicies = await chrome.storage.managed.get(null).catch(() => null);
     }
   } catch (_) {}
 
-  // Check if extension is killed by emergency kill-switch or enterprise policy (CG-FIND-14)
   let isKillSwitchActive = false;
   let localData = {};
   try {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    if (chrome.storage?.local) {
       localData = await chrome.storage.local.get(['auraKillSwitchActive', 'adblockCount', 'sponsorBlockCount']).catch(() => ({}));
-      if (localData && localData.auraKillSwitchActive === true) {
+      if (localData?.auraKillSwitchActive === true) {
         isKillSwitchActive = true;
       }
     }
-    if (managedPolicies && (managedPolicies.KillSwitch === true || managedPolicies.killSwitch === true)) {
+    if (activeManagedPolicies && (activeManagedPolicies.KillSwitch === true || activeManagedPolicies.killSwitch === true)) {
       isKillSwitchActive = true;
     }
   } catch (_) {}
@@ -398,44 +444,18 @@ async function init() {
     console.error('[Aura] Failed to load settings:', err);
   }
 
-  // Enforce enterprise managed policies over user preferences
-  if (managedPolicies && typeof managedPolicies === 'object') {
-    if (managedPolicies.DisableAdBlock) {
-      settings.adblockEnabled = false;
-      if (adblockEnabledEl) {
-        adblockEnabledEl.disabled = true;
-        adblockEnabledEl.title = 'Managed by organization policy';
-      }
-    }
-    if (managedPolicies.DisableThirdPartyAPIs) {
-      settings.returnDislikes = false;
-      settings.restoreAnnotations = false;
-      const rDislikes = document.getElementById('returnDislikes');
-      const rAnno = document.getElementById('restoreAnnotations');
-      if (rDislikes) { rDislikes.disabled = true; rDislikes.title = 'Managed by organization policy'; }
-      if (rAnno) { rAnno.disabled = true; rAnno.title = 'Managed by organization policy'; }
-    }
-    if (managedPolicies.ForceDefaultQuality) {
-      settings.preferredQuality = managedPolicies.ForceDefaultQuality;
-      const prefQ = document.getElementById('preferredQuality');
-      if (prefQ) { prefQ.disabled = true; prefQ.title = 'Managed by organization policy'; }
-    }
-  }
-
+  applyManagedOverrides(settings);
+  syncManagedControlLocks();
   render(settings);
 
-  // Dynamically populate version pill from extension manifest
   try {
     const versionPill = document.querySelector('.header-version-pill');
-    if (versionPill && typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.getManifest === 'function') {
-      const manifest = chrome.runtime.getManifest();
-      if (manifest && manifest.version) {
-        versionPill.textContent = `v${manifest.version}`;
-      }
+    const manifest = chrome.runtime?.getManifest?.();
+    if (versionPill && manifest?.version) {
+      versionPill.textContent = `v${manifest.version}`;
     }
   } catch (_) {}
 
-  // Keep counter updated if ads are blocked while popup is open, and watch kill switch
   chrome.storage.onChanged.addListener((changes, area) => {
     if ((area === 'sync' || area === 'local') && changes.adblockCount) {
       adblockCountEl.textContent = changes.adblockCount.newValue;
@@ -443,11 +463,45 @@ async function init() {
     if ((area === 'sync' || area === 'local') && changes.sponsorBlockCount && sponsorBlockCountEl) {
       sponsorBlockCountEl.textContent = changes.sponsorBlockCount.newValue;
     }
+    if (area === 'sync') {
+      if (changes.screenXMode && screenXModeEl) {
+        screenXModeEl.checked = Boolean(changes.screenXMode.newValue);
+      }
+      if (changes.lightsOut && lightsOutEl) {
+        lightsOutEl.checked = Boolean(changes.lightsOut.newValue);
+      }
+      if (changes.statsEnabled && statsEnabledEl) {
+        statsEnabledEl.checked = Boolean(changes.statsEnabled.newValue);
+      }
+      if (changes.preferredSpeed && preferredSpeedEl && document.activeElement !== preferredSpeedEl) {
+        const spd = Number(changes.preferredSpeed.newValue) || 1.0;
+        preferredSpeedEl.value = Math.min(Math.max(spd, 0.1), 2.0);
+        if (preferredSpeedValEl) preferredSpeedValEl.textContent = formatSpeedDisplay(spd);
+      }
+    }
     if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
       renderDeactivatedBanner();
     }
-    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
-      renderDeactivatedBanner();
+    if (area === 'managed') {
+      activeManagedPolicies = activeManagedPolicies || {};
+      for (const [k, { newValue }] of Object.entries(changes)) {
+        activeManagedPolicies[k] = newValue;
+      }
+      if (changes.KillSwitch?.newValue === true) {
+        renderDeactivatedBanner();
+        return;
+      }
+      syncManagedControlLocks();
+      if (changes.DisableAdBlock?.newValue === true && adblockEnabledEl) {
+        adblockEnabledEl.checked = false;
+      }
+      if (changes.DisableThirdPartyAPIs?.newValue === true) {
+        if (returnDislikesEl) returnDislikesEl.checked = false;
+        if (restoreAnnotationsEl) restoreAnnotationsEl.checked = false;
+      }
+      if (changes.ForceDefaultQuality?.newValue && preferredQualityEl) {
+        preferredQualityEl.value = changes.ForceDefaultQuality.newValue;
+      }
     }
   });
 
@@ -457,12 +511,11 @@ async function init() {
     await save({ enabled: enabledEl.checked });
   });
 
-  // Category pill navigation & section dropdown synchronization
   const navPills = document.querySelectorAll('.nav-pill');
   const sectionDropdowns = document.querySelectorAll('details.section-dropdown');
 
   function updateNavPillState(targetId) {
-    navPills.forEach(pill => {
+    navPills.forEach((pill) => {
       const match = pill.getAttribute('data-target') === targetId;
       pill.classList.toggle('active', match);
       if (match) {
@@ -473,38 +526,32 @@ async function init() {
     });
   }
 
-  navPills.forEach(pill => {
+  navPills.forEach((pill) => {
     pill.addEventListener('click', () => {
       const targetId = pill.getAttribute('data-target');
       updateNavPillState(targetId);
-      sectionDropdowns.forEach(sec => {
-        sec.open = (sec.id === targetId);
+      sectionDropdowns.forEach((sec) => {
+        sec.open = sec.id === targetId;
       });
-      const section = document.getElementById(targetId);
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 
-  sectionDropdowns.forEach(sec => {
+  sectionDropdowns.forEach((sec) => {
     sec.addEventListener('toggle', () => {
       if (sec.open) {
-        sectionDropdowns.forEach(other => {
-          if (other !== sec && other.open) {
-            other.open = false;
-          }
+        sectionDropdowns.forEach((other) => {
+          if (other !== sec && other.open) other.open = false;
         });
         updateNavPillState(sec.id);
       } else {
-        const anyOpen = Array.from(sectionDropdowns).find(s => s.open);
+        const anyOpen = Array.from(sectionDropdowns).find((s) => s.open);
         updateNavPillState(anyOpen ? anyOpen.id : null);
       }
     });
   });
 
-  // Glow Presets
-  glowPresetBtns.forEach(btn => {
+  glowPresetBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
       const presetKey = btn.getAttribute('data-preset');
       const preset = GLOW_PRESETS[presetKey];
@@ -521,63 +568,50 @@ async function init() {
     });
   });
 
-  // Section Resets
-  if (glowResetEl) {
-    glowResetEl.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await resetSectionKeys(GLOW_KEYS);
-    });
-  }
+  glowResetEl?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await resetSectionKeys(GLOW_KEYS);
+  });
 
-  if (videoResetEl) {
-    videoResetEl.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await resetSectionKeys(VIDEO_KEYS);
-    });
-  }
+  videoResetEl?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await resetSectionKeys(VIDEO_KEYS);
+  });
 
-  if (audioResetEl) {
-    audioResetEl.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await resetSectionKeys(AUDIO_KEYS);
-    });
-  }
+  audioResetEl?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await resetSectionKeys(AUDIO_KEYS);
+  });
 
-  if (toolsResetEl) {
-    toolsResetEl.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await resetSectionKeys(TOOLS_KEYS);
-    });
-  }
+  toolsResetEl?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await resetSectionKeys(TOOLS_KEYS);
+  });
 
   const reloadTabBtn = document.getElementById('reloadTabBtn');
-  if (reloadTabBtn) {
-    reloadTabBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs && tabs[0]?.id) {
-            chrome.tabs.reload(tabs[0].id);
-            const origText = reloadTabBtn.textContent;
-            reloadTabBtn.textContent = 'Reloaded!';
-            setTimeout(() => {
-              reloadTabBtn.textContent = origText;
-            }, 1500);
-          }
-        });
+  reloadTabBtn?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab?.id) {
+        await chrome.tabs.reload(activeTab.id);
+        const origText = reloadTabBtn.textContent;
+        reloadTabBtn.textContent = 'Reloaded!';
+        setTimeout(() => {
+          reloadTabBtn.textContent = origText;
+        }, 1500);
       }
-    });
-  }
-
-  audioNormalizerEl.addEventListener('change', async () => {
-    await save({ audioNormalizer: audioNormalizerEl.checked });
+    } catch (_) {}
   });
+
+  audioNormalizerEl.addEventListener('change', () => save({ audioNormalizer: audioNormalizerEl.checked }));
 
   audioBoostEl.addEventListener('input', () => {
     audioBoostValEl.textContent = audioBoostEl.value + '%';
+    queueSave('audioBoost', parseInt(audioBoostEl.value, 10));
   });
-
   audioBoostEl.addEventListener('change', async () => {
+    cancelPendingWrites(['audioBoost']);
     await save({ audioBoost: parseInt(audioBoostEl.value, 10) });
   });
 
@@ -603,7 +637,6 @@ async function init() {
     });
   }
 
-  // 5-Band Equalizer Sliders
   const eqSliders = [
     { el: eq60El, valEl: eq60ValEl, key: 'eq60' },
     { el: eq250El, valEl: eq250ValEl, key: 'eq250' },
@@ -626,8 +659,7 @@ async function init() {
     });
   });
 
-  // EQ Presets
-  eqPresetBtns.forEach(btn => {
+  eqPresetBtns.forEach((btn) => {
     btn.addEventListener('click', async () => {
       const presetKey = btn.getAttribute('data-preset');
       const preset = EQ_PRESETS[presetKey];
@@ -642,133 +674,44 @@ async function init() {
       });
 
       updateActivePresetPill(presetKey);
-      await save({
-        eq60: preset.eq60,
-        eq250: preset.eq250,
-        eq1000: preset.eq1000,
-        eq4000: preset.eq4000,
-        eq12000: preset.eq12000,
-        eqPreset: presetKey
-      });
+      await save({ ...preset, eqPreset: presetKey });
     });
   });
 
-  // Reset EQ
-  if (eqResetEl) {
-    eqResetEl.addEventListener('click', async () => {
-      cancelPendingWrites(['eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset']);
-      const flat = EQ_PRESETS.flat;
-      eqSliders.forEach(({ el, valEl, key }) => {
-        if (el) {
-          el.value = flat[key];
-          valEl.textContent = formatDb(flat[key]);
-        }
-      });
-      updateActivePresetPill('flat');
-      await save({
-        eq60: flat.eq60,
-        eq250: flat.eq250,
-        eq1000: flat.eq1000,
-        eq4000: flat.eq4000,
-        eq12000: flat.eq12000,
-        eqPreset: 'flat'
-      });
+  eqResetEl?.addEventListener('click', async () => {
+    cancelPendingWrites(['eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset']);
+    const flat = EQ_PRESETS.flat;
+    eqSliders.forEach(({ el, valEl, key }) => {
+      if (el) {
+        el.value = flat[key];
+        valEl.textContent = formatDb(flat[key]);
+      }
     });
-  }
-
-  adblockEnabledEl.addEventListener('change', async () => {
-    await save({ adblockEnabled: adblockEnabledEl.checked });
+    updateActivePresetPill('flat');
+    await save({ ...flat, eqPreset: 'flat' });
   });
 
-  if (sponsorBlockEnabledEl) {
-    sponsorBlockEnabledEl.addEventListener('change', async () => {
-      await save({ sponsorBlockEnabled: sponsorBlockEnabledEl.checked });
-    });
-  }
-
-  if (sponsorBlockModeEl) {
-    sponsorBlockModeEl.addEventListener('change', async () => {
-      await save({ sponsorBlockMode: sponsorBlockModeEl.value });
-    });
-  }
-
-  qualityEnabledEl.addEventListener('change', async () => {
-    await save({ qualityEnabled: qualityEnabledEl.checked });
-  });
-
-  statsEnabledEl.addEventListener('change', async () => {
-    await save({ statsEnabled: statsEnabledEl.checked });
-  });
-
-  if (autoPauseModeEl) {
-    autoPauseModeEl.addEventListener('change', async () => {
-      await save({ autoPauseMode: autoPauseModeEl.value });
-    });
-  }
-
-  if (returnDislikesEl) {
-    returnDislikesEl.addEventListener('change', async () => {
-      await save({ returnDislikes: returnDislikesEl.checked });
-    });
-  }
-
-  if (hideShortsEl) {
-    hideShortsEl.addEventListener('change', async () => {
-      await save({ hideShorts: hideShortsEl.checked });
-    });
-  }
-
-  if (restoreAnnotationsEl) {
-    restoreAnnotationsEl.addEventListener('change', async () => {
-      await save({ restoreAnnotations: restoreAnnotationsEl.checked });
-    });
-  }
-
-  if (hideEndCardsEl) {
-    hideEndCardsEl.addEventListener('change', async () => {
-      await save({ hideEndCards: hideEndCardsEl.checked });
-    });
-  }
-
-  preferredQualityEl.addEventListener('change', async () => {
-    await save({ preferredQuality: preferredQualityEl.value });
-  });
-
-  blockAV1El.addEventListener('change', async () => {
-    await save({ blockAV1: blockAV1El.checked });
-  });
-
-  blockVP9El.addEventListener('change', async () => {
-    await save({ blockVP9: blockVP9El.checked });
-  });
-
-  hideInTheaterEl.addEventListener('change', async () => {
-    await save({ hideInTheater: hideInTheaterEl.checked });
-  });
-
-  hideScrollbarEl.addEventListener('change', async () => {
-    await save({ hideScrollbar: hideScrollbarEl.checked });
-  });
-
-  enableInPiPEl.addEventListener('change', async () => {
-    await save({ enableInPiP: enableInPiPEl.checked });
-  });
-
-  removeBlackBarsEl.addEventListener('change', async () => {
-    await save({ removeBlackBars: removeBlackBarsEl.checked });
-  });
-
-  block60fpsEl.addEventListener('change', async () => {
-    await save({ block60fps: block60fpsEl.checked });
-  });
-
-  audioReactiveEl.addEventListener('change', async () => {
-    await save({ audioReactive: audioReactiveEl.checked });
-  });
-
-  lightsOutEl.addEventListener('change', async () => {
-    await save({ lightsOut: lightsOutEl.checked });
-  });
+  adblockEnabledEl.addEventListener('change', () => save({ adblockEnabled: adblockEnabledEl.checked }));
+  sponsorBlockEnabledEl?.addEventListener('change', () => save({ sponsorBlockEnabled: sponsorBlockEnabledEl.checked }));
+  sponsorBlockModeEl?.addEventListener('change', () => save({ sponsorBlockMode: sponsorBlockModeEl.value }));
+  qualityEnabledEl.addEventListener('change', () => save({ qualityEnabled: qualityEnabledEl.checked }));
+  statsEnabledEl.addEventListener('change', () => save({ statsEnabled: statsEnabledEl.checked }));
+  autoPauseModeEl?.addEventListener('change', () => save({ autoPauseMode: autoPauseModeEl.value }));
+  returnDislikesEl?.addEventListener('change', () => save({ returnDislikes: returnDislikesEl.checked }));
+  hideShortsEl?.addEventListener('change', () => save({ hideShorts: hideShortsEl.checked }));
+  restoreAnnotationsEl?.addEventListener('change', () => save({ restoreAnnotations: restoreAnnotationsEl.checked }));
+  hideEndCardsEl?.addEventListener('change', () => save({ hideEndCards: hideEndCardsEl.checked }));
+  preferredQualityEl.addEventListener('change', () => save({ preferredQuality: preferredQualityEl.value }));
+  blockAV1El.addEventListener('change', () => save({ blockAV1: blockAV1El.checked }));
+  blockVP9El.addEventListener('change', () => save({ blockVP9: blockVP9El.checked }));
+  hideInTheaterEl.addEventListener('change', () => save({ hideInTheater: hideInTheaterEl.checked }));
+  hideScrollbarEl.addEventListener('change', () => save({ hideScrollbar: hideScrollbarEl.checked }));
+  enableInPiPEl.addEventListener('change', () => save({ enableInPiP: enableInPiPEl.checked }));
+  removeBlackBarsEl.addEventListener('change', () => save({ removeBlackBars: removeBlackBarsEl.checked }));
+  block60fpsEl.addEventListener('change', () => save({ block60fps: block60fpsEl.checked }));
+  audioReactiveEl.addEventListener('change', () => save({ audioReactive: audioReactiveEl.checked }));
+  screenXModeEl?.addEventListener('change', () => save({ screenXMode: screenXModeEl.checked }));
+  lightsOutEl.addEventListener('change', () => save({ lightsOut: lightsOutEl.checked }));
 
   if (lightsOutOpacityEl) {
     lightsOutOpacityEl.addEventListener('input', () => {
@@ -776,17 +719,14 @@ async function init() {
       if (lightsOutOpacityValEl) lightsOutOpacityValEl.textContent = val + '%';
       queueSave('lightsOutOpacity', val);
     });
-  }
-
-  if (abLoopEnabledEl) {
-    abLoopEnabledEl.addEventListener('change', async () => {
-      await save({ abLoopEnabled: abLoopEnabledEl.checked });
+    lightsOutOpacityEl.addEventListener('change', async () => {
+      cancelPendingWrites(['lightsOutOpacity']);
+      await save({ lightsOutOpacity: Number(lightsOutOpacityEl.value) });
     });
   }
 
-  ultrawideZoomEl.addEventListener('change', async () => {
-    await save({ ultrawideZoom: ultrawideZoomEl.checked });
-  });
+  abLoopEnabledEl?.addEventListener('change', () => save({ abLoopEnabled: abLoopEnabledEl.checked }));
+  ultrawideZoomEl.addEventListener('change', () => save({ ultrawideZoom: ultrawideZoomEl.checked }));
 
   for (const dir of ['Top', 'Right', 'Bottom', 'Left']) {
     const el = document.getElementById('glow' + dir);
@@ -801,8 +741,7 @@ async function init() {
   for (const key of SLIDER_KEYS) {
     const el = document.getElementById(key);
     const numEl = document.getElementById(`${key}-val`);
-    
-    // When range slider changes
+
     el.addEventListener('input', () => {
       const value = Number(el.value);
       setOutput(key, value);
@@ -810,12 +749,12 @@ async function init() {
       checkMatchingGlowPreset();
     });
 
-    // When number input changes
     if (numEl) {
       numEl.addEventListener('change', () => {
         let value = Number(numEl.value);
         const min = Number(numEl.min);
         const max = Number(numEl.max);
+        if (!Number.isFinite(value)) value = AURA_DEFAULTS[key];
         if (value < min) value = min;
         if (value > max) value = max;
         numEl.value = value;
@@ -832,27 +771,41 @@ async function init() {
       if (preferredSpeedValEl) preferredSpeedValEl.textContent = formatSpeedDisplay(val);
       queueSave('preferredSpeed', val);
     });
+    preferredSpeedEl.addEventListener('change', async () => {
+      cancelPendingWrites(['preferredSpeed']);
+      await save({ preferredSpeed: parseFloat(preferredSpeedEl.value) });
+    });
+    preferredSpeedEl.addEventListener('dblclick', async () => {
+      cancelPendingWrites(['preferredSpeed']);
+      preferredSpeedEl.value = '1.0';
+      if (preferredSpeedValEl) preferredSpeedValEl.textContent = formatSpeedDisplay(1.0);
+      await save({ preferredSpeed: 1.0 });
+    });
+    preferredSpeedValEl?.addEventListener('click', async () => {
+      cancelPendingWrites(['preferredSpeed']);
+      preferredSpeedEl.value = '1.0';
+      preferredSpeedValEl.textContent = formatSpeedDisplay(1.0);
+      await save({ preferredSpeed: 1.0 });
+    });
   }
 
-  fpsEl.addEventListener('change', async () => {
-    await save({ fps: Number(fpsEl.value) });
-  });
+  fpsEl.addEventListener('change', () => save({ fps: Number(fpsEl.value) }));
 
   resetEl.addEventListener('click', async () => {
     cancelPendingWrites();
-    // Preserve adblock and sponsorblock counts when resetting visual settings
-    const currentCount = Number(adblockCountEl.textContent);
-    const currentSponsorCount = sponsorBlockCountEl ? Number(sponsorBlockCountEl.textContent) : 0;
-    const resetSettings = { ...AURA_DEFAULTS, adblockCount: currentCount, sponsorBlockCount: currentSponsorCount };
-    render(resetSettings);
-    await save(resetSettings);
+    const currentCount = Number(adblockCountEl.textContent) || 0;
+    const currentSponsorCount = sponsorBlockCountEl ? (Number(sponsorBlockCountEl.textContent) || 0) : 0;
+    const syncDefaults = applyManagedOverrides({ ...AURA_DEFAULTS });
+    delete syncDefaults.adblockCount;
+    delete syncDefaults.sponsorBlockCount;
+    render({ ...syncDefaults, adblockCount: currentCount, sponsorBlockCount: currentSponsorCount });
+    await save(syncDefaults);
   });
 
-  // Open external links reliably in a new tab
-  document.querySelectorAll('a[href^="http"]').forEach(a => {
+  document.querySelectorAll('a[href^="http"]').forEach((a) => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+      if (chrome.tabs?.create) {
         chrome.tabs.create({ url: a.href });
       } else {
         window.open(a.href, '_blank', 'noopener,noreferrer');
@@ -871,3 +824,4 @@ if (typeof window !== 'undefined') {
 }
 
 init();
+

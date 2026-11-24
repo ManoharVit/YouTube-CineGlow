@@ -87,10 +87,17 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
 
     // Verify host permission isolation
     assert.strictEqual(hostPerms.includes('<all_urls>'), false, '<all_urls> must not be in host_permissions');
-    assert.strictEqual(hostPerms.includes('https://storage.googleapis.com/*'), false, 'Global GCS wildcard must be replaced by virtual-hosted bucket');
     assert.ok(
-      hostPerms.includes('https://biggest_bucket.storage.googleapis.com/*'),
-      'Virtual-hosted bucket origin must be explicitly pinned'
+      hostPerms.includes('https://storage.googleapis.com/*'),
+      'GCS path-style origin must be pinned in host_permissions'
+    );
+    assert.ok(
+      hostPerms.includes('https://sponsor.ajay.app/*'),
+      'SponsorBlock API origin must be declared in host_permissions'
+    );
+    assert.ok(
+      manifest.content_scripts.every(cs => Array.isArray(cs.exclude_matches) && cs.exclude_matches.includes('*://studio.youtube.com/*')),
+      'Non-player YouTube subdomains must be excluded from content script injection'
     );
   });
 
@@ -685,5 +692,44 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
 
     // FP-9.6: Merchandise shelves must NOT be suppressed in AD_CSS
     assert.strictEqual(adsJs.includes('ytd-merch-shelf-renderer'), false, 'youtube-ads.js must NOT suppress ytd-merch-shelf-renderer');
+  });
+
+  test('In-video branding watermark and subscribe overlay are fully suppressed in CSS and pruned by scripts', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../content/content.css'), 'utf8');
+    const playerMgr = fs.readFileSync(path.join(__dirname, '../content/player-manager.js'), 'utf8');
+    const mainWorld = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+
+    // CSS targets
+    assert.ok(css.includes('.branding-img-container'), 'content.css must suppress .branding-img-container');
+    assert.ok(css.includes('.branding-img'), 'content.css must suppress .branding-img');
+    assert.ok(css.includes('.iv-branding'), 'content.css must suppress .iv-branding');
+    assert.ok(css.includes('.branding-context-container'), 'content.css must suppress .branding-context-container');
+    assert.ok(css.includes('.ytp-featured-watermark'), 'content.css must suppress .ytp-featured-watermark');
+
+    // DOM pruning in player-manager and main-world
+    assert.ok(playerMgr.includes('.branding-img-container'), 'player-manager must prune .branding-img-container');
+    assert.ok(mainWorld.includes('.branding-img-container'), 'main-world must prune .branding-img-container');
+  });
+
+  test('Thumbnail navigation and ad skipping recovers playback and calls playVideo if left paused', () => {
+    const mainWorld = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+
+    // Autoplay recovery in main-world.js
+    assert.ok(mainWorld.includes('player.playVideo()'), 'main-world must call player.playVideo()');
+    assert.ok(mainWorld.includes('resumePlaybackIfStalled'), 'main-world must have resumePlaybackIfStalled watchdog');
+
+    // Autoplay recovery in youtube-ads.js
+    assert.ok(adsJs.includes('player.playVideo()'), 'youtube-ads must call player.playVideo()');
+  });
+
+  test('Normal playback respects user pause: space bar or click does not get immediately unpaused', () => {
+    const mainWorld = fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8');
+    const adsJs = fs.readFileSync(path.join(__dirname, '../content/youtube-ads.js'), 'utf8');
+
+    // Verify restoreVideoAfterAd only acts when CineGlow actively mutated playback during an ad
+    assert.ok(mainWorld.includes('const hadAdMutation = Boolean(adMuted || acceleratedVideo'), 'restoreVideoAfterAd must guard with hadAdMutation');
+    assert.strictEqual(mainWorld.includes('state === 2'), false, 'main-world must not unpause state === 2 (paused)');
+    assert.strictEqual(adsJs.includes('state === 2'), false, 'youtube-ads must not unpause state === 2 (paused)');
   });
 });

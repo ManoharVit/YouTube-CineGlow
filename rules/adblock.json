@@ -34,9 +34,9 @@
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "||pagead2.googlesyndication.com",
+      "urlFilter": "||youtube.com/ptracking",
       "initiatorDomains": ["youtube.com"],
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
+      "resourceTypes": ["xmlhttprequest", "ping", "image"]
     }
   },
   {
@@ -44,7 +44,8 @@
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "*youtube.com/ptracking*",
+      "urlFilter": "||youtube.com/api/stats/ads",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["xmlhttprequest", "ping", "image"]
     }
   },
@@ -53,21 +54,13 @@
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "*youtube.com/api/stats/ads*",
-      "resourceTypes": ["xmlhttprequest", "ping", "image"]
-    }
-  },
-  {
-    "id": 7,
-    "priority": 1,
-    "action": { "type": "block" },
-    "condition": {
-      "urlFilter": "*youtube.com/pagead/*",
+      "urlFilter": "||youtube.com/pagead/",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
   {
-    "id": 8,
+    "id": 7,
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
@@ -77,25 +70,27 @@
     }
   },
   {
-    "id": 9,
+    "id": 8,
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "*youtube.com/pcs/activeview*",
+      "urlFilter": "||youtube.com/pcs/activeview",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["xmlhttprequest", "ping", "image"]
     }
   },
   {
-    "id": 10,
+    "id": 9,
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "*youtube.com/youtubei/v1/player/ad_break*",
+      "urlFilter": "||youtube.com/youtubei/v1/player/ad_break",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["xmlhttprequest"]
     }
   },
   {
-    "id": 11,
+    "id": 10,
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
@@ -105,12 +100,14 @@
     }
   },
   {
-    "id": 12,
+    "id": 11,
     "priority": 1,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "*youtube.com/get_midroll_info*",
+      "urlFilter": "||youtube.com/get_midroll_info",
+      "initiatorDomains": ["youtube.com"],
       "resourceTypes": ["xmlhttprequest", "ping"]
     }
   }
 ]
+

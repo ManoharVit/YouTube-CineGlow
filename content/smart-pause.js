@@ -7,65 +7,80 @@
   let lastVideo = null;
   let blurTimer = null;
   let isKilled = false;
+  let hasExplicitMode = false;
 
-  // Sync mode from extension storage
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.get({ autoPauseMode: 'off' }, (items) => {
-      autoPauseMode = items.autoPauseMode || 'off';
-    });
-
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (area === 'sync' && changes.autoPauseMode) {
-        autoPauseMode = changes.autoPauseMode.newValue || 'off';
-        // If mode was disabled while extension paused it, resume playback safely
-        if (autoPauseMode === 'off' && pausedByExtension) {
-          resumePlayback();
-        }
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'sync' && changes.autoPauseMode) {
+      autoPauseMode = changes.autoPauseMode.newValue || 'off';
+      hasExplicitMode = true;
+      if (autoPauseMode === 'off' && pausedByExtension) {
+        resumePlayback();
+      } else {
+        checkState();
       }
-    });
+    }
+  };
+
+  async function loadSettings() {
+    if (isKilled || window.CineGlowKilled) return;
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const [local, managed, stored] = await Promise.all([
+          chrome.storage.local?.get(['auraKillSwitchActive']).catch(() => ({})),
+          chrome.storage.managed?.get(['KillSwitch']).catch(() => ({})),
+          chrome.storage.sync?.get({ autoPauseMode: 'off' }).catch(() => ({}))
+        ]);
+        if (local?.auraKillSwitchActive || managed?.KillSwitch) {
+          teardownKillSwitch();
+          return;
+        }
+        if (!hasExplicitMode && stored?.autoPauseMode) {
+          autoPauseMode = stored.autoPauseMode;
+        }
+        checkState();
+      }
+    } catch (_) {}
   }
+
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
 
   function shouldPause() {
     if (autoPauseMode === 'off') return false;
-
-    // Prevent PiP from opening in a paused state during transition (FP-4.4)
-    if (typeof window !== 'undefined' && window._cineglowPipTransition) return false;
-
-    // Active in-stream ads must not freeze when switching tabs (FP-4.3)
+    if (window._cineglowPipTransition) return false;
     if (document.querySelector('.ad-showing, .ad-interrupting') || window.CineGlowPlayer?.isAdShowing) {
       return false;
     }
-
-    // Always pause if the tab is completely hidden (switched tabs / minimized)
     if (document.hidden) return true;
-
-    // In 'app' mode, also pause if user switches to another desktop app/window
     if (autoPauseMode === 'app' && typeof document.hasFocus === 'function') {
-      // Focus moved to an internal iframe (e.g. Live Chat) does not auto-pause (FP-4.2)
-      if (document.activeElement && document.activeElement.tagName === 'IFRAME') return false;
+      if (document.activeElement?.tagName === 'IFRAME') return false;
       if (!document.hasFocus()) return true;
     }
-
     return false;
   }
 
   function resumePlayback() {
-    const playerManager = window.CineGlowPlayer;
-    const video = playerManager ? playerManager.video : null;
+    const video = window.CineGlowPlayer?.video;
     if (video && pausedByExtension) {
       pausedByExtension = false;
-      video.play().catch(e => console.error('[CineGlow Smart Pause] Play failed:', e));
+      video.play().catch(() => {});
     }
   }
 
   function checkState() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     const playerManager = window.CineGlowPlayer;
-    const video = playerManager ? playerManager.video : null;
+    const video = playerManager?.video;
     if (!video) return;
 
-    // Do not auto-pause if the user is watching in Picture-in-Picture
     if (playerManager.isPiP || document.pictureInPictureElement === video) {
       return;
     }
@@ -76,14 +91,11 @@
         video.pause();
         pausedByExtension = true;
       }
-    } else {
-      if (pausedByExtension) {
-        resumePlayback();
-      }
+    } else if (pausedByExtension) {
+      resumePlayback();
     }
   }
 
-  // Named listeners for tab switching & window minimize / focus
   const onVisibilityChange = () => {
     if (blurTimer) {
       clearTimeout(blurTimer);
@@ -94,12 +106,12 @@
 
   const onWindowBlur = () => {
     if (autoPauseMode === 'app') {
-      // Debounce slightly to avoid false positives on quick in-page clicks or iframe focus
       if (blurTimer) clearTimeout(blurTimer);
       blurTimer = setTimeout(() => {
         blurTimer = null;
         checkState();
       }, 150);
+      if (typeof blurTimer?.unref === 'function') blurTimer.unref();
     }
   };
 
@@ -115,7 +127,6 @@
   window.addEventListener('blur', onWindowBlur);
   window.addEventListener('focus', onWindowFocus);
 
-  // Reset extension pause flag if user manually interacts with playback controls
   const onUserPlay = () => {
     if (!shouldPause()) {
       pausedByExtension = false;
@@ -123,8 +134,6 @@
   };
 
   const onUserPause = () => {
-    // If a pause event fires >200ms after an extension pause, treat as explicit user intent
-    // (e.g. media keys/headset pause while tab hidden) and clear pausedByExtension
     if (!shouldPause() || (Date.now() - lastExtensionPauseTime > 200)) {
       pausedByExtension = false;
     }
@@ -139,21 +148,23 @@
         lastVideo.removeEventListener('pause', onUserPause);
       }
       lastVideo = state.video;
+      pausedByExtension = false;
       if (lastVideo) {
-        lastVideo.addEventListener('play', onUserPlay);
-        lastVideo.addEventListener('pause', onUserPause);
+        lastVideo.addEventListener('play', onUserPlay, { passive: true });
+        lastVideo.addEventListener('pause', onUserPause, { passive: true });
+        checkState();
       }
     }
   };
 
-  // --- Emergency Kill-Switch Teardown ---
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     autoPauseMode = 'off';
     lastExtensionPauseTime = 0;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    window.CineGlowKilled = true;
 
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('blur', onWindowBlur);
     window.removeEventListener('focus', onWindowFocus);
@@ -170,17 +181,14 @@
       lastVideo.removeEventListener('pause', onUserPause);
       lastVideo = null;
     }
-    if (window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
-      window.CineGlowPlayer.removeEventListener('state-change', onPlayerStateChange);
-    }
+    window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerStateChange);
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -191,28 +199,18 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
   window.CineGlowSmartPauseTeardown = teardownKillSwitch;
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', onPlayerStateChange);
+    if (window.CineGlowPlayer.video) {
+      onPlayerStateChange({ detail: window.CineGlowPlayer });
+    }
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
+  loadSettings();
 })();

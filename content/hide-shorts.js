@@ -1,114 +1,123 @@
+// content/hide-shorts.js
+// Author: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 (() => {
   'use strict';
 
   let hideShortsEnabled = false;
   let isKilled = false;
-  let onShortsClick = null;
-  let onYtNavigateFinish = null;
-  let onYtPageDataUpdated = null;
-  let onPopstate = null;
-  let onPlayerStateChange = null;
-  let onDomContentLoaded = null;
-
-  const SHORTS_SELECTORS = [
-    'grid-shelf-view-model',
-    'reel-shelf-view-model',
-    'yt-reel-shelf-view-model',
-    'ytd-reel-shelf-renderer',
-    'ytd-rich-shelf-renderer[is-shorts]',
-    'ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts])',
-    'ytd-rich-section-renderer:has(reel-shelf-view-model)',
-    'ytd-rich-section-renderer:has(yt-reel-shelf-view-model)',
-    'ytd-rich-section-renderer:has(grid-shelf-view-model)',
-    'ytm-shorts-lockup-view-model',
-    'ytm-shorts-lockup-view-model-v2',
-    'yt-lockup-view-model:has(a[href*="/shorts/"])',
-    'ytd-rich-item-renderer:has(a[href*="/shorts/"])',
-    'ytd-rich-item-renderer:has(ytm-shorts-lockup-view-model)',
-    'ytd-video-renderer:has(a[href*="/shorts/"])',
-    'ytd-compact-video-renderer:has(a[href*="/shorts/"])',
-    'ytd-guide-entry-renderer:has(a[href*="/shorts"])',
-    'ytd-mini-guide-entry-renderer:has(a[href*="/shorts"])',
-    'yt-guide-entry-view-model:has(a[href*="/shorts"])',
-    'a#endpoint[title="Shorts"]',
-    'a#endpoint[href*="/shorts"]',
-    'ytm-pivot-bar-item-renderer:has(a[href*="/shorts"])',
-    'yt-tab-shape[tab-title="Shorts"]',
-    'yt-tab-shape:has(a[href*="/shorts"])',
-    'ytd-browse[page-subtype="channels"] ytd-tab-renderer:has(a[href*="/shorts"])',
-    'ytd-reel-video-renderer'
-  ].join(',');
 
   function updateDomAttribute(enabled) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) {
-      document.documentElement.removeAttribute('cineglow-hide-shorts');
+    if (isKilled || window.CineGlowKilled) {
+      document.documentElement?.removeAttribute('cineglow-hide-shorts');
       return;
     }
     if (enabled) {
-      document.documentElement.setAttribute('cineglow-hide-shorts', 'true');
+      document.documentElement?.setAttribute('cineglow-hide-shorts', 'true');
     } else {
-      document.documentElement.removeAttribute('cineglow-hide-shorts');
+      document.documentElement?.removeAttribute('cineglow-hide-shorts');
     }
   }
 
-  // If user navigates directly to /shorts, redirect to standard video view or YouTube Home
+  function navigateWithinYouTube(targetPath) {
+    const app = document.querySelector('ytd-app');
+    if (app && typeof app.fire === 'function') {
+      try {
+        app.fire('yt-navigate', {
+          endpoint: {
+            commandMetadata: { webCommandMetadata: { url: targetPath } },
+            watchEndpoint: targetPath.startsWith('/watch?v=')
+              ? { videoId: new URLSearchParams(targetPath.split('?')[1]).get('v') }
+              : undefined,
+            browseEndpoint: targetPath === '/' ? { browseId: 'FEwhat_to_watch' } : undefined
+          }
+        });
+        return;
+      } catch (_) {}
+    }
+    if (typeof window.location?.replace === 'function') {
+      window.location.replace(targetPath);
+    } else if (window.location) {
+      window.location.href = targetPath;
+    }
+  }
+
   function checkShortsRedirect() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!hideShortsEnabled) return;
+    if (isKilled || window.CineGlowKilled || !hideShortsEnabled) return;
     const path = window.location.pathname;
     if (path.startsWith('/shorts')) {
       const match = path.match(/^\/shorts\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        const shortId = match[1];
-        window.location.replace(`/watch?v=${encodeURIComponent(shortId)}`);
-      } else {
-        window.location.replace('/');
-      }
+      const target = match?.[1] ? `/watch?v=${encodeURIComponent(match[1])}` : '/';
+      navigateWithinYouTube(target);
     }
   }
 
-  // --- Emergency Kill-Switch Teardown ---
+  const onShortsClick = (e) => {
+    if (!hideShortsEnabled || isKilled) return;
+    const closestAnchor = e.target.closest?.('a');
+    const anchor = e.target.closest?.('a[href*="/shorts"]') ||
+                   (closestAnchor && (closestAnchor.getAttribute('href') || closestAnchor.href || '').includes('/shorts') ? closestAnchor : null);
+    if (!anchor) return;
+
+    let hostname = anchor.hostname;
+    if (!hostname && anchor.href) {
+      try {
+        hostname = new URL(anchor.getAttribute('href') || anchor.href, window.location.href).hostname;
+      } catch (_) {
+        hostname = window.location.hostname;
+      }
+    }
+    const h = (hostname || '').toLowerCase();
+    const isYouTube = h === 'youtube.com' || h.endsWith('.youtube.com') || h === 'youtu.be' || h.endsWith('.youtu.be');
+    if (!isYouTube) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const match = (anchor.getAttribute('href') || anchor.href || '').match(/\/shorts\/([a-zA-Z0-9_-]+)/);
+    if (match?.[1]) {
+      navigateWithinYouTube(`/watch?v=${encodeURIComponent(match[1])}`);
+    }
+  };
+
+  const onNavigate = () => checkShortsRedirect();
+
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'sync' && 'hideShorts' in changes) {
+      hideShortsEnabled = Boolean(changes.hideShorts.newValue);
+      updateDomAttribute(hideShortsEnabled);
+      checkShortsRedirect();
+    }
+  };
+
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     hideShortsEnabled = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
-    if (typeof document !== 'undefined' && document.documentElement) {
-      document.documentElement.removeAttribute('cineglow-hide-shorts');
-    }
+    window.CineGlowKilled = true;
+    document.documentElement?.removeAttribute('cineglow-hide-shorts');
 
-    if (onShortsClick && typeof document !== 'undefined') {
-      try { document.removeEventListener('click', onShortsClick, true); } catch (_) {}
-      onShortsClick = null;
-    }
-    if (onYtNavigateFinish && typeof document !== 'undefined') {
-      try { document.removeEventListener('yt-navigate-finish', onYtNavigateFinish); } catch (_) {}
-      onYtNavigateFinish = null;
-    }
-    if (onYtPageDataUpdated && typeof document !== 'undefined') {
-      try { document.removeEventListener('yt-page-data-updated', onYtPageDataUpdated); } catch (_) {}
-      onYtPageDataUpdated = null;
-    }
-    if (onPopstate && typeof window !== 'undefined') {
-      try { window.removeEventListener('popstate', onPopstate); } catch (_) {}
-      onPopstate = null;
-    }
-    if (onPlayerStateChange && window.CineGlowPlayer && typeof window.CineGlowPlayer.removeEventListener === 'function') {
-      try { window.CineGlowPlayer.removeEventListener('state-change', onPlayerStateChange); } catch (_) {}
-      onPlayerStateChange = null;
-    }
-    if (onDomContentLoaded && typeof document !== 'undefined') {
-      try { document.removeEventListener('DOMContentLoaded', onDomContentLoaded); } catch (_) {}
-      onDomContentLoaded = null;
-    }
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    document.removeEventListener('click', onShortsClick, true);
+    document.removeEventListener('yt-navigate-finish', onNavigate);
+    document.removeEventListener('yt-page-data-updated', onNavigate);
+    window.removeEventListener('popstate', onNavigate);
+    window.CineGlowPlayer?.removeEventListener?.('state-change', onNavigate);
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -119,101 +128,37 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
   window.CineGlowShortsTeardown = teardownKillSwitch;
 
   function init() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-      chrome.storage.sync.get({ hideShorts: false }, (items) => {
+    if (isKilled || window.CineGlowKilled) return;
+
+    document.addEventListener('click', onShortsClick, true);
+    document.addEventListener('yt-navigate-finish', onNavigate, { passive: true });
+    document.addEventListener('yt-page-data-updated', onNavigate, { passive: true });
+    window.addEventListener('popstate', onNavigate, { passive: true });
+    window.CineGlowPlayer?.addEventListener('state-change', onNavigate);
+    chrome.storage?.onChanged?.addListener(handleStorageChange);
+
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.sync?.get({ hideShorts: false }, (stored) => {
         if (isKilled) return;
-        hideShortsEnabled = !!items.hideShorts;
+        hideShortsEnabled = Boolean(stored?.hideShorts);
         updateDomAttribute(hideShortsEnabled);
         checkShortsRedirect();
       });
-
-      chrome.storage.onChanged.addListener((changes, area) => {
-        if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-        if (area === 'sync' && 'hideShorts' in changes) {
-          hideShortsEnabled = !!changes.hideShorts.newValue;
-          updateDomAttribute(hideShortsEnabled);
-          checkShortsRedirect();
-        }
+      chrome.storage.managed?.get(['KillSwitch'], (managed) => {
+        if (managed?.KillSwitch) teardownKillSwitch();
+      });
+      chrome.storage.local?.get(['auraKillSwitchActive'], (local) => {
+        if (local?.auraKillSwitchActive) teardownKillSwitch();
       });
     }
-
-    // Intercept and cancel clicks on any /shorts links when hiding is enabled
-    onShortsClick = (e) => {
-      if (!hideShortsEnabled || isKilled) return;
-      const anchor = e.target.closest ? (e.target.closest('a[href*="/shorts"]') || (e.target.closest('a') && (e.target.closest('a').getAttribute('href') || e.target.closest('a').href || '').includes('/shorts') ? e.target.closest('a') : null)) : null;
-      if (anchor) {
-        let hostname = anchor.hostname;
-        if (!hostname && anchor.href) {
-          try {
-            hostname = new URL(anchor.href, window.location.href).hostname;
-          } catch (_) {
-            hostname = window.location.hostname;
-          }
-        }
-        const h = (hostname || '').toLowerCase();
-        const isYouTube = h === 'youtube.com' ||
-                          h.endsWith('.youtube.com') ||
-                          h === 'youtu.be' ||
-                          h.endsWith('.youtu.be');
-        if (isYouTube) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }
-    };
-    document.addEventListener('click', onShortsClick, true);
-
-    // YouTube SPA navigation listeners
-    onYtNavigateFinish = () => {
-      checkShortsRedirect();
-    };
-    document.addEventListener('yt-navigate-finish', onYtNavigateFinish);
-
-    onYtPageDataUpdated = () => {
-      checkShortsRedirect();
-    };
-    document.addEventListener('yt-page-data-updated', onYtPageDataUpdated);
-
-    onPopstate = () => {
-      checkShortsRedirect();
-    };
-    window.addEventListener('popstate', onPopstate);
-
-    if (window.CineGlowPlayer) {
-      onPlayerStateChange = () => {
-        checkShortsRedirect();
-      };
-      window.CineGlowPlayer.addEventListener('state-change', onPlayerStateChange);
-    }
   }
 
-  if (document.readyState === 'loading') {
-    onDomContentLoaded = init;
-    document.addEventListener('DOMContentLoaded', onDomContentLoaded);
-  } else {
-    init();
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
+  init();
 })();

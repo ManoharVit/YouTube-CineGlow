@@ -3,6 +3,7 @@
 
   let enabled = false;
   let settingsLoaded = false;
+  let isThirdPartyDisabled = false;
   let currentVideoId = null;
   let currentVideo = null;
   let attachedVideo = null;
@@ -10,56 +11,74 @@
   let activeVideoId = null;
   let overlayContainer = null;
   let annotationsList = [];
-  let updateIntervalId = null;
+  let boundaryTimerId = 0;
   let resizeObserver = null;
   let isAdPlaying = false;
   let isKilled = false;
 
-  // --- Settings Management ---
   async function loadSettings() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage?.sync) {
-        const stored = await chrome.storage.sync.get('restoreAnnotations');
-        if (stored && stored.restoreAnnotations !== undefined) {
-          enabled = !!stored.restoreAnnotations;
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const [local, managed, stored] = await Promise.all([
+          chrome.storage.local?.get(['auraKillSwitchActive']).catch(() => ({})),
+          chrome.storage.managed?.get(['DisableThirdPartyAPIs', 'KillSwitch']).catch(() => ({})),
+          chrome.storage.sync?.get('restoreAnnotations').catch(() => ({}))
+        ]);
+        if (local?.auraKillSwitchActive || managed?.KillSwitch) {
+          teardownKillSwitch();
+          return;
+        }
+        if (managed?.DisableThirdPartyAPIs) {
+          isThirdPartyDisabled = true;
+        }
+        if (stored?.restoreAnnotations !== undefined) {
+          enabled = Boolean(stored.restoreAnnotations);
         } else if (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.restoreAnnotations !== undefined) {
-          enabled = !!AURA_DEFAULTS.restoreAnnotations;
-        } else {
-          enabled = false;
+          enabled = Boolean(AURA_DEFAULTS.restoreAnnotations);
         }
       } else if (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.restoreAnnotations !== undefined) {
-        enabled = !!AURA_DEFAULTS.restoreAnnotations;
-      } else {
-        enabled = false;
+        enabled = Boolean(AURA_DEFAULTS.restoreAnnotations);
       }
+    } catch (err) {
+      console.warn('[CineGlow Annotations] Could not load settings:', err);
+    } finally {
       settingsLoaded = true;
-      if (!enabled) {
+      if (!enabled || isThirdPartyDisabled) {
         teardown();
       } else if (currentVideoId && currentPlayer && !overlayContainer) {
         initForVideo(currentVideoId, currentVideo, currentPlayer);
       }
-    } catch (err) {
-      settingsLoaded = true;
-      console.warn('[CineGlow Annotations] Could not load settings:', err);
     }
   }
 
-  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (area === 'sync' && 'restoreAnnotations' in changes) {
-        enabled = !!changes.restoreAnnotations.newValue;
-        if (!enabled) {
-          teardown();
-        } else if (currentVideoId && currentPlayer) {
-          initForVideo(currentVideoId, currentVideo, currentPlayer);
-        }
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'managed') {
+      if (changes.KillSwitch?.newValue === true) {
+        teardownKillSwitch();
+        return;
       }
-    });
-  }
+      if ('DisableThirdPartyAPIs' in changes) {
+        isThirdPartyDisabled = changes.DisableThirdPartyAPIs.newValue === true;
+        if (isThirdPartyDisabled) teardown();
+      }
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'sync' && 'restoreAnnotations' in changes) {
+      enabled = Boolean(changes.restoreAnnotations.newValue);
+      if (!enabled || isThirdPartyDisabled) {
+        teardown();
+      } else if (currentVideoId && currentPlayer) {
+        initForVideo(currentVideoId, currentVideo, currentPlayer);
+      }
+    }
+  };
+  chrome.storage?.onChanged?.addListener(handleStorageChange);
 
-  // --- Time & Color Utilities ---
   function parseTime(str) {
     if (!str || str === 'never') return null;
     if (str.includes(':')) {
@@ -107,7 +126,6 @@
     const rawVal = urlEl.getAttribute('value') || '';
     if (!rawVal) return null;
 
-    // Check for timestamp link within same video
     if (rawVal.includes('#t=') || (rawVal.includes('v=') && rawVal.includes(videoId))) {
       const match = rawVal.match(/#t=([^&]+)/);
       if (match) {
@@ -121,7 +139,6 @@
     return { type: 'url', url: rawVal, target: urlEl.getAttribute('target') || 'current' };
   }
 
-  // --- XML Parsing ---
   function parseAnnotationsXml(xmlString, videoId) {
     try {
       const parser = new DOMParser();
@@ -130,7 +147,7 @@
       const parsed = [];
 
       for (const a of annotationNodes) {
-        const id = a.getAttribute('id') || `anno_${Math.random().toString(36).substr(2, 9)}`;
+        const id = a.getAttribute('id') || `anno_${crypto.randomUUID().slice(0, 8)}`;
         const type = a.getAttribute('type') || 'text';
         if (type === 'pause' || type === 'timeline' || type === 'marker') continue;
 
@@ -193,14 +210,12 @@
     }
   }
 
-  // --- Annotation DOM Creation ---
   function createAnnotationElement(item) {
     const el = document.createElement('div');
     el.className = `cineglow-annotation cineglow-annotation-${item.style}`;
     el.id = `cg_anno_${item.id}`;
     el.hidden = true;
 
-    // Background & text styling
     if (item.type === 'highlight') {
       el.classList.add('cineglow-annotation-highlight');
     } else {
@@ -213,7 +228,6 @@
       el.setAttribute('data-clickable', 'true');
     }
 
-    // Text content
     if (item.text) {
       const content = document.createElement('div');
       content.className = 'cineglow-annotation-content';
@@ -221,7 +235,6 @@
       el.appendChild(content);
     }
 
-    // Speech bubble tail
     if (item.style === 'speech' && item.sx !== null && item.sy !== null) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('class', 'cineglow-annotation-speech-tail');
@@ -233,7 +246,6 @@
       item.speechPolygon = polygon;
     }
 
-    // Close button
     const closeBtn = document.createElement('div');
     closeBtn.className = 'cineglow-annotation-close';
     closeBtn.textContent = '×';
@@ -246,7 +258,6 @@
     });
     el.appendChild(closeBtn);
 
-    // Click handler
     if (item.action) {
       el.addEventListener('click', (e) => {
         if (e.target === closeBtn) return;
@@ -258,7 +269,6 @@
           try { currentVideo.play(); } catch (_) {}
         } else if (item.action.type === 'url') {
           try {
-            // Block protocol-relative URLs (e.g. //attacker.com) and unvalidated external schemes
             if (typeof item.action.url === 'string' && !item.action.url.startsWith('//')) {
               const parsed = new URL(item.action.url, 'https://www.youtube.com');
               const isYouTube = parsed.hostname === 'www.youtube.com' || parsed.hostname === 'youtube.com' || parsed.hostname === 'youtu.be';
@@ -268,8 +278,6 @@
                 } else {
                   window.location.href = parsed.href;
                 }
-              } else {
-                console.warn('[CineGlow Annotations] Blocked untrusted external navigation:', item.action.url);
               }
             }
           } catch (_) {}
@@ -281,7 +289,6 @@
     return el;
   }
 
-  // --- Geometry & Positioning ---
   function updateLayout() {
     if (!overlayContainer || !currentVideo || !currentPlayer) return;
 
@@ -323,29 +330,32 @@
       item.domEl.style.width = `${pxW}px`;
       item.domEl.style.height = `${pxH}px`;
 
-      // Font size proportional to video height
       const fontSizePx = Math.max(10, Math.round((item.textSize / 100) * renderH));
       item.domEl.style.fontSize = `${fontSizePx}px`;
 
-      // Speech bubble pointer calculation
       if (item.speechPolygon && item.sx !== null && item.sy !== null) {
         const pointPxX = offsetL + (item.sx / 100) * renderW - pxL;
         const pointPxY = offsetT + (item.sy / 100) * renderH - pxT;
-
-        // Base points on the nearest edge of the bubble
         const baseStartX = pxW * 0.25;
         const baseEndX = pxW * 0.45;
         const baseEndY = pxH;
-
         item.speechPolygon.setAttribute('points', `${baseStartX},${baseEndY} ${pointPxX},${pointPxY} ${baseEndX},${baseEndY}`);
       }
     }
   }
 
-  // --- Playback Sync Loop ---
+  function clearBoundaryTimer() {
+    if (boundaryTimerId) {
+      clearTimeout(boundaryTimerId);
+      boundaryTimerId = 0;
+    }
+  }
+
   function onTimeTick() {
-    if (!currentVideo || !overlayContainer || isAdPlaying) return;
+    clearBoundaryTimer();
+    if (!currentVideo || !overlayContainer || isAdPlaying || isKilled) return;
     const curTime = currentVideo.currentTime;
+    let nextBoundarySec = Infinity;
 
     for (const item of annotationsList) {
       if (!item.domEl || item.isClosed) continue;
@@ -353,14 +363,25 @@
       if (item.domEl.hidden === shouldShow) {
         item.domEl.hidden = !shouldShow;
       }
+      if (curTime < item.timeStart) {
+        nextBoundarySec = Math.min(nextBoundarySec, item.timeStart - curTime);
+      } else if (curTime < item.timeEnd) {
+        nextBoundarySec = Math.min(nextBoundarySec, item.timeEnd - curTime);
+      }
+    }
+
+    if (!currentVideo.paused && !currentVideo.ended && Number.isFinite(nextBoundarySec)) {
+      const rate = Math.max(0.1, currentVideo.playbackRate || 1);
+      const delayMs = Math.max(20, Math.min(30_000, (nextBoundarySec / rate) * 1000));
+      boundaryTimerId = setTimeout(onTimeTick, delayMs);
+      if (typeof boundaryTimerId?.unref === 'function') boundaryTimerId.unref();
     }
   }
 
-  // --- Video Initialization & Fetching ---
   async function initForVideo(videoId, video, player) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     teardown();
-    if (!enabled || !videoId || !player) return;
+    if (!enabled || isThirdPartyDisabled || !videoId || !player) return;
 
     activeVideoId = videoId;
     currentVideoId = videoId;
@@ -368,80 +389,73 @@
     attachedVideo = video;
     currentPlayer = player;
 
-    // Check if ads are currently playing
     isAdPlaying = player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting');
 
-    // Create overlay container
     overlayContainer = document.createElement('div');
     overlayContainer.className = 'cineglow-annotations-overlay';
-    overlayContainer.style.pointerEvents = 'none';
     if (isAdPlaying) overlayContainer.style.display = 'none';
-
-    // Insert into movie_player above video
     player.appendChild(overlayContainer);
 
-    // Setup ResizeObserver for responsive video letterboxing
     resizeObserver = new ResizeObserver(() => updateLayout());
     resizeObserver.observe(player);
     if (video) resizeObserver.observe(video);
 
-    // Fetch archived annotations from background service worker
+    if (video) {
+      video.addEventListener('timeupdate', onTimeTick, { passive: true });
+      video.addEventListener('seeked', onTimeTick, { passive: true });
+      video.addEventListener('ratechange', onTimeTick, { passive: true });
+      video.addEventListener('play', onTimeTick, { passive: true });
+      video.addEventListener('playing', onTimeTick, { passive: true });
+      video.addEventListener('pause', clearBoundaryTimer, { passive: true });
+      video.addEventListener('ended', clearBoundaryTimer, { passive: true });
+    }
+
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       try {
         chrome.runtime.sendMessage({ type: 'FETCH_ANNOTATIONS', videoId }, (response) => {
           try {
             if (chrome.runtime?.lastError) return;
           } catch (_) { return; }
-          if (!response || !response.success || !response.xml) {
-            console.debug('[CineGlow Annotations] No archived annotations available for:', videoId);
-            return;
-          }
-
-          if (currentVideoId !== videoId || !overlayContainer || !enabled) return;
+          if (!response?.success || !response.xml) return;
+          if (currentVideoId !== videoId || !overlayContainer || !enabled || isKilled) return;
 
           annotationsList = parseAnnotationsXml(response.xml, videoId);
-          console.info(`[CineGlow Annotations] Restored ${annotationsList.length} classic annotations for ${videoId}`);
-
           const fragment = document.createDocumentFragment();
           for (const item of annotationsList) {
-            const el = createAnnotationElement(item);
-            fragment.appendChild(el);
+            fragment.appendChild(createAnnotationElement(item));
           }
           overlayContainer.appendChild(fragment);
 
           updateLayout();
           onTimeTick();
-
-          // Start sync timers
-          if (!updateIntervalId) {
-            updateIntervalId = setInterval(onTimeTick, 150);
-          }
         });
       } catch (err) {
         console.warn('[CineGlow Annotations] Failed to request annotations:', err);
       }
     }
+  }
 
-    if (video) {
-      video.addEventListener('timeupdate', onTimeTick);
-    }
+  function detachVideoListeners(v) {
+    if (!v) return;
+    v.removeEventListener('timeupdate', onTimeTick);
+    v.removeEventListener('seeked', onTimeTick);
+    v.removeEventListener('ratechange', onTimeTick);
+    v.removeEventListener('play', onTimeTick);
+    v.removeEventListener('playing', onTimeTick);
+    v.removeEventListener('pause', clearBoundaryTimer);
+    v.removeEventListener('ended', clearBoundaryTimer);
   }
 
   function teardown() {
     activeVideoId = null;
-    if (updateIntervalId) {
-      clearInterval(updateIntervalId);
-      updateIntervalId = null;
-    }
+    clearBoundaryTimer();
     if (resizeObserver) {
       resizeObserver.disconnect();
       resizeObserver = null;
     }
-    if (currentVideo) {
-      currentVideo.removeEventListener('timeupdate', onTimeTick);
-    }
+    detachVideoListeners(currentVideo);
     if (attachedVideo && attachedVideo !== currentVideo) {
-      attachedVideo.removeEventListener('timeupdate', onTimeTick);
+      detachVideoListeners(attachedVideo);
     }
     attachedVideo = null;
     if (overlayContainer) {
@@ -451,9 +465,8 @@
     annotationsList = [];
   }
 
-  // --- Player Manager Hook ---
   function onPlayerState(e) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
+    if (isKilled || window.CineGlowKilled) return;
     const pm = e ? e.detail : window.CineGlowPlayer;
     if (!pm) return;
 
@@ -470,44 +483,39 @@
     currentVideo = pm.video;
     currentPlayer = pm.player;
 
-    isAdPlaying = !!pm.isAdShowing;
+    isAdPlaying = Boolean(pm.isAdShowing);
     if (overlayContainer) {
       overlayContainer.style.display = isAdPlaying ? 'none' : 'block';
     }
 
-    if (!settingsLoaded || !enabled) {
-      return;
-    }
+    if (!settingsLoaded || !enabled || isThirdPartyDisabled) return;
 
     if (pm.videoId !== activeVideoId || !overlayContainer || (pm.video && pm.video !== attachedVideo)) {
       initForVideo(pm.videoId, pm.video, pm.player);
     }
   }
 
-  // --- Emergency Kill-Switch Teardown ---
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     enabled = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    window.CineGlowKilled = true;
 
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerState);
     teardown();
 
-    if (window.CineGlowPlayer) {
-      window.CineGlowPlayer.removeEventListener('state-change', onPlayerState);
-    }
     currentVideo = null;
     attachedVideo = null;
     currentPlayer = null;
     currentVideoId = null;
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -518,11 +526,9 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', onPlayerState);
@@ -537,7 +543,7 @@
           onPlayerState({ detail: window.CineGlowPlayer });
         }
       }
-    });
+    }, { once: true });
   }
 
   window.CineGlowAnnotations = {
@@ -551,18 +557,6 @@
     createAnnotationElement
   };
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-  }
-
   loadSettings();
 })();
+

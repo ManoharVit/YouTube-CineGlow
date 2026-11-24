@@ -287,6 +287,23 @@ class MockElement extends EventTarget {
     return child;
   }
 
+  insertBefore(newChild, refChild) {
+    if (!refChild) {
+      return this.appendChild(newChild);
+    }
+    const idx = this.children.indexOf(refChild);
+    if (idx !== -1) {
+      this.children.splice(idx, 0, newChild);
+    } else {
+      this.children.push(newChild);
+    }
+    if (newChild && typeof newChild === 'object') {
+      newChild.parentElement = this;
+      newChild.parentNode = this;
+    }
+    return newChild;
+  }
+
   prepend(...nodes) {
     for (const node of nodes) {
       if (node && typeof node === 'object') {
@@ -326,6 +343,12 @@ class MockElement extends EventTarget {
     if (selector === ':hover' || selector === ':focus-within' || selector === ':focus') return false;
     if (selector.startsWith('#')) return this.id === selector.slice(1);
     if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
+    const tagClassMatch = selector.match(/^([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)$/);
+    if (tagClassMatch) {
+      const [, tag, cls] = tagClassMatch;
+      if (this.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+      return this.classList.contains(cls);
+    }
     if (selector.toLowerCase() === this.tagName.toLowerCase()) return true;
     return false;
   }
@@ -718,9 +741,33 @@ function setupMockEnvironment(initialUrl = 'https://www.youtube.com/watch?v=dQw4
           return { ...mockChrome.storage.managed._data };
         }
       },
+      session: {
+        _data: {},
+        get: async (keys) => {
+          if (!keys) return { ...mockChrome.storage.session._data };
+          if (typeof keys === 'string') return { [keys]: mockChrome.storage.session._data[keys] };
+          if (Array.isArray(keys)) {
+            const out = {};
+            keys.forEach(k => { out[k] = mockChrome.storage.session._data[k]; });
+            return out;
+          }
+          return { ...mockChrome.storage.session._data };
+        },
+        set: async (items) => Object.assign(mockChrome.storage.session._data, items),
+        remove: async (keys) => {
+          const arr = Array.isArray(keys) ? keys : [keys];
+          arr.forEach(k => delete mockChrome.storage.session._data[k]);
+        },
+        clear: async () => {
+          mockChrome.storage.session._data = {};
+        }
+      },
       onChanged: {
         _listeners: [],
-        addListener(fn) { this._listeners.push(fn); }
+        addListener(fn) { this._listeners.push(fn); },
+        removeListener(fn) {
+          this._listeners = this._listeners.filter(l => l !== fn);
+        }
       }
     },
     runtime: {

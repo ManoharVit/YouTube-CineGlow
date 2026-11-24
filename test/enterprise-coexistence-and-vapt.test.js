@@ -82,7 +82,8 @@ describe('Enterprise Co-existence & InfoSec VAPT Suite', () => {
     const allowedHosts = [
       'https://*.youtube.com/*',
       'https://returnyoutubedislikeapi.com/*',
-      'https://biggest_bucket.storage.googleapis.com/*'
+      'https://sponsor.ajay.app/*',
+      'https://storage.googleapis.com/*'
     ];
 
     assert.deepStrictEqual(hostPerms.sort(), allowedHosts.sort());

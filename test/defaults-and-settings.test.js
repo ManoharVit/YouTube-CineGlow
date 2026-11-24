@@ -54,6 +54,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(d.glowRight, true);
     assert.strictEqual(d.glowBottom, true);
     assert.strictEqual(d.glowLeft, true);
+    assert.strictEqual(d.screenXMode, false);
 
     // Audio properties
     assert.strictEqual(d.audioNormalizer, false);
@@ -328,5 +329,27 @@ describe('Settings Schema & Configuration Integrity', () => {
       globalThis.document = origDoc;
       globalThis.chrome = origChrome;
     }
+  });
+
+  test('ScreenX Frame Extension toggle is present in popup and content scripts support 4-sided edge extrusion', () => {
+    const popupHtml = fs.readFileSync(path.join(__dirname, '../popup/popup.html'), 'utf8');
+    const popupJs = fs.readFileSync(path.join(__dirname, '../popup/popup.js'), 'utf8');
+    const contentJs = fs.readFileSync(path.join(__dirname, '../content/content.js'), 'utf8');
+    const contentCss = fs.readFileSync(path.join(__dirname, '../content/content.css'), 'utf8');
+
+    // Popup UI & Binding
+    assert.ok(popupHtml.includes('id="screenXMode"'), 'popup.html must contain screenXMode toggle');
+    assert.ok(popupJs.includes('screenXModeEl'), 'popup.js must bind screenXMode element');
+    assert.ok(popupJs.includes('GLOW_KEYS') && popupJs.includes("'screenXMode'"), 'GLOW_KEYS must include screenXMode');
+
+    // Content Script 4-Sided Frame Extension (ScreenX)
+    assert.ok(contentJs.includes('drawScreenXFrame'), 'content.js must define drawScreenXFrame');
+    assert.ok(contentJs.includes('aura-screenx-mode'), 'content.js must toggle aura-screenx-mode class');
+    assert.ok(contentCss.includes('.aura-screenx-mode'), 'content.css must define .aura-screenx-mode styling');
+    assert.ok(contentCss.includes('image-rendering: auto'), 'content.css must enable smooth image rendering for ScreenX');
+    assert.ok(contentJs.includes('SCREENX_W') && contentJs.includes('SCREENX_H'), 'content.js must define high-definition ScreenX dimensions');
+    assert.ok(contentJs.includes('const effectiveBlur = settings.screenXMode ? 0 : settings.blur;'), 'ScreenX mode must enforce zero blur for crisp theater walls');
+    assert.ok(contentJs.includes('settings.screenXMode ? SCREENX_W : SAMPLE_W'), 'ScreenX mode must dynamically scale canvas resolution');
+    assert.ok(contentJs.includes('settings.screenXMode || forceFullDraw'), 'ScreenX mode must bypass temporal smoothing to prevent motion ghosting');
   });
 });

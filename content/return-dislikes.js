@@ -1,32 +1,31 @@
+// content/return-dislikes.js
+// Author: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 (() => {
   'use strict';
 
-  const API_ENDPOINT = 'https://returnyoutubedislikeapi.com/votes?videoId=';
   const DISLIKE_COUNT_CLASS = 'cineglow-dislike-count';
   const HAS_DISLIKES_CLASS = 'cineglow-has-dislikes';
   const RATIO_BAR_CLASS = 'cineglow-ratio-bar';
 
   let isEnabled = false;
   let currentVideoId = null;
-  let votesCache = new Map(); // videoId -> { id, likes, dislikes, rating, viewCount, userVote }
+  const votesCache = new Map();
   let domObserver = null;
-  let fetchAbortController = null;
+  let bootstrapObserver = null;
+  let observedRoot = null;
+  let mutationQueued = false;
   let isUpdating = false;
   let isKilled = false;
-  let onPopstate = null;
 
-  // Compact number formatting (e.g. 521K, 1.4M, 245)
   function formatCount(num) {
     if (num == null || isNaN(num)) return '';
     if (num < 1000) return String(num);
-
     try {
-      const formatter = new Intl.NumberFormat(navigator.language || 'en', {
+      return new Intl.NumberFormat(navigator.language || 'en', {
         notation: 'compact',
         compactDisplay: 'short',
         maximumFractionDigits: 1
-      });
-      return formatter.format(num);
+      }).format(num);
     } catch {
       if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
       if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
@@ -34,42 +33,25 @@
     }
   }
 
-  // Extract current video ID from URL or player state
   function getVideoId() {
-    // 1. Standard watch page: /watch?v=...
     const urlParams = new URLSearchParams(window.location.search);
     const v = urlParams.get('v');
     if (v) return v;
 
-    // 2. Shorts: /shorts/...
     if (window.location.pathname.startsWith('/shorts/')) {
       const parts = window.location.pathname.split('/shorts/');
-      if (parts[1]) {
-        return parts[1].split('/')[0].split('?')[0];
-      }
+      if (parts[1]) return parts[1].split('/')[0].split('?')[0];
     }
 
-    // 3. Fallback: window.CineGlowPlayer state
-    if (window.CineGlowPlayer && window.CineGlowPlayer.videoId) {
-      return window.CineGlowPlayer.videoId;
-    }
-
-    return null;
+    return window.CineGlowPlayer?.videoId || null;
   }
 
-  // Fetch votes from Return YouTube Dislike API
   async function fetchVotes(videoId) {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return null;
-    if (!videoId) return null;
+    if (isKilled || window.CineGlowKilled || !videoId) return null;
 
     if (votesCache.has(videoId)) {
       return votesCache.get(videoId);
     }
-
-    if (fetchAbortController) {
-      fetchAbortController.abort();
-    }
-    fetchAbortController = new AbortController();
 
     try {
       const result = await new Promise((resolve) => {
@@ -80,7 +62,7 @@
           }
           chrome.runtime.sendMessage({ type: 'FETCH_DISLIKES', videoId }, (res) => {
             try {
-              if (chrome.runtime?.lastError || !res || !res.success) {
+              if (chrome.runtime?.lastError || !res?.success) {
                 resolve(null);
               } else {
                 resolve(res.data);
@@ -102,92 +84,32 @@
         dislikes: Number(result.dislikes) || 0,
         rating: Number(result.rating) || 5,
         viewCount: Number(result.viewCount) || 0,
-        userVote: 0 // 0 = none, 1 = liked, -1 = disliked
+        userVote: 0
       };
 
       votesCache.set(videoId, voteRecord);
-
-      // Keep cache bounded to 100 entries
       if (votesCache.size > 100) {
         const oldestKey = votesCache.keys().next().value;
         votesCache.delete(oldestKey);
       }
 
       return voteRecord;
-    } catch (err) {
-      // Silently handle errors
+    } catch (_) {
+      return null;
     }
-
-    return null;
   }
 
-  // Locate like & dislike button elements across modern Polymer and legacy templates
   function findDislikeElements() {
-    // Modern segmented like/dislike buttons
-    const segmentedWrapper = document.querySelector('.ytSegmentedLikeDislikeButtonViewModelSegmentedButtonsWrapper') ||
-                            document.querySelector('segmented-like-dislike-button-view-model');
-
-    if (segmentedWrapper) {
-      const dislikeBtn = segmentedWrapper.querySelector('dislike-button-view-model button') ||
-                         segmentedWrapper.querySelector('#dislike-button button') ||
-                         segmentedWrapper.querySelector('button:last-of-type');
-
-      const likeBtn = segmentedWrapper.querySelector('like-button-view-model button') ||
-                      segmentedWrapper.querySelector('#like-button button') ||
-                      segmentedWrapper.querySelector('button:first-of-type');
-
-      if (dislikeBtn) {
-        return {
-          dislikeBtn,
-          likeBtn,
-          wrapper: segmentedWrapper,
-          isShorts: false
-        };
-      }
-    }
-
-    // Direct dislike-button-view-model query
-    const dislikeVm = document.querySelector('dislike-button-view-model button');
-    if (dislikeVm) {
-      const likeVm = document.querySelector('like-button-view-model button');
-      return {
-        dislikeBtn: dislikeVm,
-        likeBtn: likeVm,
-        wrapper: dislikeVm.closest('segmented-like-dislike-button-view-model') || dislikeVm.parentElement,
-        isShorts: false
-      };
-    }
-
-    // Legacy segmented button renderer
-    const legacyDislike = document.querySelector('#segmented-dislike-button button, ytd-segmented-like-dislike-button-renderer #dislike-button button');
-    if (legacyDislike) {
-      const legacyLike = document.querySelector('#segmented-like-button button, ytd-segmented-like-dislike-button-renderer #like-button button');
-      return {
-        dislikeBtn: legacyDislike,
-        likeBtn: legacyLike,
-        wrapper: legacyDislike.closest('ytd-segmented-like-dislike-button-renderer') || legacyDislike.parentElement,
-        isShorts: false
-      };
-    }
-
-    // YouTube Shorts dislike button (keyed to active slide's video ID)
     if (window.location.pathname.startsWith('/shorts/')) {
       const activeVideoId = getVideoId();
       let activeReel = null;
 
       if (activeVideoId) {
         const reels = document.querySelectorAll('ytd-reel-video-renderer');
-        const reelList = reels && reels.length > 0 ? reels : (document.body?.querySelectorAll ? document.body.querySelectorAll('ytd-reel-video-renderer') : []);
+        const reelList = (reels && reels.length > 0) ? reels : (document.body?.querySelectorAll ? document.body.querySelectorAll('ytd-reel-video-renderer') : []);
         for (const reel of reelList) {
-          const reelVid = reel.getAttribute('data-video-id') ||
-                          reel.dataset?.videoId ||
-                          reel.videoId;
-          if (reelVid === activeVideoId) {
-            activeReel = reel;
-            break;
-          }
-          const link = reel.querySelector && reel.querySelector(`a[href*="${activeVideoId}"]`);
-          if (link) {
+          const reelVid = reel.getAttribute('data-video-id') || reel.dataset?.videoId || reel.videoId;
+          if (reelVid === activeVideoId || reel.querySelector?.(`a[href*="${activeVideoId}"]`)) {
             activeReel = reel;
             break;
           }
@@ -214,30 +136,63 @@
           };
         }
       }
+      return null;
+    }
+
+    const segmentedWrapper = document.querySelector('.ytSegmentedLikeDislikeButtonViewModelSegmentedButtonsWrapper') ||
+                             document.querySelector('segmented-like-dislike-button-view-model');
+
+    if (segmentedWrapper) {
+      const dislikeBtn = segmentedWrapper.querySelector('dislike-button-view-model button') ||
+                         segmentedWrapper.querySelector('#dislike-button button') ||
+                         segmentedWrapper.querySelector('button:last-of-type');
+      const likeBtn = segmentedWrapper.querySelector('like-button-view-model button') ||
+                      segmentedWrapper.querySelector('#like-button button') ||
+                      segmentedWrapper.querySelector('button:first-of-type');
+      if (dislikeBtn) {
+        return { dislikeBtn, likeBtn, wrapper: segmentedWrapper, isShorts: false };
+      }
+    }
+
+    const dislikeVm = document.querySelector('dislike-button-view-model button');
+    if (dislikeVm) {
+      const likeVm = document.querySelector('like-button-view-model button');
+      return {
+        dislikeBtn: dislikeVm,
+        likeBtn: likeVm,
+        wrapper: dislikeVm.closest('segmented-like-dislike-button-view-model') || dislikeVm.parentElement,
+        isShorts: false
+      };
+    }
+
+    const legacyDislike = document.querySelector('#segmented-dislike-button button, ytd-segmented-like-dislike-button-renderer #dislike-button button');
+    if (legacyDislike) {
+      const legacyLike = document.querySelector('#segmented-like-button button, ytd-segmented-like-dislike-button-renderer #like-button button');
+      return {
+        dislikeBtn: legacyDislike,
+        likeBtn: legacyLike,
+        wrapper: legacyDislike.closest('ytd-segmented-like-dislike-button-renderer') || legacyDislike.parentElement,
+        isShorts: false
+      };
     }
 
     return null;
   }
 
-  // Render dislike count and ratio bar safely into the DOM (Trusted Types compliant)
   function renderDislikes(voteRecord) {
     if (!isEnabled || !voteRecord) return;
-
     const elements = findDislikeElements();
-    if (!elements || !elements.dislikeBtn) return;
+    if (!elements?.dislikeBtn) return;
 
     const { dislikeBtn, likeBtn, wrapper, isShorts } = elements;
-
     const formattedExact = voteRecord.dislikes.toLocaleString();
     const formattedCompact = formatCount(voteRecord.dislikes);
 
-    // Update dislike button attributes
     dislikeBtn.title = `${formattedExact} dislikes`;
     dislikeBtn.setAttribute('aria-label', `Dislike this video along with ${formattedExact} other people`);
     dislikeBtn.classList.add(HAS_DISLIKES_CLASS);
-    dislikeBtn.classList.remove('ytSpecButtonShapeNextIconButton');
+    dislikeBtn.classList.remove('ytSpecButtonShapeNextIconButton', 'yt-spec-button-shape-next--icon-button');
 
-    // Update or create dislike count element
     let countEl = dislikeBtn.querySelector(`.${DISLIKE_COUNT_CLASS}`);
     if (!countEl) {
       countEl = document.createElement('div');
@@ -252,7 +207,6 @@
       }
     }
 
-    // Key dislike button and count element to video ID to prevent stale display on recycled nodes
     dislikeBtn.setAttribute('data-cineglow-video-id', voteRecord.id);
     countEl.setAttribute('data-cineglow-video-id', voteRecord.id);
 
@@ -260,16 +214,13 @@
       countEl.textContent = formattedCompact;
     }
 
-    // Render Like/Dislike Ratio Bar on watch page
     if (!isShorts && wrapper) {
       renderRatioBar(wrapper, voteRecord.likes, voteRecord.dislikes);
     }
 
-    // Attach optimistic voting listeners
     attachVoteListeners(dislikeBtn, likeBtn, voteRecord);
   }
 
-  // Render or update rating ratio bar underneath the segmented buttons
   function renderRatioBar(wrapper, likes, dislikes) {
     const parentContainer = wrapper.parentElement || wrapper;
     let ratioBar = parentContainer.querySelector(`.${RATIO_BAR_CLASS}`);
@@ -300,7 +251,6 @@
     ratioBar.title = `${likes.toLocaleString()} likes / ${dislikes.toLocaleString()} dislikes (${likePercent.toFixed(1)}%)`;
   }
 
-  // Optimistic click feedback for like and dislike buttons
   function attachVoteListeners(dislikeBtn, likeBtn, voteRecord) {
     if (dislikeBtn) {
       dislikeBtn._currentVoteRecord = voteRecord;
@@ -312,9 +262,7 @@
           setTimeout(() => {
             const isPressed = dislikeBtn.getAttribute('aria-pressed') === 'true';
             if (isPressed && record.userVote !== -1) {
-              if (record.userVote === 1) {
-                record.likes = Math.max(0, record.likes - 1);
-              }
+              if (record.userVote === 1) record.likes = Math.max(0, record.likes - 1);
               record.dislikes += 1;
               record.userVote = -1;
             } else if (!isPressed && record.userVote === -1) {
@@ -340,9 +288,7 @@
           setTimeout(() => {
             const isPressed = likeBtn.getAttribute('aria-pressed') === 'true';
             if (isPressed && record.userVote !== 1) {
-              if (record.userVote === -1) {
-                record.dislikes = Math.max(0, record.dislikes - 1);
-              }
+              if (record.userVote === -1) record.dislikes = Math.max(0, record.dislikes - 1);
               record.likes += 1;
               record.userVote = 1;
             } else if (!isPressed && record.userVote === 1) {
@@ -359,31 +305,26 @@
     }
   }
 
-  // Clean teardown when user disables Return YouTube Dislike
   function teardown() {
+    if (bootstrapObserver) {
+      bootstrapObserver.disconnect();
+      bootstrapObserver = null;
+    }
     if (domObserver) {
       domObserver.disconnect();
       domObserver = null;
     }
+    observedRoot = null;
 
-    if (fetchAbortController) {
-      fetchAbortController.abort();
-      fetchAbortController = null;
-    }
+    document.querySelectorAll(`.${DISLIKE_COUNT_CLASS}`).forEach((el) => el.remove());
+    document.querySelectorAll(`.${RATIO_BAR_CLASS}`).forEach((el) => el.remove());
 
-    // Remove injected dislike counters
-    document.querySelectorAll(`.${DISLIKE_COUNT_CLASS}`).forEach(el => el.remove());
-
-    // Remove ratio bars
-    document.querySelectorAll(`.${RATIO_BAR_CLASS}`).forEach(el => el.remove());
-
-    // Restore dislike button styling & attributes
-    document.querySelectorAll(`.${HAS_DISLIKES_CLASS}`).forEach(btn => {
+    document.querySelectorAll(`.${HAS_DISLIKES_CLASS}`).forEach((btn) => {
       btn.classList.remove(HAS_DISLIKES_CLASS);
       btn.removeAttribute('title');
       btn.removeAttribute('data-cineglow-video-id');
       btn.setAttribute('aria-label', 'Dislike this video');
-      if (typeof btn.removeEventListener === 'function' && btn._cineglowDislikeHandler) {
+      if (btn._cineglowDislikeHandler) {
         btn.removeEventListener('click', btn._cineglowDislikeHandler);
       }
       delete btn._cineglowDislikeHandler;
@@ -391,9 +332,9 @@
       delete btn._cineglowDislikeBound;
     });
 
-    document.querySelectorAll('dislike-button-view-model button, #dislike-button button').forEach(btn => {
+    document.querySelectorAll('dislike-button-view-model button, #dislike-button button').forEach((btn) => {
       btn.removeAttribute('data-cineglow-video-id');
-      if (typeof btn.removeEventListener === 'function' && btn._cineglowDislikeHandler) {
+      if (btn._cineglowDislikeHandler) {
         btn.removeEventListener('click', btn._cineglowDislikeHandler);
       }
       delete btn._cineglowDislikeHandler;
@@ -401,8 +342,8 @@
       delete btn._cineglowDislikeBound;
     });
 
-    document.querySelectorAll('like-button-view-model button, #like-button button').forEach(btn => {
-      if (typeof btn.removeEventListener === 'function' && btn._cineglowLikeHandler) {
+    document.querySelectorAll('like-button-view-model button, #like-button button').forEach((btn) => {
+      if (btn._cineglowLikeHandler) {
         btn.removeEventListener('click', btn._cineglowLikeHandler);
       }
       delete btn._cineglowLikeHandler;
@@ -411,10 +352,8 @@
     });
   }
 
-  // Update dislikes for currently playing video
   async function updateForCurrentVideo() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!isEnabled || isUpdating) return;
+    if (isKilled || window.CineGlowKilled || !isEnabled || isUpdating) return;
     isUpdating = true;
 
     try {
@@ -424,82 +363,161 @@
       currentVideoId = videoId;
       const voteData = await fetchVotes(videoId);
 
-      // Verify video didn't change while fetch was in-flight
       if (voteData && getVideoId() === videoId) {
         renderDislikes(voteData);
       }
+      startObserver();
     } finally {
       isUpdating = false;
     }
   }
 
-  // Watch DOM mutations to ensure dislike counter stays rendered across Polymer updates
-  function startObserver() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (domObserver || !isEnabled) return;
+  function handleScopedMutation() {
+    mutationQueued = false;
+    if (isKilled || window.CineGlowKilled || !isEnabled) return;
 
-    domObserver = new MutationObserver(() => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (!isEnabled) return;
+    const vid = getVideoId();
+    if (vid && vid !== currentVideoId) {
+      currentVideoId = vid;
+      updateForCurrentVideo();
+      return;
+    }
 
-      const vid = getVideoId();
-      if (vid && vid !== currentVideoId) {
-        currentVideoId = vid;
-        updateForCurrentVideo();
-        return;
-      }
-
-      // Check if dislike button exists but is missing our counter or has stale count from recycled node
-      const elements = findDislikeElements();
-      if (elements && elements.dislikeBtn) {
-        const existingCount = elements.dislikeBtn.querySelector(`.${DISLIKE_COUNT_CLASS}`);
-        const renderedVid = elements.dislikeBtn.getAttribute('data-cineglow-video-id');
-        const isStale = currentVideoId && renderedVid !== currentVideoId;
-        if (!existingCount || isStale) {
-          if (currentVideoId && votesCache.has(currentVideoId)) {
-            renderDislikes(votesCache.get(currentVideoId));
-          } else {
-            updateForCurrentVideo();
-          }
+    const elements = findDislikeElements();
+    if (elements?.dislikeBtn) {
+      const existingCount = elements.dislikeBtn.querySelector(`.${DISLIKE_COUNT_CLASS}`);
+      const renderedVid = elements.dislikeBtn.getAttribute('data-cineglow-video-id');
+      const isStale = currentVideoId && renderedVid !== currentVideoId;
+      if (!existingCount || isStale) {
+        if (currentVideoId && votesCache.has(currentVideoId)) {
+          renderDislikes(votesCache.get(currentVideoId));
+        } else {
+          updateForCurrentVideo();
         }
       }
-    });
+    }
+  }
 
-    domObserver.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
+  // Route-aware target selection prevents Watch -> Shorts SPA transitions from locking onto hidden watch metadata
+  function getObserverTarget() {
+    if (window.location.pathname.startsWith('/shorts/')) {
+      return document.querySelector('ytd-shorts, ytd-reel-video-renderer') || (document.body?.querySelector ? document.body.querySelector('ytd-shorts, ytd-reel-video-renderer') : null);
+    }
+    if (window.location.pathname === '/watch') {
+      return document.querySelector('#above-the-fold, ytd-watch-metadata') || (document.body?.querySelector ? document.body.querySelector('#above-the-fold, ytd-watch-metadata') : null);
+    }
+    return null;
+  }
+
+  function startObserver() {
+    if (isKilled || window.CineGlowKilled || !isEnabled) return;
+
+    const target = getObserverTarget();
+    if (target) {
+      if (bootstrapObserver) {
+        bootstrapObserver.disconnect();
+        bootstrapObserver = null;
+      }
+      if (observedRoot === target && domObserver) return;
+      if (!domObserver) {
+        domObserver = new MutationObserver(() => {
+          if (!mutationQueued) {
+            mutationQueued = true;
+            queueMicrotask(handleScopedMutation);
+          }
+        });
+      }
+      domObserver.disconnect();
+      observedRoot = target;
+      domObserver.observe(target, { childList: true, subtree: true });
+      return;
+    }
+
+    if (!bootstrapObserver && document.body && (window.location.pathname === '/watch' || window.location.pathname.startsWith('/shorts/'))) {
+      bootstrapObserver = new MutationObserver(() => {
+        if (getObserverTarget()) {
+          startObserver();
+          handleScopedMutation();
+        }
+      });
+      bootstrapObserver.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   function initialize() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!isEnabled) return;
+    if (isKilled || window.CineGlowKilled || !isEnabled) return;
     updateForCurrentVideo();
     startObserver();
   }
 
-  // Emergency Kill-Switch Teardown
+  const onNavigateFinish = () => {
+    if (isEnabled && !isKilled) {
+      observedRoot = null;
+      startObserver();
+      updateForCurrentVideo();
+    }
+  };
+
+  const onPopstate = () => {
+    if (isEnabled && !isKilled) {
+      observedRoot = null;
+      startObserver();
+      const vid = getVideoId();
+      if (vid && vid !== currentVideoId) {
+        updateForCurrentVideo();
+      }
+    }
+  };
+
+  const onPlayerStateChange = () => {
+    if (isEnabled && !isKilled) {
+      const vid = getVideoId();
+      if (vid && vid !== currentVideoId) {
+        updateForCurrentVideo();
+      }
+    }
+  };
+
+  const handleStorageChange = (changes, area) => {
+    if (isKilled || window.CineGlowKilled) return;
+    if (area === 'managed' && changes.KillSwitch?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'local' && changes.auraKillSwitchActive?.newValue === true) {
+      teardownKillSwitch();
+      return;
+    }
+    if (area === 'sync' && 'returnDislikes' in changes) {
+      isEnabled = Boolean(changes.returnDislikes.newValue);
+      if (isEnabled) {
+        initialize();
+      } else {
+        teardown();
+      }
+    }
+  };
+
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     isEnabled = false;
-    if (typeof window !== 'undefined') window.CineGlowKilled = true;
+    window.CineGlowKilled = true;
+
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    document.removeEventListener('yt-navigate-finish', onNavigateFinish);
+    window.removeEventListener('popstate', onPopstate);
+    window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerStateChange);
 
     teardown();
     votesCache.clear();
-    document.removeEventListener('yt-navigate-finish', updateForCurrentVideo);
-    if (onPopstate && typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
-      window.removeEventListener('popstate', onPopstate);
-      onPopstate = null;
-    }
   }
 
-  // Dual listener registration: Direct runtime message + In-tab fallback event
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message && message.type === 'AURA_EMERGENCY_KILL_SWITCH') {
+      if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
-        if (typeof window !== 'undefined' && !window._cineglowKillEventFired) {
+        if (!window._cineglowKillEventFired) {
           window._cineglowKillEventFired = true;
           window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
         }
@@ -510,86 +528,30 @@
     });
   }
 
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('cineglow:kill-switch', () => {
-      teardownKillSwitch();
-    }, { once: true });
-  }
+  window.addEventListener('cineglow:kill-switch', () => {
+    teardownKillSwitch();
+  }, { once: true });
 
   window.CineGlowDislikesTeardown = teardownKillSwitch;
 
-  // YouTube SPA Navigation listeners
-  document.addEventListener('yt-navigate-finish', () => {
-    if (isEnabled && !isKilled) {
-      updateForCurrentVideo();
-    }
-  });
+  document.addEventListener('yt-navigate-finish', onNavigateFinish, { passive: true });
+  window.addEventListener('popstate', onPopstate, { passive: true });
+  window.CineGlowPlayer?.addEventListener('state-change', onPlayerStateChange);
 
-  onPopstate = () => {
-    if (isEnabled && !isKilled) {
-      const vid = getVideoId();
-      if (vid && vid !== currentVideoId) {
-        updateForCurrentVideo();
-      }
-    }
-  };
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('popstate', onPopstate);
-  }
-
-  if (window.CineGlowPlayer) {
-    window.CineGlowPlayer.addEventListener('state-change', () => {
-      if (isEnabled && !isKilled) {
-        const vid = getVideoId();
-        if (vid !== currentVideoId) {
-          updateForCurrentVideo();
-        }
-      }
-    });
-  }
-
-  // Load setting from storage (default: false)
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-    chrome.storage.sync.get({ returnDislikes: false }, (items) => {
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.sync?.get({ returnDislikes: false }, (stored) => {
       if (isKilled) return;
-      isEnabled = !!items.returnDislikes;
+      isEnabled = Boolean(stored?.returnDislikes);
       if (isEnabled) {
         initialize();
       }
     });
-
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-      if (area === 'sync' && 'returnDislikes' in changes) {
-        isEnabled = !!changes.returnDislikes.newValue;
-        if (isEnabled) {
-          initialize();
-        } else {
-          teardown();
-        }
-      }
+    chrome.storage.managed?.get(['KillSwitch'], (managed) => {
+      if (managed?.KillSwitch) teardownKillSwitch();
     });
-  }
-
-  // Initial check when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      if (isEnabled && !isKilled) initialize();
+    chrome.storage.local?.get(['auraKillSwitchActive'], (local) => {
+      if (local?.auraKillSwitchActive) teardownKillSwitch();
     });
-  } else {
-    if (isEnabled && !isKilled) initialize();
-  }
-
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('unhandledrejection', (event) => {
-      if (event && event.reason && String(event.reason.message || event.reason).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
-    window.addEventListener('error', (event) => {
-      if (event && event.message && String(event.message).includes('Extension context invalidated')) {
-        try { event.preventDefault(); } catch (_) {}
-      }
-    });
+    chrome.storage?.onChanged?.addListener(handleStorageChange);
   }
 })();
