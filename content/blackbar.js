@@ -56,7 +56,7 @@
 
   function handleCropResult(result) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!video || !settings.removeBlackBars) return;
+    if (!video || (!settings.removeBlackBars && !settings.screenXMode)) return;
 
     if (result.cropTop > 0.25 || result.cropBottom > 0.25 || result.cropLeft > 0.25 || result.cropRight > 0.25) {
       return;
@@ -87,19 +87,27 @@
     }
   }
 
-  function applyCrop(crop) {
+  function applyCrop(crop, forceSync = false) {
     const isDifferent =
       Math.abs(crop.top - stableCrop.top) > 0.01 ||
       Math.abs(crop.bottom - stableCrop.bottom) > 0.01 ||
       Math.abs(crop.left - stableCrop.left) > 0.01 ||
       Math.abs(crop.right - stableCrop.right) > 0.01;
 
-    if (isDifferent) {
+    if (isDifferent || forceSync) {
       stableCrop = { ...crop };
       if (crop.top || crop.right || crop.bottom || crop.left) {
-        if (typeof window !== 'undefined') window.CineGlowCrop = stableCrop;
-        if (video) {
-          video.style.clipPath = `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`;
+        if (typeof window !== 'undefined') window.CineGlowGlowCrop = stableCrop;
+        if (settings.removeBlackBars) {
+          if (typeof window !== 'undefined') window.CineGlowCrop = stableCrop;
+          if (video) {
+            video.style.clipPath = `inset(${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%)`;
+          }
+        } else {
+          if (typeof window !== 'undefined') window.CineGlowCrop = null;
+          if (video) {
+            video.style.clipPath = '';
+          }
         }
       } else {
         resetCrop();
@@ -108,7 +116,10 @@
   }
 
   function resetCrop() {
-    if (typeof window !== 'undefined') window.CineGlowCrop = null;
+    if (typeof window !== 'undefined') {
+      window.CineGlowCrop = null;
+      window.CineGlowGlowCrop = null;
+    }
     stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     stabilityCount = 0;
@@ -171,7 +182,7 @@
 
   function scanFrame(now = (typeof Date !== 'undefined' ? Date.now() : performance.now())) {
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
-    if (!settings.removeBlackBars || isAdShowing || !video || video.readyState < 2 || video.paused) return;
+    if ((!settings.removeBlackBars && !settings.screenXMode) || isAdShowing || !video || video.readyState < 2 || video.paused) return;
     if (typeof document !== 'undefined' && document.hidden) return;
 
     if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
@@ -192,9 +203,12 @@
 
   function onVideoFrame(now) {
     rvfcId = 0;
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || !settings.removeBlackBars || !video || isAdShowing) return;
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || (!settings.removeBlackBars && !settings.screenXMode) || !video || isAdShowing) return;
     const currentTime = typeof Date !== 'undefined' ? Date.now() : now;
-    const minInterval = (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) ? 2000 : 500;
+    const hasLockedCrop = Boolean(stableCrop.top || stableCrop.bottom || stableCrop.left || stableCrop.right);
+    const minInterval = (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus())
+      ? 2000
+      : (hasLockedCrop ? 500 : 150);
     if (currentTime - lastScanAt >= minInterval) {
       lastScanAt = currentTime;
       scanFrame(currentTime);
@@ -205,7 +219,7 @@
   }
 
   function startScanning() {
-    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || !settings.removeBlackBars || !video) return;
+    if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || (!settings.removeBlackBars && !settings.screenXMode) || !video) return;
     if (typeof video.requestVideoFrameCallback === 'function') {
       if (!rvfcId) {
         rvfcId = video.requestVideoFrameCallback(onVideoFrame);
@@ -236,7 +250,10 @@
     const isWatchPage = (typeof window !== 'undefined' && window.CineGlowPlayer)
       ? window.CineGlowPlayer.isWatchPage
       : (typeof location !== 'undefined' && location.pathname === '/watch');
-    if (settings.removeBlackBars && isWatchPage && video && !isAdShowing) {
+    if ((settings.removeBlackBars || settings.screenXMode) && isWatchPage && video && !isAdShowing) {
+      if (stableCrop.top || stableCrop.bottom || stableCrop.left || stableCrop.right) {
+        applyCrop(stableCrop, true);
+      }
       startScanning();
     } else {
       stopScanning();
@@ -293,6 +310,7 @@
     if (typeof window !== 'undefined') {
       window.CineGlowKilled = true;
       window.CineGlowCrop = null;
+      window.CineGlowGlowCrop = null;
     }
 
     if (typeof chrome !== 'undefined' && chrome.storage?.onChanged?.removeListener) {

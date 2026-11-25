@@ -132,7 +132,9 @@
       forceFullDraw = true;
     }
 
-    const effectiveBlur = settings.screenXMode ? 0 : settings.blur;
+    const effectiveBlur = settings.screenXMode
+      ? Math.round(numOr(settings.blur, 40) * 0.6)
+      : settings.blur;
     canvas.style.filter =
       `blur(${numOr(effectiveBlur, 40)}px) ` +
       `saturate(${numOr(settings.saturation, 110) / 100}) ` +
@@ -329,8 +331,10 @@
     const bottomY = cy + ch;
     const bottomH = H - bottomY;
 
-    const edgeW = Math.max(2, Math.min(sw, sw * (cx / cw)));
-    const edgeH = Math.max(2, Math.min(sh, sh * (cy / ch)));
+    // Sample only the outermost perimeter edge band (~10% W, ~12% H) so ceiling lights,
+    // floor glow, and walls extend naturally outward without inverting central subjects.
+    const edgeW = Math.max(4, Math.min(sw, Math.round(sw * 0.10)));
+    const edgeH = Math.max(4, Math.min(sh, Math.round(sh * 0.12)));
 
     // Center video
     ctx.drawImage(v, sx, sy, sw, sh, cx, cy, cw, ch);
@@ -409,7 +413,7 @@
 
     try {
       const t0 = performance.now();
-      const c = window.CineGlowCrop;
+      const c = window.CineGlowCrop || window.CineGlowGlowCrop;
       if (settings.screenXMode) {
         drawScreenXFrame(v, c);
       } else if (c && (1 - c.left - c.right) > 0.05 && (1 - c.top - c.bottom) > 0.05) {

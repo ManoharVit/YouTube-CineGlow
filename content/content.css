@@ -24,8 +24,8 @@ html.aura-active #aura-ambient-canvas {
 
 html.aura-screenx-mode #aura-ambient-canvas {
   image-rendering: auto !important;
-  mask-image: radial-gradient(ellipse 96% 90% at 50% 50%, #000 75%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 96% 90% at 50% 50%, #000 75%, transparent 100%);
+  mask-image: radial-gradient(ellipse 92% 88% at 50% 50%, #000 44%, rgba(0, 0, 0, 0.72) 66%, rgba(0, 0, 0, 0.25) 85%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 92% 88% at 50% 50%, #000 44%, rgba(0, 0, 0, 0.72) 66%, rgba(0, 0, 0, 0.25) 85%, transparent 100%);
 }
 
 /*
@@ -55,11 +55,27 @@ html.aura-active #player-container {
   box-shadow: none !important;
 }
 
-/* Dark Theme: make sidebar, metadata, playlist, and chat containers transparent so ambient glow shines through */
+/* Dark Theme: make masthead, sidebar, metadata, playlist, and chat containers transparent so ambient glow shines through */
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) :is(
+  #masthead-container,
+  ytd-masthead,
+  ytd-masthead #container,
+  ytd-masthead #background,
+  #frosted-glass.ytd-app
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
 html.aura-active[dark]:not([dark="false"]) :is(
   #secondary,
   #secondary-inner,
+  #related,
   ytd-watch-next-secondary-results-renderer,
+  ytd-feed-filter-chip-bar-renderer,
+  yt-chip-cloud-renderer,
+  #chips-wrapper,
   #below,
   ytd-watch-metadata,
   ytd-engagement-panel-section-list-renderer,

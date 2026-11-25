@@ -348,7 +348,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.ok(contentCss.includes('.aura-screenx-mode'), 'content.css must define .aura-screenx-mode styling');
     assert.ok(contentCss.includes('image-rendering: auto'), 'content.css must enable smooth image rendering for ScreenX');
     assert.ok(contentJs.includes('SCREENX_W') && contentJs.includes('SCREENX_H'), 'content.js must define high-definition ScreenX dimensions');
-    assert.ok(contentJs.includes('const effectiveBlur = settings.screenXMode ? 0 : settings.blur;'), 'ScreenX mode must enforce zero blur for crisp theater walls');
+    assert.ok(contentJs.includes('Math.round(numOr(settings.blur, 40) * 0.6)'), 'ScreenX mode must apply soft directional cinema blur rather than zero blur or muddy wash');
     assert.ok(contentJs.includes('settings.screenXMode ? SCREENX_W : SAMPLE_W'), 'ScreenX mode must dynamically scale canvas resolution');
     assert.ok(contentJs.includes('settings.screenXMode || forceFullDraw'), 'ScreenX mode must bypass temporal smoothing to prevent motion ghosting');
   });
