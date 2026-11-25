@@ -274,4 +274,39 @@ describe('Interactive A-B Section Looper', () => {
     assert.strictEqual(toastEl.textContent, 'Set Point A first ([)');
     assert.ok(toastEl.classList.contains('visible'), 'Toast must be visible');
   });
+
+  test('does not recurse infinitely when video seek is asynchronous or seeking is true, and shows toast on enable', async () => {
+    const ab = loadABLoopScript();
+    const video = globalThis.window.CineGlowPlayer.video;
+
+    // Simulate async browser seek: writing currentTime does not synchronously move currentTime when seeking=true
+    let internalTime = 20.5;
+    let seekInFlight = false;
+    Object.defineProperty(video, 'currentTime', {
+      configurable: true,
+      get: () => internalTime,
+      set: (val) => {
+        if (seekInFlight) return;
+        internalTime = val;
+      }
+    });
+    Object.defineProperty(video, 'seeking', {
+      configurable: true,
+      get: () => seekInFlight
+    });
+
+    ab.setPointA(10);
+    ab.setPointB(20);
+    seekInFlight = true;
+    internalTime = 20.5;
+    // Must not stack overflow or increment loopCount while seeking is true
+    video.dispatchEvent(new Event('timeupdate'));
+    assert.strictEqual(ab.getState().loopCount, 0);
+
+    // Turning abLoopEnabled on via sync storage.onChanged shows helper toast
+    env.chrome.storage.onChanged._listeners.forEach(fn => fn({ abLoopEnabled: { newValue: true, oldValue: false } }, 'sync'));
+    const host = globalThis.document.getElementById('cineglow-ab-host');
+    const toastEl = host?.shadowRoot ? host.shadowRoot.children.find(c => c.id === 'abToast') : host?.children?.find(c => c.id === 'abToast');
+    assert.ok(toastEl && toastEl.textContent.includes('[ Set A'), 'Helper toast must appear when enabled');
+  });
 });

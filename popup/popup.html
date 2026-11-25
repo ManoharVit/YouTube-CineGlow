@@ -8,70 +8,57 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <!-- Top App Bar -->
+  <!-- Unified Ambient Top Strip -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-logo-wrap">
         <img src="../icons/icon-48.png" width="16" height="16" alt="CineGlow" class="brand-logo">
       </div>
-      <div class="brand-title-row">
-        <h1 class="brand-title">CineGlow</h1>
-        <span class="brand-badge">PRO</span>
+      <div class="brand-meta">
+        <div class="brand-title-row">
+          <h1 class="brand-title">CineGlow</h1>
+          <span class="header-version-pill">v2.4.0</span>
+        </div>
+        <div class="hero-label-row">
+          <span class="hero-title" id="heroTitle">Ambient Lighting</span>
+          <span class="hero-status-sep" aria-hidden="true">·</span>
+          <span class="hero-status-tag" id="masterStatusTag">ACTIVE</span>
+        </div>
       </div>
     </div>
     <div class="header-right">
-      <span class="header-version-pill">v2.4.0</span>
+      <label class="switch modern-switch hero-switch" for="enabled">
+        <input type="checkbox" id="enabled" aria-labelledby="heroTitle">
+        <span class="track"><span class="thumb"></span></span>
+      </label>
     </div>
   </header>
 
   <main id="controls">
-    <!-- Master Switch Card -->
-    <section class="hero-card" id="heroCard">
-      <div class="hero-content">
-        <div class="hero-info">
-          <div class="hero-label-row">
-            <span class="hero-title" id="heroTitle">Ambient Lighting</span>
-            <span class="hero-status-tag" id="masterStatusTag">ACTIVE</span>
-          </div>
-          <span class="hero-desc">Real-time edge illumination</span>
-        </div>
-        <label class="switch modern-switch hero-switch" for="enabled">
-          <input type="checkbox" id="enabled" aria-labelledby="heroTitle">
-          <span class="track"><span class="thumb"></span></span>
-        </label>
-      </div>
-    </section>
-
-    <!-- Category Section Navigation -->
-    <nav class="category-nav" aria-label="Sections">
-      <button type="button" class="nav-pill active" data-target="glowSection" aria-controls="glowSection" aria-current="true">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    <nav class="category-nav" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" class="nav-pill active" data-target="glowSection" aria-controls="glowSection" aria-selected="true" aria-current="true">
         <span>Lighting</span>
       </button>
-      <button type="button" class="nav-pill" data-target="videoSection" aria-controls="videoSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <button type="button" role="tab" class="nav-pill" data-target="videoSection" aria-controls="videoSection" aria-selected="false">
         <span>Video</span>
       </button>
-      <button type="button" class="nav-pill" data-target="audioSection" aria-controls="audioSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      <button type="button" role="tab" class="nav-pill" data-target="audioSection" aria-controls="audioSection" aria-selected="false">
         <span>Audio</span>
       </button>
-      <button type="button" class="nav-pill" data-target="toolsSection" aria-controls="toolsSection">
-        <svg class="nav-icon-svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      <button type="button" role="tab" class="nav-pill" data-target="toolsSection" aria-controls="toolsSection" aria-selected="false">
         <span>Tools</span>
       </button>
     </nav>
 
-    <!-- 1. Lighting Section -->
+    <!-- 1. Lighting -->
     <details class="modern-card section-dropdown glow-settings" id="glowSection" open>
       <summary class="section-summary">
         <div class="section-leading">
-          <div class="squircle-icon squircle-purple">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          </div>
+          <span class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </span>
           <div class="section-text">
-            <span class="section-title">Glow</span>
-            <span class="section-subtitle">Intensity, spread & active edges</span>
+            <span class="section-title">Lighting</span>
           </div>
         </div>
         <div class="chevron-btn" aria-hidden="true">
@@ -79,9 +66,24 @@
         </div>
       </summary>
       <div class="section-body">
-        <!-- Presets Row (Clean inline segmented control) -->
-        <div class="preset-row">
-          <span class="preset-row-label" id="glowPresetsLabel">Preset</span>
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title" id="screenXTitle">ScreenX Mode</span>
+            <span class="row-desc">4-sided frame edge extension</span>
+          </div>
+          <label class="switch modern-switch" for="screenXMode">
+            <input type="checkbox" id="screenXMode" aria-labelledby="screenXTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <p class="screenx-lock-note" id="screenXLockNote" hidden>Turn off ScreenX for presets.</p>
+
+        <div class="preset-row screenx-lockable">
+          <span class="preset-row-label" id="glowPresetsLabel">
+            <svg class="lock-glyph" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Preset
+          </span>
           <div class="segmented-control" role="group" aria-labelledby="glowPresetsLabel">
             <button type="button" class="glow-preset-pill" data-preset="subtle" aria-pressed="false">Subtle</button>
             <button type="button" class="glow-preset-pill active" data-preset="balanced" aria-pressed="true">Balanced</button>
@@ -90,8 +92,7 @@
           </div>
         </div>
 
-        <!-- Primary Sliders (Compact, no redundant subtexts) -->
-        <div class="slider-group">
+        <div class="slider-group screenx-lockable">
           <div class="slider-row">
             <div class="slider-header">
               <label for="opacity" id="opacity-label">Intensity</label>
@@ -117,22 +118,9 @@
           </div>
         </div>
 
-        <div class="control-row" style="margin-top: 8px; margin-bottom: 8px;">
-          <div class="row-info">
-            <span class="row-title" id="screenXTitle">ScreenX Frame Extension</span>
-            <span class="row-desc">Extrude video edges on all 4 sides instead of scaling</span>
-          </div>
-          <label class="switch modern-switch" for="screenXMode">
-            <input type="checkbox" id="screenXMode" aria-labelledby="screenXTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <!-- Directional Edge Selector (Compact horizontal row with reserved ambient edge glow) -->
         <div class="direction-row">
           <div class="direction-info">
             <span class="direction-title" id="directionsLabel">Active Edges</span>
-            <span class="direction-desc">Sides emitting ambient light</span>
           </div>
           <div class="directions-pad-wrap">
             <div class="directions-pad" role="group" aria-labelledby="directionsLabel">
@@ -147,10 +135,9 @@
           </div>
         </div>
 
-        <!-- Advanced Adjustments (Collapsed by default) -->
-        <details class="advanced-adjustments-block" id="advancedGlowDetails">
+        <details class="advanced-adjustments-block screenx-lockable" id="advancedGlowDetails">
           <summary class="advanced-summary">
-            <span>Fine-Tuning (Blur, Color, Time)</span>
+            <span>Fine-Tuning (Blur, Color, Fade)</span>
             <svg class="chevron-sm" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
           </summary>
           <div class="advanced-body">
@@ -164,31 +151,31 @@
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="saturation" id="saturation-label">Color Saturation</label>
-                <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150" aria-label="Color saturation percentage" aria-labelledby="saturation-label"><span>%</span></div>
+                <label for="saturation" id="saturation-label">Saturation</label>
+                <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150" aria-label="Saturation percentage" aria-labelledby="saturation-label"><span>%</span></div>
               </div>
               <input type="range" id="saturation" min="0" max="150" step="1">
             </div>
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="contrast" id="contrast-label">Color Contrast</label>
-                <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200" aria-label="Color contrast percentage" aria-labelledby="contrast-label"><span>%</span></div>
+                <label for="contrast" id="contrast-label">Contrast</label>
+                <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200" aria-label="Contrast percentage" aria-labelledby="contrast-label"><span>%</span></div>
               </div>
               <input type="range" id="contrast" min="0" max="200" step="1">
             </div>
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="brightness" id="brightness-label">Luminance</label>
-                <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200" aria-label="Luminance percentage" aria-labelledby="brightness-label"><span>%</span></div>
+                <label for="brightness" id="brightness-label">Brightness</label>
+                <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200" aria-label="Brightness percentage" aria-labelledby="brightness-label"><span>%</span></div>
               </div>
               <input type="range" id="brightness" min="20" max="200" step="1">
             </div>
 
             <div class="slider-row">
               <div class="slider-header">
-                <label for="fadeInDuration" id="fadeInDuration-label">Fade-In Time</label>
+                <label for="fadeInDuration" id="fadeInDuration-label">Fade-In</label>
                 <div class="val-badge"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1" aria-label="Fade-in duration in seconds" aria-labelledby="fadeInDuration-label"><span>s</span></div>
               </div>
               <input type="range" id="fadeInDuration" min="0" max="10" step="0.1">
@@ -196,23 +183,16 @@
           </div>
         </details>
 
-        <!-- Auxiliary Lighting Controls -->
         <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="pipTitle">Picture-in-Picture</span>
-            <span class="row-desc">Keep lighting during floating PiP</span>
-          </div>
+          <span class="row-title" id="pipTitle">Picture-in-Picture Glow</span>
           <label class="switch modern-switch" for="enableInPiP">
             <input type="checkbox" id="enableInPiP" aria-labelledby="pipTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
-        <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="audioReactiveTitle">Audio-Reactive Light</span>
-            <span class="row-desc">Pulse illumination to bass frequencies</span>
-          </div>
+        <div class="control-row screenx-lockable">
+          <span class="row-title" id="audioReactiveTitle">Bass-Reactive Glow</span>
           <label class="switch modern-switch" for="audioReactive">
             <input type="checkbox" id="audioReactive" aria-labelledby="audioReactiveTitle">
             <span class="track"><span class="thumb"></span></span>
@@ -223,9 +203,9 @@
           <label for="fps">Refresh Rate</label>
           <div class="select-container">
             <select id="fps" class="modern-select">
-              <option value="15">15 fps (battery saver)</option>
+              <option value="15">15 fps (low power)</option>
               <option value="30">30 fps (balanced)</option>
-              <option value="60">60 fps (ultra smooth)</option>
+              <option value="60">60 fps (high)</option>
             </select>
           </div>
         </div>
@@ -239,16 +219,15 @@
       </div>
     </details>
 
-    <!-- 2. Video & Display Section -->
+    <!-- 2. Video & Playback -->
     <details class="modern-card section-dropdown" id="videoSection">
       <summary class="section-summary">
         <div class="section-leading">
-          <div class="squircle-icon squircle-blue">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </div>
+          <span class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </span>
           <div class="section-text">
-            <span class="section-title">Video & Display</span>
-            <span class="section-subtitle">Resolution, filters & crop</span>
+            <span class="section-title">Video & Playback</span>
           </div>
         </div>
         <div class="chevron-btn" aria-hidden="true">
@@ -256,29 +235,32 @@
         </div>
       </summary>
       <div class="section-body">
+        <div class="sub-header">
+          <span>Playback &amp; Quality</span>
+        </div>
+
         <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="qualityTitle">Preferred video quality</span>
-            <span class="row-desc">Apply automatically when available</span>
-          </div>
+          <span class="row-title" id="qualityTitle">Auto Video Quality</span>
           <label class="switch modern-switch" for="qualityEnabled">
             <input type="checkbox" id="qualityEnabled" aria-labelledby="qualityTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
-        <div class="select-row inset">
-          <div class="select-container full-width">
+
+        <div class="select-row">
+          <label for="preferredQuality">Target Resolution</label>
+          <div class="select-container">
             <select id="preferredQuality" class="modern-select" aria-label="Preferred video resolution">
-              <option value="highres">Maximum Available (8K / 4K)</option>
-              <option value="hd2160">Ultra HD (4K / 2160p)</option>
-              <option value="hd1440">Quad HD (1440p)</option>
-              <option value="hd1080">Full HD (1080p)</option>
-              <option value="hd720">HD (720p)</option>
+              <option value="highres">Max (8K / 4K)</option>
+              <option value="hd2160">4K (2160p)</option>
+              <option value="hd1440">1440p</option>
+              <option value="hd1080">1080p</option>
+              <option value="hd720">720p</option>
             </select>
           </div>
         </div>
 
-        <div class="slider-row" style="margin-top: 4px;">
+        <div class="slider-row">
           <div class="slider-header">
             <label for="preferredSpeed">Default Playback Speed</label>
             <div class="val-badge text-only"><span id="preferredSpeedVal" title="Click to reset to 1.0×" style="cursor: pointer;">1.0×</span></div>
@@ -287,39 +269,11 @@
         </div>
 
         <div class="sub-header">
-          <span>Eye-Care & Color Filters</span>
-        </div>
-        <div class="slider-group">
-          <div class="slider-row">
-            <div class="slider-header">
-              <label for="videoBrightness" id="videoBrightness-label">Video Brightness</label>
-              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200" aria-label="Video brightness percentage" aria-labelledby="videoBrightness-label"><span>%</span></div>
-            </div>
-            <input type="range" id="videoBrightness" min="20" max="200" step="1">
-          </div>
-
-          <div class="slider-row">
-            <div class="slider-header">
-              <label for="videoContrast" id="videoContrast-label">Video Contrast</label>
-              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200" aria-label="Video contrast percentage" aria-labelledby="videoContrast-label"><span>%</span></div>
-            </div>
-            <input type="range" id="videoContrast" min="20" max="200" step="1">
-          </div>
-
-          <div class="slider-row">
-            <div class="slider-header">
-              <label for="videoSepia" id="videoSepia-label">Warmth (Night Mode)</label>
-              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100" aria-label="Warmth blue-light filter percentage" aria-labelledby="videoSepia-label"><span>%</span></div>
-            </div>
-            <input type="range" id="videoSepia" min="0" max="100" step="1">
-          </div>
+          <span>Framing &amp; Focus</span>
         </div>
 
         <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="blackBarsTitle">Auto-Crop Black Bars</span>
-            <span class="row-desc">Remove letterboxing & cinema bars</span>
-          </div>
+          <span class="row-title" id="blackBarsTitle">Auto-Crop Black Bars</span>
           <label class="switch modern-switch" for="removeBlackBars">
             <input type="checkbox" id="removeBlackBars" aria-labelledby="blackBarsTitle">
             <span class="track"><span class="thumb"></span></span>
@@ -328,8 +282,8 @@
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title" id="ultrawideTitle">Fill ultrawide screen</span>
-            <span class="row-desc">Expand video to fill 21:9 monitors</span>
+            <span class="row-title" id="ultrawideTitle">Fill Ultrawide Screen</span>
+            <span class="row-desc">Zoom 21:9 videos to fill viewport</span>
           </div>
           <label class="switch modern-switch" for="ultrawideZoom">
             <input type="checkbox" id="ultrawideZoom" aria-labelledby="ultrawideTitle">
@@ -339,8 +293,27 @@
 
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title" id="lightsOutTitle">Lights Out Cinema Mode</span>
-            <span class="row-desc">Dim the page around the video (Shift+D)</span>
+            <span class="row-title" id="theaterTitle">Clean Theater Mode</span>
+            <span class="row-desc">Auto-hide header in Theater mode</span>
+          </div>
+          <label class="switch modern-switch" for="hideInTheater">
+            <input type="checkbox" id="hideInTheater" aria-labelledby="theaterTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="scrollbarTitle">Hide Scrollbar</span>
+          <label class="switch modern-switch" for="hideScrollbar">
+            <input type="checkbox" id="hideScrollbar" aria-labelledby="scrollbarTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="row-info">
+            <span class="row-title" id="lightsOutTitle">Lights Out Mode</span>
+            <span class="row-desc">Dim surrounding UI (Shift+D)</span>
           </div>
           <label class="switch modern-switch" for="lightsOut">
             <input type="checkbox" id="lightsOut" aria-labelledby="lightsOutTitle">
@@ -348,15 +321,74 @@
           </label>
         </div>
 
-        <div class="control-row" id="lightsOutOpacityRow">
-          <div class="row-info">
-            <span class="row-title" id="lightsOutOpacityTitle">Dimming Intensity</span>
-            <span class="row-desc">Ambient page opacity</span>
+        <div class="slider-row" id="lightsOutOpacityRow">
+          <div class="slider-header">
+            <label for="lightsOutOpacity" id="lightsOutOpacityTitle">Dimming</label>
+            <div class="val-badge text-only"><span id="lightsOutOpacityVal">95%</span></div>
           </div>
-          <div class="slider-control">
-            <input type="range" id="lightsOutOpacity" min="50" max="100" step="5" value="85" aria-labelledby="lightsOutOpacityTitle">
-            <span class="slider-val" id="lightsOutOpacityVal">85%</span>
+          <input type="range" id="lightsOutOpacity" min="50" max="100" step="5" value="95" aria-labelledby="lightsOutOpacityTitle">
+        </div>
+
+        <div class="sub-header">
+          <span>Picture Filters</span>
+        </div>
+        <div class="slider-group">
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="videoBrightness" id="videoBrightness-label">Brightness</label>
+              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200" aria-label="Video brightness percentage" aria-labelledby="videoBrightness-label"><span>%</span></div>
+            </div>
+            <input type="range" id="videoBrightness" min="20" max="200" step="1">
           </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="videoContrast" id="videoContrast-label">Contrast</label>
+              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200" aria-label="Video contrast percentage" aria-labelledby="videoContrast-label"><span>%</span></div>
+            </div>
+            <input type="range" id="videoContrast" min="20" max="200" step="1">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <label for="videoSepia" id="videoSepia-label">Warm Tint</label>
+              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100" aria-label="Warm tint percentage" aria-labelledby="videoSepia-label"><span>%</span></div>
+            </div>
+            <input type="range" id="videoSepia" min="0" max="100" step="1">
+          </div>
+        </div>
+
+        <div class="sub-header">
+          <span>Codec Blockers</span>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="av1Title">Block AV1</span>
+          <label class="switch modern-switch" for="blockAV1">
+            <input type="checkbox" id="blockAV1" aria-labelledby="av1Title">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="vp9Title">Block VP9</span>
+          <label class="switch modern-switch" for="blockVP9">
+            <input type="checkbox" id="blockVP9" aria-labelledby="vp9Title">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="fpsBlockTitle">Block 60fps</span>
+          <label class="switch modern-switch" for="block60fps">
+            <input type="checkbox" id="block60fps" aria-labelledby="fpsBlockTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="warning-callout">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Blocking both AV1 and VP9 caps YouTube resolution at 1080p.</span>
         </div>
 
         <div class="section-footer-row">
@@ -368,16 +400,15 @@
       </div>
     </details>
 
-    <!-- 3. Audio & Sound Section -->
+    <!-- 3. Audio & EQ -->
     <details class="modern-card section-dropdown" id="audioSection">
       <summary class="section-summary">
         <div class="section-leading">
-          <div class="squircle-icon squircle-amber">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-          </div>
+          <span class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </span>
           <div class="section-text">
-            <span class="section-title">Audio & Sound</span>
-            <span class="section-subtitle">Volume boost & 5-band EQ</span>
+            <span class="section-title">Audio & EQ</span>
           </div>
         </div>
         <div class="chevron-btn" aria-hidden="true">
@@ -387,8 +418,8 @@
       <div class="section-body">
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title" id="audioNormalizerTitle">Audio Normaliser</span>
-            <span class="row-desc">Reduce volume jumps between scenes</span>
+            <span class="row-title" id="audioNormalizerTitle">Volume Normalizer</span>
+            <span class="row-desc">Even out loud and quiet scenes</span>
           </div>
           <label class="switch modern-switch" for="audioNormalizer">
             <input type="checkbox" id="audioNormalizer" aria-labelledby="audioNormalizerTitle">
@@ -398,7 +429,7 @@
 
         <div class="slider-row">
           <div class="slider-header">
-            <label for="audioBoost">Extra Volume Boost</label>
+            <label for="audioBoost">Volume Boost</label>
             <div class="val-badge text-only"><span id="audioBoostVal">100%</span></div>
           </div>
           <input type="range" id="audioBoost" min="100" max="300" step="10">
@@ -406,7 +437,7 @@
 
         <div class="slider-row">
           <div class="slider-header">
-            <label for="bassBoost">Bass Booster</label>
+            <label for="bassBoost">Bass Boost</label>
             <div class="val-badge text-only"><span id="bassBoostVal">0 dB</span></div>
           </div>
           <input type="range" id="bassBoost" min="0" max="15" step="1" value="0">
@@ -477,16 +508,15 @@
       </div>
     </details>
 
-    <!-- 4. Tools & Tweaks Section -->
+    <!-- 4. YouTube Tools -->
     <details class="modern-card section-dropdown" id="toolsSection">
       <summary class="section-summary">
         <div class="section-leading">
-          <div class="squircle-icon squircle-emerald">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
+          <span class="section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
           <div class="section-text">
-            <span class="section-title">Tools & Tweaks</span>
-            <span class="section-subtitle">AdBlock, HUD & cinema options</span>
+            <span class="section-title">YouTube Tools</span>
           </div>
         </div>
         <div class="chevron-btn" aria-hidden="true">
@@ -496,124 +526,29 @@
       <div class="section-body">
         <div class="info-note">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          <span>Reload YouTube tab to apply tool &amp; codec changes.</span>
+          <span>Reload tab for changes.</span>
           <button type="button" id="reloadTabBtn" class="note-reload-btn" title="Reload active YouTube tab">Reload</button>
         </div>
 
         <div class="sub-header">
-          <span>Automation & Telemetry</span>
+          <span>Playback</span>
         </div>
 
-        <div class="control-row">
-          <div class="row-info">
-            <div class="title-with-badge">
-              <span class="row-title" id="adblockTitle">Smart AdBlock</span>
-              <div id="stats" class="adblock-counter-pill" title="Ads blocked/skipped">
-                <span class="status-dot"></span>
-                <span class="status-text"><strong id="adblockCount">0</strong> skipped</span>
-              </div>
-            </div>
-            <span class="row-desc">Skip supported YouTube video ads</span>
-          </div>
-          <label class="switch modern-switch" for="adblockEnabled">
-            <input type="checkbox" id="adblockEnabled" aria-labelledby="adblockTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <div class="row-info">
-            <div class="title-with-badge">
-              <span class="row-title" id="sponsorBlockTitle">Sponsor & Branded Content</span>
-              <div id="sponsorStats" class="adblock-counter-pill" title="Sponsor segments skipped">
-                <span class="status-dot"></span>
-                <span class="status-text"><strong id="sponsorBlockCount">0</strong> skipped</span>
-              </div>
-            </div>
-            <span class="row-desc">Skip creator sponsorships & endorsements</span>
-          </div>
-          <label class="switch modern-switch" for="sponsorBlockEnabled">
-            <input type="checkbox" id="sponsorBlockEnabled" aria-labelledby="sponsorBlockTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-        <div class="select-row inset">
-          <div class="select-container full-width">
-            <select id="sponsorBlockMode" class="modern-select" aria-label="Sponsor skip mode">
-              <option value="skip">Auto-skip sponsor segments</option>
-              <option value="fastforward">Fast-forward sponsor segments (16x)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="statsTitle">Quality Stats HUD</span>
-            <span class="row-desc">Show live rendering & frame timing overlay</span>
-          </div>
-          <label class="switch modern-switch" for="statsEnabled">
-            <input type="checkbox" id="statsEnabled" aria-labelledby="statsTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <div class="row-info">
-            <label for="autoPauseMode" class="row-title" id="autoPauseTitle">Smart Auto-Pause</label>
-            <span class="row-desc">Pause playback when not actively watching</span>
-          </div>
-        </div>
-        <div class="select-row inset">
-          <div class="select-container full-width">
+        <div class="select-row">
+          <label for="autoPauseMode" id="autoPauseTitle">Auto-Pause</label>
+          <div class="select-container">
             <select id="autoPauseMode" class="modern-select" aria-labelledby="autoPauseTitle">
-              <option value="off">Off (Keep playing)</option>
-              <option value="tab">When switching tabs</option>
-              <option value="app">When switching tabs or apps</option>
+              <option value="off">Off</option>
+              <option value="tab">On tab switch</option>
+              <option value="app">On app switch</option>
             </select>
           </div>
         </div>
 
-        <div class="sub-header">
-          <span>Content Tweaks</span>
-        </div>
-
         <div class="control-row">
           <div class="row-info">
-            <span class="row-title" id="dislikeTitle">Return YouTube Dislike</span>
-            <span class="row-desc">Restore public dislike counters</span>
-          </div>
-          <label class="switch modern-switch" for="returnDislikes">
-            <input type="checkbox" id="returnDislikes" aria-labelledby="dislikeTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="shortsTitle">Hide YouTube Shorts</span>
-            <span class="row-desc">Remove Shorts shelves & feeds</span>
-          </div>
-          <label class="switch modern-switch" for="hideShorts">
-            <input type="checkbox" id="hideShorts" aria-labelledby="shortsTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="annotationsTitle">Classic Annotations</span>
-            <span class="row-desc">Restore interactive notes & spotlights</span>
-          </div>
-          <label class="switch modern-switch" for="restoreAnnotations">
-            <input type="checkbox" id="restoreAnnotations" aria-labelledby="annotationsTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="abLoopTitle">A-B Section Looper</span>
-            <span class="row-desc">Loop video segment ([ Set A, ] Set B, \ Toggle)</span>
+            <span class="row-title" id="abLoopTitle">A-B Looper</span>
+            <span class="row-desc">Loop a section of any video</span>
           </div>
           <label class="switch modern-switch" for="abLoopEnabled">
             <input type="checkbox" id="abLoopEnabled" aria-labelledby="abLoopTitle">
@@ -621,67 +556,88 @@
           </label>
         </div>
 
-        <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="endCardsTitle">Hide End Screens & Cards</span>
-            <span class="row-desc">Hide video cards & subscribe popups</span>
+        <div class="ab-loop-guide" id="abLoopGuide" hidden>
+          <span class="ab-guide-title">Keyboard Shortcuts &amp; Controls</span>
+          <div class="ab-guide-grid">
+            <span class="ab-guide-item"><kbd>[</kbd> Set A</span>
+            <span class="ab-guide-item"><kbd>]</kbd> Set B</span>
+            <span class="ab-guide-item"><kbd>\</kbd> Toggle</span>
+            <span class="ab-guide-item"><kbd>Esc</kbd> Clear</span>
           </div>
+          <span class="ab-guide-note">Or use ⏯ / ✕ on top-left player HUD.</span>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="statsTitle">Stats HUD</span>
+          <label class="switch modern-switch" for="statsEnabled">
+            <input type="checkbox" id="statsEnabled" aria-labelledby="statsTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="sub-header">
+          <span>Interface</span>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="dislikeTitle">Return Dislikes</span>
+          <label class="switch modern-switch" for="returnDislikes">
+            <input type="checkbox" id="returnDislikes" aria-labelledby="dislikeTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="shortsTitle">Hide Shorts</span>
+          <label class="switch modern-switch" for="hideShorts">
+            <input type="checkbox" id="hideShorts" aria-labelledby="shortsTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="endCardsTitle">Hide End Screens</span>
           <label class="switch modern-switch" for="hideEndCards">
             <input type="checkbox" id="hideEndCards" aria-labelledby="endCardsTitle">
             <span class="track"><span class="thumb"></span></span>
           </label>
         </div>
 
+        <div class="control-row">
+          <span class="row-title" id="annotationsTitle">Classic Annotations</span>
+          <label class="switch modern-switch" for="restoreAnnotations">
+            <input type="checkbox" id="restoreAnnotations" aria-labelledby="annotationsTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
         <div class="sub-header">
-          <span>Layout & Codecs</span>
+          <span>Blocking</span>
         </div>
 
         <div class="control-row">
-          <div class="row-info">
-            <span class="row-title" id="theaterTitle">Clean Theater Mode</span>
-            <span class="row-desc">Hide UI & center video</span>
+          <span class="row-title" id="adblockTitle">Ad Blocker</span>
+          <label class="switch modern-switch" for="adblockEnabled">
+            <input type="checkbox" id="adblockEnabled" aria-labelledby="adblockTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <span class="row-title" id="sponsorBlockTitle">SponsorBlock</span>
+          <label class="switch modern-switch" for="sponsorBlockEnabled">
+            <input type="checkbox" id="sponsorBlockEnabled" aria-labelledby="sponsorBlockTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+        <div class="select-row">
+          <label for="sponsorBlockMode">Skip Mode</label>
+          <div class="select-container">
+            <select id="sponsorBlockMode" class="modern-select" aria-label="Sponsor skip mode">
+              <option value="skip">Auto-skip</option>
+              <option value="fastforward">16x Fast-forward</option>
+            </select>
           </div>
-          <label class="switch modern-switch" for="hideInTheater">
-            <input type="checkbox" id="hideInTheater" aria-labelledby="theaterTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <span class="row-title" id="scrollbarTitle">Hide Page Scrollbar</span>
-          <label class="switch modern-switch" for="hideScrollbar">
-            <input type="checkbox" id="hideScrollbar" aria-labelledby="scrollbarTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <span class="row-title" id="av1Title">Block AV1 Codec</span>
-          <label class="switch modern-switch" for="blockAV1">
-            <input type="checkbox" id="blockAV1" aria-labelledby="av1Title">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <span class="row-title" id="vp9Title">Block VP9 Codec</span>
-          <label class="switch modern-switch" for="blockVP9">
-            <input type="checkbox" id="blockVP9" aria-labelledby="vp9Title">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="control-row">
-          <span class="row-title" id="fpsBlockTitle">Block 60fps Video</span>
-          <label class="switch modern-switch" for="block60fps">
-            <input type="checkbox" id="block60fps" aria-labelledby="fpsBlockTitle">
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="warning-callout">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>Blocking both AV1 and VP9 caps YouTube resolution to 1080p maximum.</span>
         </div>
 
         <div class="section-footer-row">

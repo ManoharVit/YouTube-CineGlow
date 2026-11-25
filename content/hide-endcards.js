@@ -1,7 +1,9 @@
 (() => {
   'use strict';
 
-  let enabled = false;
+  let enabled = typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.hideEndCards !== undefined
+    ? Boolean(AURA_DEFAULTS.hideEndCards)
+    : true;
   let isKilled = false;
   let currentVideoId = null;
   let userRevealed = false;

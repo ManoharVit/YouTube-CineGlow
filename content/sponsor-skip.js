@@ -698,7 +698,6 @@
     if (matchedSegment) {
       if (settings.sponsorBlockMode === 'skip') {
         video.currentTime = Math.min(video.duration || Infinity, matchedSegment.end);
-        safeSendMessage({ type: 'SPONSOR_BLOCKED', count: 1 });
         showNotice(matchedSegment, () => undoSkip(matchedSegment));
       } else if (settings.sponsorBlockMode === 'fastforward') {
         if (!isFastForwarding) {
@@ -712,14 +711,12 @@
           video.playbackRate = 16.0;
           showNotice(matchedSegment, () => undoSkip(matchedSegment));
         } else if (currentFastForwardSegment && currentFastForwardSegment.id !== matchedSegment.id) {
-          safeSendMessage({ type: 'SPONSOR_BLOCKED', count: 1 });
           currentFastForwardSegment = matchedSegment;
           showNotice(matchedSegment, () => undoSkip(matchedSegment));
         }
       }
     } else if (isFastForwarding) {
       cleanupPlaybackModifications(video);
-      safeSendMessage({ type: 'SPONSOR_BLOCKED', count: 1 });
     }
 
     scheduleNextSegmentCheck();

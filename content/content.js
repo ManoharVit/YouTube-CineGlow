@@ -34,6 +34,16 @@
   const SAMPLE_H = 72;
   const SCREENX_W = 640;
   const SCREENX_H = 360;
+  const SCREENX_PROFILE = Object.freeze({
+    opacity: 100,
+    spread: 200,
+    smoothness: 0,
+    blur: 20,
+    saturation: 115,
+    contrast: 100,
+    brightness: 100,
+    audioReactive: false
+  });
   const SETTLE_FRAMES = 30;     // Extra draws after the video stops, so smoothing converges
   const SAFE_DEFAULTS = typeof AURA_DEFAULTS !== 'undefined' ? AURA_DEFAULTS : {};
 
@@ -61,6 +71,37 @@
   let taintFailures = 0;
   let isTaintedVideo = false;
   let taintedSrc = '';
+  let didForceDarkTheme = false;
+  let prevDarkAttr = null;
+  let hadDarkAttr = false;
+
+  function syncDarkCinemaTheme(enable) {
+    if (typeof document === 'undefined' || !document.documentElement) return;
+    const root = document.documentElement;
+    if (enable) {
+      if (!didForceDarkTheme) {
+        const currentDark = root.getAttribute?.('dark');
+        const hasDark = root.hasAttribute?.('dark');
+        if (!hasDark || currentDark === 'false') {
+          hadDarkAttr = Boolean(hasDark);
+          prevDarkAttr = currentDark;
+          didForceDarkTheme = true;
+          root.setAttribute?.('dark', '');
+          root.setAttribute?.('data-aura-dark-override', '1');
+        }
+      }
+    } else if (didForceDarkTheme) {
+      didForceDarkTheme = false;
+      root.removeAttribute?.('data-aura-dark-override');
+      if (hadDarkAttr && prevDarkAttr !== null) {
+        root.setAttribute?.('dark', prevDarkAttr);
+      } else {
+        root.removeAttribute?.('dark');
+      }
+      hadDarkAttr = false;
+      prevDarkAttr = null;
+    }
+  }
 
   function numOr(val, fallback) {
     const parsed = (val === '' || val === null || val === undefined) ? NaN : Number(val);
@@ -68,9 +109,10 @@
   }
 
   function getCanvasScale() {
-    const spread = numOr(settings.spread, 150);
-    // Offset by +50 so 100% spread extends 50% beyond the video frame (1.5x scale), clamped >= 1.1
-    return Math.max(1.1, (spread + 50) / 100);
+    const spread = settings.screenXMode ? SCREENX_PROFILE.spread : numOr(settings.spread, 200);
+    const offset = settings.screenXMode ? 80 : 50;
+    // Offset by +50 (or +80 in ScreenX mode so outer edge extension reaches behind header/sidebar cleanly)
+    return Math.max(1.1, (spread + offset) / 100);
   }
 
   function syncCodecPolicyToPage() {
@@ -117,8 +159,9 @@
 
   function applyVisualSettings() {
     if (isKilled || window.CineGlowKilled) return;
+    const effectiveOpacity = settings.screenXMode ? SCREENX_PROFILE.opacity : numOr(settings.opacity, 90);
     if (document.documentElement?.style?.setProperty) {
-      document.documentElement.style.setProperty('--aura-opacity', String(numOr(settings.opacity, 75) / 100));
+      document.documentElement.style.setProperty('--aura-opacity', String(effectiveOpacity / 100));
       document.documentElement.style.setProperty('--aura-fade', `${numOr(settings.fadeInDuration, 1)}s`);
     }
 
@@ -132,14 +175,15 @@
       forceFullDraw = true;
     }
 
-    const effectiveBlur = settings.screenXMode
-      ? Math.round(numOr(settings.blur, 40) * 0.6)
-      : settings.blur;
+    const effectiveBlur = settings.screenXMode ? SCREENX_PROFILE.blur : settings.blur;
+    const effectiveSat = settings.screenXMode ? SCREENX_PROFILE.saturation : numOr(settings.saturation, 130);
+    const effectiveContrast = settings.screenXMode ? SCREENX_PROFILE.contrast : numOr(settings.contrast, 110);
+    const effectiveBrightness = settings.screenXMode ? SCREENX_PROFILE.brightness : numOr(settings.brightness, 105);
     canvas.style.filter =
       `blur(${numOr(effectiveBlur, 40)}px) ` +
-      `saturate(${numOr(settings.saturation, 110) / 100}) ` +
-      `contrast(${numOr(settings.contrast, 100) / 100}) ` +
-      `brightness(${numOr(settings.brightness, 100) / 100})`;
+      `saturate(${effectiveSat / 100}) ` +
+      `contrast(${effectiveContrast / 100}) ` +
+      `brightness(${effectiveBrightness / 100})`;
     lastLayoutKey = '';
 
     const isWatch = window.CineGlowPlayer ? window.CineGlowPlayer.isWatchPage : location.pathname === '/watch';
@@ -155,6 +199,8 @@
     document.documentElement.classList.toggle('aura-lights-out', Boolean(isWatch && settings.lightsOut));
     document.documentElement.classList.toggle('aura-ultrawide-zoom', Boolean(settings.ultrawideZoom));
     document.documentElement.classList.toggle('aura-screenx-mode', Boolean(settings.screenXMode));
+
+    syncDarkCinemaTheme(Boolean(settings.enabled && isWatch));
 
     updatePlayingState();
 
@@ -331,10 +377,10 @@
     const bottomY = cy + ch;
     const bottomH = H - bottomY;
 
-    // Sample only the outermost perimeter edge band (~10% W, ~12% H) so ceiling lights,
-    // floor glow, and walls extend naturally outward without inverting central subjects.
-    const edgeW = Math.max(4, Math.min(sw, Math.round(sw * 0.10)));
-    const edgeH = Math.max(4, Math.min(sh, Math.round(sh * 0.12)));
+    // Sample only the outermost perimeter edge band (~6% W, ~8% H) so edge colors,
+    // ceiling lights, and floor highlights extend vividly outward without interior dilution.
+    const edgeW = Math.max(4, Math.min(sw, Math.round(sw * 0.06)));
+    const edgeH = Math.max(4, Math.min(sh, Math.round(sh * 0.08)));
 
     // Center video
     ctx.drawImage(v, sx, sy, sw, sh, cx, cy, cw, ch);
@@ -450,7 +496,7 @@
       }
     }
 
-    if (settings.audioReactive && window.CineGlowAudioAnalyser && window.CineGlowAudioDataArray && !v.paused) {
+    if (!settings.screenXMode && settings.audioReactive && window.CineGlowAudioAnalyser && window.CineGlowAudioDataArray && !v.paused) {
       const analyser = window.CineGlowAudioAnalyser;
       const dataArray = window.CineGlowAudioDataArray;
       analyser.getByteFrequencyData(dataArray);
@@ -463,18 +509,11 @@
       bass = (bass / bassBins) / 255;
 
       const enhancedBass = Math.pow(bass, 1.5);
-      const baseOpacity = numOr(settings.opacity, 75) / 100;
-      if (settings.screenXMode) {
-        // ScreenX relies on 1:1 edge alignment; pulse subtle opacity only without scaling canvas geometry
-        const pulseOpacity = baseOpacity * (1 + enhancedBass * 0.35);
-        canvas.style.transform = `translate3d(${currentLayoutX}px, ${currentLayoutY}px, 0)`;
-        canvas.style.opacity = Math.min(1, pulseOpacity);
-      } else {
-        const beatScale = 1 + (enhancedBass * 0.4);
-        const beatOpacity = baseOpacity * (1 + enhancedBass * 1.5);
-        canvas.style.transform = `translate3d(${currentLayoutX}px, ${currentLayoutY}px, 0) scale(${beatScale})`;
-        canvas.style.opacity = Math.min(1, beatOpacity);
-      }
+      const baseOpacity = numOr(settings.opacity, 90) / 100;
+      const beatScale = 1 + (enhancedBass * 0.4);
+      const beatOpacity = baseOpacity * (1 + enhancedBass * 1.5);
+      canvas.style.transform = `translate3d(${currentLayoutX}px, ${currentLayoutY}px, 0) scale(${beatScale})`;
+      canvas.style.opacity = Math.min(1, beatOpacity);
       canvas.dataset.beat = '1';
     } else if (canvas.dataset.beat === '1') {
       canvas.style.transform = `translate3d(${currentLayoutX}px, ${currentLayoutY}px, 0)`;
@@ -743,6 +782,7 @@
     syncCodecPolicyToPage();
 
     if (document.documentElement) {
+      syncDarkCinemaTheme(false);
       document.documentElement.classList.remove(
         ROOT_CLASS,
         'aura-active',
@@ -782,8 +822,60 @@
     }
   }
 
+  function sampleEdgeColors() {
+    if (!isActive || isKilled || window.CineGlowKilled || isTaintedVideo || !canvas || !ctx) {
+      return { active: false };
+    }
+    const currentVideo = video || findVideo();
+    if (!currentVideo || currentVideo.readyState < 2 || canvas.width < 8 || canvas.height < 8) {
+      return { active: false };
+    }
+    const W = canvas.width;
+    const H = canvas.height;
+    const tx = Math.floor(W * 0.2);
+    const tw = Math.max(2, Math.floor(W * 0.6));
+    const ly = Math.floor(H * 0.2);
+    const lh = Math.max(2, Math.floor(H * 0.6));
+
+    const avgStrip = (rx, ry, rw, rh) => {
+      const data = ctx.getImageData(rx, ry, rw, rh).data;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let count = 0;
+      for (let i = 0; i < data.length; i += 8) {
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count++;
+      }
+      if (count === 0) return [0, 0, 0];
+      return [Math.round(r / count), Math.round(g / count), Math.round(b / count)];
+    };
+
+    try {
+      return {
+        active: true,
+        colors: {
+          top: avgStrip(tx, 2, tw, 2),
+          right: avgStrip(W - 4, ly, 2, lh),
+          bottom: avgStrip(tx, H - 4, tw, 2),
+          left: avgStrip(2, ly, 2, lh)
+        }
+      };
+    } catch (_) {
+      return { active: false };
+    }
+  }
+
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === 'AURA_GET_EDGE_COLORS') {
+        if (typeof sendResponse === 'function') {
+          sendResponse(sampleEdgeColors());
+        }
+        return;
+      }
       if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
         if (!window._cineglowKillEventFired) {

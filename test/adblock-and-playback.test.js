@@ -732,4 +732,73 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
     assert.strictEqual(mainWorld.includes('state === 2'), false, 'main-world must not unpause state === 2 (paused)');
     assert.strictEqual(adsJs.includes('state === 2'), false, 'youtube-ads must not unpause state === 2 (paused)');
   });
+
+  test('Slow-loading video click and Autoplay transitions resume cleanly on canplay without overriding user pause', () => {
+    const env = setupMockEnvironment('https://www.youtube.com/watch?v=slowLoadVid');
+    const origWin = globalThis.window;
+    const origDoc = globalThis.document;
+    const origLoc = globalThis.location;
+
+    globalThis.window = env.window;
+    globalThis.document = env.document;
+    globalThis.location = env.window.location;
+
+    try {
+      const player = new MockElement('div', { id: 'movie_player' });
+      const video = new MockVideoElement();
+      video.paused = true;
+      video.currentTime = 0;
+      video.readyState = 1; // initially still loading metadata/buffer
+      player.appendChild(video);
+
+      let playCalls = 0;
+      let playerState = 3; // buffering initially
+      player.getPlayerState = () => playerState;
+      player.playVideo = () => {
+        playCalls++;
+        video.paused = false;
+        playerState = 1;
+      };
+      env.elements.set('#movie_player', player);
+
+      new Function(fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8'))();
+
+      // Simulate click/navigation onto watch page while video hasn't buffered yet
+      env.window.location.href = 'https://www.youtube.com/watch?v=slowLoadVid2';
+      env.document.dispatchEvent(new Event('yt-navigate-start'));
+      env.document.dispatchEvent(new Event('yt-navigate-finish'));
+      assert.strictEqual(playCalls, 0, 'Must not force playVideo while readyState < 2');
+
+      // Video finishes loading later and emits canplay while still paused at 0s
+      video.readyState = 3;
+      playerState = -1;
+      video.dispatchEvent(new Event('canplay'));
+      assert.strictEqual(playCalls, 1, 'Must auto-play once video finishes loading (canplay)');
+
+      // Autoplay next video after Video 1 ends
+      video.ended = true;
+      video.dispatchEvent(new Event('ended'));
+      video.ended = false;
+      video.paused = true;
+      video.currentTime = 0;
+      video.readyState = 3;
+      video.dispatchEvent(new Event('loadedmetadata'));
+      video.dispatchEvent(new Event('canplay'));
+      assert.strictEqual(playCalls, 2, 'Autoplay next video must start cleanly on loadedmetadata + canplay');
+
+      // User explicitly pauses via Spacebar after playback started -> canplay must NOT resume
+      video.paused = false;
+      video.currentTime = 12;
+      video.dispatchEvent(new Event('timeupdate'));
+      env.window.dispatchEvent(Object.assign(new Event('keydown'), { key: ' ' }));
+      video.paused = true;
+      video.dispatchEvent(new Event('canplay'));
+      assert.strictEqual(playCalls, 2, 'User pause via Spacebar must never be auto-resumed');
+    } finally {
+      globalThis.window.dispatchEvent(new Event('cineglow:kill-switch'));
+      globalThis.window = origWin;
+      globalThis.document = origDoc;
+      globalThis.location = origLoc;
+    }
+  });
 });

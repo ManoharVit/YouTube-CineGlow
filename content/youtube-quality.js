@@ -122,8 +122,18 @@
   function scheduleApplyQuality(delay = 350) {
     clearTimeout(applyTimer);
     clearTimeout(followUpTimer);
-    applyTimer = setTimeout(() => {
+    const runWhenReady = () => {
+      const state = window.CineGlowPlayer;
+      const v = state?.video;
+      if (v && v.readyState !== undefined && v.readyState < 2) {
+        const onReady = () => applyQuality(true);
+        v.addEventListener('canplay', onReady, { once: true, passive: true });
+        return;
+      }
       applyQuality(true);
+    };
+    applyTimer = setTimeout(() => {
+      runWhenReady();
       followUpTimer = setTimeout(() => applyQuality(true), 1200);
       if (followUpTimer && typeof followUpTimer.unref === 'function') {
         followUpTimer.unref();

@@ -161,6 +161,39 @@
       return true;
     }
 
+    function bandBlackRatio(isHorizontal, start, end, spanStart, spanEnd) {
+      if (end <= start || spanEnd <= spanStart) return 0;
+      let total = 0;
+      let black = 0;
+      for (let a = start; a < end; a++) {
+        for (let b = spanStart; b < spanEnd; b++) {
+          total++;
+          if (isHorizontal ? isBlack(b, a) : isBlack(a, b)) black++;
+        }
+      }
+      return total > 0 ? black / total : 0;
+    }
+
+    // If one bar is a clean cinema letterbox/pillarbox (>= 4px on 64px scan, <= 25%) and
+    // the opposite side stopped early because of a localized badge/watermark/subtitle,
+    // recover the symmetric boundary only when >= 72% of that band is still pure black
+    // and real active picture begins at the symmetric edge.
+    function recoverAsymmetricBar(strictSelf, strictOther, size, spanStart, spanEnd, isHorizontal, isStartSide) {
+      const minAnchor = Math.max(4, Math.ceil(size * 0.06));
+      const maxAnchor = Math.floor(size * 0.25);
+      if (strictOther < minAnchor || strictOther > maxAnchor || strictSelf >= strictOther - 2) {
+        return strictSelf;
+      }
+      const bandStart = isStartSide ? 0 : size - strictOther;
+      const bandEnd = isStartSide ? strictOther : size;
+      const boundaryIndex = isStartSide ? strictOther : size - 1 - strictOther;
+      const edgeCheck = isHorizontal ? isRowBlack(boundaryIndex) : isColBlack(boundaryIndex);
+      if (edgeCheck) return strictSelf;
+
+      const ratio = bandBlackRatio(isHorizontal, bandStart, bandEnd, spanStart, spanEnd);
+      return ratio >= 0.72 ? strictOther : strictSelf;
+    }
+
     let topBar = height;
     for (let y = 0; y < height; y++) {
       if (!isRowBlack(y)) { topBar = y; break; }
@@ -177,7 +210,18 @@
     for (let x = width - 1; x >= 0; x--) {
       if (!isColBlack(x)) { rightBar = width - 1 - x; break; }
     }
-    calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height);
+
+    const rowSpanStart = Math.floor(width * 0.05);
+    const rowSpanEnd = Math.floor(width * 0.95);
+    const colSpanStart = Math.floor(height * 0.25);
+    const colSpanEnd = Math.floor(height * 0.75);
+
+    const recoveredTop = recoverAsymmetricBar(topBar, bottomBar, height, rowSpanStart, rowSpanEnd, true, true);
+    const recoveredBottom = recoverAsymmetricBar(bottomBar, topBar, height, rowSpanStart, rowSpanEnd, true, false);
+    const recoveredLeft = recoverAsymmetricBar(leftBar, rightBar, width, colSpanStart, colSpanEnd, false, true);
+    const recoveredRight = recoverAsymmetricBar(rightBar, leftBar, width, colSpanStart, colSpanEnd, false, false);
+
+    calculateCropFromDimensions(recoveredTop, recoveredBottom, recoveredLeft, recoveredRight, width, height);
   }
 
   function scanFrame(now = (typeof Date !== 'undefined' ? Date.now() : performance.now())) {

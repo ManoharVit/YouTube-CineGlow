@@ -82,7 +82,7 @@ describe('Cinema Lights Out & Ambient Focus Dimmer', () => {
     video.dispatchEvent(new Event('play'));
 
     assert.strictEqual(globalThis.document.documentElement.classList.contains('aura-lights-out-active'), true);
-    assert.strictEqual(globalThis.document.documentElement.style.getPropertyValue('--cineglow-dim-opacity'), '0.15');
+    assert.strictEqual(globalThis.document.documentElement.style.getPropertyValue('--cineglow-dim-opacity'), '0.05');
 
     // Simulate pause
     video.paused = true;

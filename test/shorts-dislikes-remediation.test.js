@@ -40,10 +40,10 @@ describe('Remediations FP-8.1, FP-8.2, FP-8.3, FP-8.4', () => {
     globalThis.chrome = originalChrome;
   });
 
-  test('FP-8.2: shared/defaults.js defaults hideEndCards to false', () => {
+  test('FP-8.2: shared/defaults.js defaults hideEndCards to true', () => {
     const fn = new Function(`${defaultsCode}; return AURA_DEFAULTS;`);
     const defaults = fn();
-    assert.strictEqual(defaults.hideEndCards, false, 'hideEndCards must default to false to preserve creator end screens');
+    assert.strictEqual(defaults.hideEndCards, true, 'hideEndCards must default to true');
   });
 
   test('FP-8.1: click capture ignores external links with /shorts/ and only intercepts YouTube shorts links', () => {

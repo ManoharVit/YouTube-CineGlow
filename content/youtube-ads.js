@@ -268,7 +268,6 @@
     if (isAd) {
       if (!wasAdShowing) {
         wasAdShowing = true;
-        safeSendMessage({ type: 'AD_BLOCKED', count: 1 });
         try {
           window.postMessage({ type: 'CINEGLOW_FORCE_SKIP_AD' }, window.location.origin);
         } catch (_) {}

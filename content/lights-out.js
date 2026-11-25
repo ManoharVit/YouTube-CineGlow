@@ -28,7 +28,7 @@
     document.documentElement.classList.toggle('aura-lights-out', isEnabled);
     document.documentElement.classList.toggle('aura-lights-out-active', shouldDim);
 
-    const opacityVal = settings.lightsOutOpacity !== undefined ? Number(settings.lightsOutOpacity) : 85;
+    const opacityVal = settings.lightsOutOpacity !== undefined ? Number(settings.lightsOutOpacity) : 95;
     const dimVal = Math.max(0, Math.min(1, (100 - opacityVal) / 100));
     document.documentElement.style?.setProperty('--cineglow-dim-opacity', String(Number(dimVal.toFixed(2))));
   }

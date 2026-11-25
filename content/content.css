@@ -22,17 +22,206 @@ html.aura-active #aura-ambient-canvas {
   opacity: var(--aura-opacity, 0.85);
 }
 
+html.aura-active.aura-watch-page {
+  color-scheme: dark;
+  background-color: #0f0f0f !important;
+  --yt-spec-base-background: #0f0f0f;
+  --yt-spec-raised-background: rgba(255, 255, 255, 0.08);
+  --yt-spec-menu-background: #282828;
+  --yt-spec-text-primary: #f1f1f1;
+  --yt-spec-text-secondary: #aaaaaa;
+  --yt-spec-text-disabled: #717171;
+  --yt-spec-wordmark-text: #ffffff;
+  --yt-spec-icon-active-other: #f1f1f1;
+  --yt-spec-icon-inactive: #909090;
+  --yt-spec-outline: rgba(255, 255, 255, 0.2);
+  --yt-spec-10-percent-layer: rgba(255, 255, 255, 0.1);
+  --yt-spec-additive-background: rgba(255, 255, 255, 0.1);
+  --yt-spec-badge-chip-background: rgba(255, 255, 255, 0.1);
+  --yt-spec-button-chip-background-hover: rgba(255, 255, 255, 0.2);
+  --yt-spec-text-primary-inverse: #0f0f0f;
+  --yt-spec-inverted-background: #f1f1f1;
+  --ytd-searchbox-background: rgba(18, 18, 18, 0.35);
+  --ytd-searchbox-border-color: rgba(255, 255, 255, 0.22);
+  --ytd-searchbox-text-color: #f1f1f1;
+  --ytd-searchbox-legacy-button-color: rgba(255, 255, 255, 0.08);
+  --ytd-searchbox-legacy-button-border-color: rgba(255, 255, 255, 0.22);
+  --ytd-searchbox-legacy-button-icon-color: #f1f1f1;
+}
+
+/* Make modern & legacy YouTube search bars translucent so ScreenX top glow shines through cleanly */
+html.aura-active.aura-watch-page :is(
+  yt-searchbox .ytSearchboxComponentInputBox,
+  yt-searchbox .ytSearchboxComponentInputBoxDark,
+  ytd-searchbox #container.ytd-searchbox
+) {
+  background-color: rgba(18, 18, 18, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: none !important;
+}
+
+html.aura-active.aura-watch-page :is(
+  yt-searchbox .ytSearchboxComponentSearchButton,
+  yt-searchbox .ytSearchboxComponentSearchButtonDark,
+  ytd-searchbox #search-icon-legacy.ytd-searchbox
+) {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #f1f1f1 !important;
+}
+
+html.aura-active.aura-watch-page :is(
+  yt-searchbox .ytSearchboxComponentSearchButton svg,
+  yt-searchbox .ytSearchboxComponentSearchButtonDark svg,
+  ytd-searchbox #search-icon-legacy.ytd-searchbox svg
+) {
+  color: #f1f1f1 !important;
+  fill: currentColor !important;
+}
+
+html.aura-active.aura-watch-page :is(
+  yt-searchbox input.ytSearchboxComponentInput,
+  ytd-searchbox input#search
+) {
+  color: #f1f1f1 !important;
+}
+
+html.aura-active.aura-watch-page :is(
+  yt-searchbox input.ytSearchboxComponentInput,
+  ytd-searchbox input#search
+)::placeholder {
+  color: #aaaaaa !important;
+}
+
+/* Fix white-on-white filled Subscribe pill & dark-on-dark channel/endpoint links when Dark Cinema overrides Light Theme */
+html.aura-active.aura-watch-page[data-aura-dark-override="1"],
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] :is(
+  body,
+  ytd-app,
+  ytd-watch-flexy,
+  ytd-watch-metadata,
+  #below,
+  #secondary,
+  #owner,
+  #actions,
+  #subscribe-button,
+  ytd-playlist-panel-renderer
+) {
+  --yt-spec-text-primary: #f1f1f1 !important;
+  --yt-spec-text-secondary: #aaaaaa !important;
+  --yt-spec-text-disabled: #888888 !important;
+  --yt-spec-text-primary-inverse: #0f0f0f !important;
+  --yt-spec-inverted-background: #f1f1f1 !important;
+  --yt-spec-additive-background: rgba(255, 255, 255, 0.1) !important;
+  --yt-spec-10-percent-layer: rgba(255, 255, 255, 0.1) !important;
+  --yt-spec-outline: rgba(255, 255, 255, 0.2) !important;
+  --yt-spec-button-chip-background-hover: rgba(255, 255, 255, 0.2) !important;
+  --yt-endpoint-color: #f1f1f1 !important;
+  --yt-endpoint-visited-color: #f1f1f1 !important;
+  --yt-endpoint-hover-color: #ffffff !important;
+  --yt-spec-icon-active-other: #f1f1f1 !important;
+  --yt-spec-icon-inactive: #aaaaaa !important;
+}
+
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner ytd-video-owner-renderer,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner ytd-channel-name,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner #channel-name,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner #attributed-channel-name,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner a:not(#subscribe-button *):not(#sponsor-button *),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner span:not(#subscribe-button *):not(#sponsor-button *),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner button:not(#subscribe-button *):not(#sponsor-button *),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner yt-formatted-string,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner .yt-core-attributed-string:not(#subscribe-button *):not(#sponsor-button *),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner yt-attributed-string:not(#subscribe-button *):not(#sponsor-button *),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner yt-badge-view-model,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner ytd-badge-supported-renderer,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner yt-icon:not(#subscribe-button *):not(#sponsor-button *),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner svg:not(#subscribe-button *):not(#sponsor-button *) {
+  color: #f1f1f1 !important;
+}
+
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #owner #owner-sub-count {
+  color: #aaaaaa !important;
+}
+
+/* Fix dark icon/count text on Like / tonal action buttons when overriding Light Theme */
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #actions .yt-spec-button-shape-next--tonal,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] #actions .yt-spec-button-shape-next--tonal *,
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] like-button-view-model button:not(.yt-spec-button-shape-next--filled),
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] like-button-view-model button:not(.yt-spec-button-shape-next--filled) * {
+  color: #f1f1f1 !important;
+}
+
+/* Keep unselected filter chips legible without painting a square box on outer <chip-shape> */
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) :is(
+  yt-chip-cloud-chip-renderer,
+  chip-shape
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) :is(
+  yt-chip-cloud-chip-renderer:not([selected]):not([aria-selected="true"]) #chip-container,
+  chip-shape .ytChipShapeChip:not(.ytChipShapeActive),
+  .ytChipShapeChip:not(.ytChipShapeActive)
+) {
+  background-color: rgba(15, 15, 15, 0.56) !important;
+  color: #f1f1f1 !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+}
+
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] :is(
+  .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--filled,
+  .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--filled *,
+  yt-subscribe-button-view-model .yt-spec-button-shape-next--filled,
+  yt-subscribe-button-view-model .yt-spec-button-shape-next--filled *,
+  ytd-subscribe-button-renderer .yt-spec-button-shape-next--filled,
+  ytd-subscribe-button-renderer .yt-spec-button-shape-next--filled *,
+  #subscribe-button :is(yt-subscribe-button-view-model, ytd-subscribe-button-renderer):not([subscribed]) button,
+  #subscribe-button :is(yt-subscribe-button-view-model, ytd-subscribe-button-renderer):not([subscribed]) button *,
+  yt-chip-cloud-chip-renderer[selected] #chip-container,
+  yt-chip-cloud-chip-renderer[selected] #chip-container *,
+  yt-chip-cloud-chip-renderer[aria-selected="true"] #chip-container,
+  yt-chip-cloud-chip-renderer[aria-selected="true"] #chip-container *,
+  chip-shape .ytChipShapeActive,
+  chip-shape .ytChipShapeActive *,
+  .ytChipShapeActive,
+  .ytChipShapeActive *
+) {
+  color: #0f0f0f !important;
+}
+
+html.aura-active.aura-watch-page[data-aura-dark-override="1"] :is(
+  .yt-spec-button-shape-next--mono.yt-spec-button-shape-next--filled,
+  yt-subscribe-button-view-model .yt-spec-button-shape-next--filled,
+  ytd-subscribe-button-renderer .yt-spec-button-shape-next--filled,
+  #subscribe-button :is(yt-subscribe-button-view-model, ytd-subscribe-button-renderer):not([subscribed]) button,
+  yt-chip-cloud-chip-renderer[selected] #chip-container,
+  yt-chip-cloud-chip-renderer[aria-selected="true"] #chip-container,
+  chip-shape .ytChipShapeActive,
+  .ytChipShapeActive
+) {
+  background-color: #f1f1f1 !important;
+}
+
 html.aura-screenx-mode #aura-ambient-canvas {
   image-rendering: auto !important;
-  mask-image: radial-gradient(ellipse 92% 88% at 50% 50%, #000 44%, rgba(0, 0, 0, 0.72) 66%, rgba(0, 0, 0, 0.25) 85%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 92% 88% at 50% 50%, #000 44%, rgba(0, 0, 0, 0.72) 66%, rgba(0, 0, 0, 0.25) 85%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 44%, rgba(0, 0, 0, 0.54) 64%, rgba(0, 0, 0, 0.16) 82%, transparent 97%);
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 44%, rgba(0, 0, 0, 0.54) 64%, rgba(0, 0, 0, 0.16) 82%, transparent 97%);
 }
 
 /*
  * For the glow (which sits behind the page) to be visible, the opaque layers between
  * the root and the player must be transparent. The root keeps YouTube's theme color.
  */
-html.aura-active {
+html.aura-active:not([dark]),
+html.aura-active[dark="false"] {
+  background-color: var(--yt-spec-base-background, #ffffff) !important;
+}
+
+html.aura-active[dark]:not([dark="false"]) {
   background-color: var(--yt-spec-base-background, #0f0f0f) !important;
 }
 
@@ -55,9 +244,13 @@ html.aura-active #player-container {
   box-shadow: none !important;
 }
 
-/* Dark Theme: make masthead, sidebar, metadata, playlist, and chat containers transparent so ambient glow shines through */
+/* Dark Theme: soften top masthead with a gentle cinema scrim while keeping glow visible */
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) #masthead-container {
+  background: linear-gradient(to bottom, rgba(15, 15, 15, 0.72) 0%, rgba(15, 15, 15, 0.22) 70%, transparent 100%) !important;
+  box-shadow: none !important;
+}
+
 html.aura-active.aura-watch-page[dark]:not([dark="false"]) :is(
-  #masthead-container,
   ytd-masthead,
   ytd-masthead #container,
   ytd-masthead #background,
@@ -78,6 +271,10 @@ html.aura-active[dark]:not([dark="false"]) :is(
   #chips-wrapper,
   #below,
   ytd-watch-metadata,
+  ytd-watch-metadata #description-inner,
+  ytd-watch-metadata ytd-text-inline-expander,
+  ytd-watch-metadata #description yt-interaction,
+  ytd-watch-metadata #description yt-interaction .fill,
   ytd-engagement-panel-section-list-renderer,
   ytd-playlist-panel-renderer,
   ytd-live-chat-frame
@@ -87,10 +284,92 @@ html.aura-active[dark]:not([dark="false"]) :is(
   box-shadow: none !important;
 }
 
-/* Light Theme readability guard: keep dark foreground text legible over dark video glow frames */
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) #below h1,
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) #below #description,
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) #secondary #video-title,
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) #secondary .yt-core-attributed-string {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+html.aura-active[dark]:not([dark="false"]) ytd-watch-metadata #description,
+html.aura-active[dark]:not([dark="false"]) ytd-watch-metadata #description:hover,
+html.aura-active[dark]:not([dark="false"]) #description.ytd-watch-metadata {
+  --yt-spec-badge-chip-background: transparent !important;
+  --yt-spec-raised-background: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Mix / Playlist Panel: cohesive dark translucency and subtle dark highlight for selected item */
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-renderer #container.ytd-playlist-panel-renderer {
+  background: rgba(15, 15, 15, 0.45) !important;
+  background-color: rgba(15, 15, 15, 0.45) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-renderer .header.ytd-playlist-panel-renderer,
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-renderer .playlist-items.ytd-playlist-panel-renderer {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-video-renderer[selected],
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-video-renderer[selected] #wc-endpoint,
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-video-renderer[selected] #container.ytd-playlist-panel-video-renderer {
+  background: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-video-renderer[selected] :is(#video-title, #index, yt-icon) {
+  color: #f1f1f1 !important;
+}
+
+html.aura-active.aura-watch-page[dark]:not([dark="false"]) ytd-playlist-panel-video-renderer[selected] #byline {
+  color: #aaaaaa !important;
+}
+
+/* Light Theme: keep header, sidebar, and metadata containers 99% transparent so ScreenX/ambient glow shows cleanly */
+html.aura-active.aura-watch-page:not([dark]) #masthead-container,
+html.aura-active.aura-watch-page[dark="false"] #masthead-container {
+  background: rgba(255, 255, 255, 0.01) !important;
+  background-color: rgba(255, 255, 255, 0.01) !important;
+  box-shadow: none !important;
+}
+
+html.aura-active.aura-watch-page:not([dark]) :is(
+  #frosted-glass.ytd-app,
+  ytd-masthead,
+  ytd-masthead #container,
+  ytd-masthead #background,
+  #below,
+  #secondary,
+  #related,
+  ytd-watch-next-secondary-results-renderer,
+  ytd-feed-filter-chip-bar-renderer,
+  yt-chip-cloud-renderer,
+  #chips-wrapper
+),
+html.aura-active.aura-watch-page[dark="false"] :is(
+  #frosted-glass.ytd-app,
+  ytd-masthead,
+  ytd-masthead #container,
+  ytd-masthead #background,
+  #below,
+  #secondary,
+  #related,
+  ytd-watch-next-secondary-results-renderer,
+  ytd-feed-filter-chip-bar-renderer,
+  yt-chip-cloud-renderer,
+  #chips-wrapper
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
 html.aura-active:not([dark]) :is(
   #secondary-inner,
-  #below,
   ytd-watch-metadata,
   ytd-engagement-panel-section-list-renderer,
   ytd-playlist-panel-renderer #container,
@@ -98,14 +377,14 @@ html.aura-active:not([dark]) :is(
 ),
 html.aura-active[dark="false"] :is(
   #secondary-inner,
-  #below,
   ytd-watch-metadata,
   ytd-engagement-panel-section-list-renderer,
   ytd-playlist-panel-renderer #container,
   ytd-live-chat-frame
 ) {
-  background: rgba(255, 255, 255, 0.88) !important;
-  background-color: rgba(255, 255, 255, 0.88) !important;
+  background: rgba(255, 255, 255, 0.01) !important;
+  background-color: rgba(255, 255, 255, 0.01) !important;
+  box-shadow: none !important;
 }
 
 /* Force YouTube's native ambient colored boxes to be transparent in Dark Theme so our glow shines through */
@@ -388,12 +667,13 @@ html.aura-watch-page.aura-lights-out-active ytd-engagement-panel-section-list-re
   opacity: 1 !important;
 }
 
-/* Ultrawide Zoom-to-Fit Feature (clipped cleanly inside player container) */
-html.aura-ultrawide-zoom :is(#player-container, #ytd-player, #movie_player, .html5-video-container) {
+/* Ultrawide Zoom-to-Fit Feature (clipped at #player-container/#ytd-player/#movie_player — never .html5-video-container which collapses to 0px height) */
+html.aura-ultrawide-zoom :is(#player-container, #ytd-player, #movie_player) {
   overflow: hidden !important;
 }
 html.aura-ultrawide-zoom video.html5-main-video {
   transform: scale(1.34) !important;
+  transform-origin: center center !important;
 }
 
 /* 

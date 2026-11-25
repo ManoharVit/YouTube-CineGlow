@@ -18,6 +18,15 @@ There are playback tools too: an equaliser, volume and speech controls, a speed 
 |:---:|:---:|
 | Auto-detect and crop black bars | Picture-in-picture, speed, screenshot, and recording controls |
 
+## What's new in version 2.4.0
+
+- **ScreenX Mode (default ON):** 4-sided edge extrusion (`640×360` canvas) extends the top, bottom, and side frame edges smoothly around the player, paired with automatic watch-page Dark Cinema styling and readable frosted filter chips, playlist panels, and owner metadata.
+- **Live-tinted editorial popup:** Unified ambient top strip with sticky underline tabs (`Lighting | Video | Audio | Tools`), neutral monochrome fallback when idle, and live sampled 4-edge tinting across controls and `Active Edges`.
+- **Overlay-tolerant black bar auto-crop:** Detects and crops symmetrical 21:9 letterbox/pillarbox bars cleanly even when a corner watermark or bottom subtitle sits inside the black band.
+- **Interactive A-B Looper & shortcut guide:** Loop any segment (`[` / `]` / `\` / `Esc`) via an on-player Shadow DOM HUD and an in-popup **Keyboard Shortcuts & Controls** guide when turned on.
+- **SponsorBlock & chapter skipping:** Auto-skips or fast-forwards (`16×`) sponsored segments with timeline markers and one-click Undo, plus **Hide End Screens** (`hideEndCards`) enabled by default.
+- **Reliable load & autoplay start:** Resumes stalled loads and playlist autoplay transitions cleanly on `canplay` while keeping `Fill Ultrawide Screen` (`scale(1.34)`) and fullscreen rendering intact.
+
 ## What's new in version 2.3.0
 
 - **Store policy compliance:** Renamed to "CineGlow Pro for YouTube" and removed unused permissions and legacy downloader methods.
@@ -37,19 +46,18 @@ There are playback tools too: an equaliser, volume and speech controls, a speed 
 
 ### Ambient lighting
 
-The glow comes from a small 128×72 canvas that samples the video. Blur and colour filters spread it behind the player, while temporal smoothing softens changes between frames.
+The glow runs in either **ScreenX Mode** (default ON — a `640×360` 4-sided edge extension using a tuned cinema profile) or **Classic Mode** (`128×72` canvas with adjustable presets).
 
-Adjust opacity, spread, blur, saturation, contrast, brightness, and smoothness. Each edge has its own switch, so you can keep the glow on just the top and sides, for example. Audio-reactive mode changes its size and brightness with bass energy. An optional setting keeps the glow on the original page while the video is in picture-in-picture.
+In Classic Mode, adjust intensity, spread, blur, saturation, contrast, brightness, and smoothness, or enable bass-reactive glow. Each edge has its own switch, and an optional setting keeps the glow active while in picture-in-picture.
 
 ### Video and layout
 
 - **Cinema theatre mode** hides the YouTube header and recommendations around the centred player.
-- **Lights Out** dims the page around the video.
-- **Auto-Crop Black Bars** detects dark borders in the video and crops them. **Ultrawide Zoom-to-Fit** provides a separate option for 21:9 displays.
+- **Lights Out** dims the surrounding watch-page UI (`Shift+D`, `95%` default dimming with hover reveal).
+- **Auto-Crop Black Bars** detects and trims dark letterbox/pillarbox borders cleanly. **Fill Ultrawide Screen** zooms 21:9 videos (`1.34×`) inside the player container.
 - **Video filters** adjust brightness, contrast, and sepia warmth.
-- **Preferred quality** asks YouTube for 720p, 1080p, 1440p, 4K, or the maximum available quality when a video loads. The video still needs to offer that resolution.
-- **Hide Page Scrollbar** removes the scrollbar on watch pages.
-- **Default playback speed** has a 0.1× to 2× slider in the popup. The floating speed menu extends the range to 10×.
+- **Auto Video Quality** (`hd1080` default, or `720p` / `1440p` / `4K` / `Max`) and **Default playback speed** (`0.1×`–`2×`, up to `10×` from the floating menu).
+- **Hide Scrollbar** removes the watch-page scrollbar.
 
 Cropping and zooming can cut off part of the image. Turn them off when you want to see the full frame.
 
@@ -78,15 +86,16 @@ The speed menu has slow-motion, precision, and turbo ranges, plus quick buttons 
 
 The draggable stats panel shows display and video frame rates, dropped frames, glow update rate, video dimensions, codecs, and a frame-timing graph. It also labels colour depth and SDR/HDR formats using the metadata available from YouTube. Those labels describe the stream information; they do not certify the display's HDR output.
 
-### Other options
+### Tools & playback utilities
 
-- **Smart AdBlock** attempts to skip ads and blocks requests that match the bundled ad and tracker rules.
+- **A-B Looper** repeats any segment (`[` Set A, `]` Set B, `\` Toggle, `Esc` Clear) with a timeline overlay, on-player HUD, and an inline keyboard guide in the popup when enabled.
+- **Smart Auto-Pause** pauses playback when leaving the tab or switching apps (`off` | `tab` | `app`).
+- **SponsorBlock** (`Auto-skip` or `16× Fast-forward`) marks and skips sponsored segments with Undo support.
+- **Smart AdBlock** skips ads and blocks bundled ad and tracker rules.
 - **Return YouTube Dislike** fetches community dislike counts when enabled.
-- **Restore Classic Annotations** loads archived notes, speech bubbles, and spotlights where an archive is available.
-- **Hide Shorts** removes Shorts shelves and feed entries.
-- **Hide End Screens & Cards** removes end-card and information-card overlays.
+- **Classic Annotations** restores archived notes and spotlights where available.
+- **Hide Shorts** removes Shorts shelves and feeds; **Hide End Screens** (`true` by default) removes end-card overlays.
 - **Codec and frame-rate switches** ask YouTube to avoid AV1, VP9, or 60 fps playback.
-- **Smart Auto-Pause** can pause playback when you leave the tab or the Chrome window, depending on the selected mode.
 
 YouTube changes its player and page layout regularly, so features that depend on those elements may need updates.
 
@@ -100,50 +109,54 @@ YouTube changes its player and page layout regularly, so features that depend on
 
 2. Open `chrome://extensions` and turn on **Developer mode**.
 3. Click **Load unpacked** and select the cloned folder.
-4. Open a YouTube video, then click the CineGlow toolbar icon to adjust the settings. YouTube's dark theme makes the glow easier to see.
+4. Open a YouTube video, then click the CineGlow toolbar icon to adjust the settings.
 
-The manifest declares Chrome 105 as the minimum version. Individual media and recording features also depend on the browser's API and codec support.
+The manifest declares Chrome 111 as the minimum version. Individual media and recording features also depend on the browser's API and codec support.
 
 ## Settings and privacy
 
 Preferences are saved through `chrome.storage.sync`, so Chrome can sync them across your signed-in devices when sync is enabled. Archived annotations are cached in `chrome.storage.local`. Screenshots and recordings are saved on your computer.
 
-Glow rendering and audio processing happen in the browser. The two optional lookup features contact the Return YouTube Dislike API and an annotation archive on Google Cloud Storage using the video ID. See [PRIVACY.md](PRIVACY.md) for what is stored and sent.
+Glow rendering and audio processing happen in the browser. Optional lookup features contact SponsorBlock (`sponsor.ajay.app`), the Return YouTube Dislike API (`returnyoutubedislikeapi.com`), and the annotation archive (`storage.googleapis.com`) using the video ID when those features are enabled. See [PRIVACY.md](PRIVACY.md) for what is stored and sent.
 
 ## How the glow works
 
-1. `drawImage()` copies the current video frame onto the 128×72 canvas.
-2. The new image is blended with the previous one according to the smoothness setting.
-3. CSS scales, blurs, and colours the canvas behind the player.
-4. Playback state and page visibility determine when the glow loop runs. Other enabled features, such as recording or the stats panel, have their own update loops.
+1. `drawImage()` copies the current video frame onto the sampling canvas (`640×360` in ScreenX Mode, `128×72` in Classic Mode).
+2. In ScreenX Mode, edge strips are extended outward across all 4 sides; in Classic Mode, frames blend according to the smoothness setting.
+3. CSS scales, blurs, and masks the canvas behind the transparent page layers (`z-index: -1`).
+4. Playback state and page visibility determine when the loop runs cleanly without interfering with fullscreen or background tabs.
 
 ## Project layout
 
 ```text
-manifest.json              Extension permissions and script registration
+manifest.json              Extension permissions, MV3 config, and script registration
 background/background.js   Messages, downloads, network rules, optional lookups
 content/
   player-manager.js        Player discovery, navigation, and playback state
-  content.js + content.css Glow sampling, blending, and layout
+  content.js + content.css Glow/ScreenX rendering, dark cinema theme, popup edge sampling
+  blackbar.js              Overlay-tolerant black-border detection and auto-crop
+  ab-loop.js               Interactive A-B section looper & Shadow DOM HUD
+  lights-out.js            Lights Out focus dimmer (Shift+D)
+  sponsor-skip.js          SponsorBlock + chapter segment skipping
   stats-overlay.js + .css  Playback statistics and frame-timing graph
   audio-processor.js       Compression, volume, EQ, and frequency analysis
-  blackbar.js              Black-border detection and crop settings
   pip-button.js            Picture-in-picture control
   screenshot-button.js     PNG frame capture
   record-button.js         Video-element recording and format selection
   speed-button.js          Playback-speed menu and presets
   smart-pause.js           Tab/window-based pause behaviour
-  youtube-ads.js            Ad detection and skip-button handling
+  youtube-ads.js           Ad detection and skip-button handling
   youtube-quality.js       Preferred-resolution selection
   annotations.js           Archived annotation display
-  hide-endcards.js          End-screen and information-card removal
-  hide-shorts.js            Shorts shelf and feed removal
-  return-dislikes.js        Dislike-count display
-  main-world.js            Page-context hooks and player statistics
-popup/                     Extension controls and settings interface
+  hide-endcards.js         End-screen and card overlay removal
+  hide-shorts.js           Shorts shelf and feed removal
+  return-dislikes.js       Dislike-count display
+  main-world.js            Page-context hooks, load/autoplay recovery, player stats
+icons/fonts/               Bundled offline UI display and Noto Emoji .woff2 fonts
+popup/                     Live-tinted settings popup UI
 shared/defaults.js         Default setting values
 rules/adblock.json         Bundled ad and tracker request rules
-test/                      Node-based tests
+test/                      Node-based test suite
 store_assets/              Store screenshots and promotional images
 ```
 

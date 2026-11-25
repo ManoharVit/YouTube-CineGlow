@@ -88,7 +88,8 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
       assert.strictEqual(defaults.sponsorBlockMode, 'skip', 'sponsorBlockMode default must be skip');
       assert.deepStrictEqual(defaults.sponsorBlockCategories, ['sponsor', 'selfpromo', 'interaction'], 'Default categories must cover sponsor, selfpromo, interaction');
       assert.strictEqual(defaults.sponsorBlockNotice, true, 'sponsorBlockNotice default must be true');
-      assert.strictEqual(defaults.sponsorBlockCount, 0, 'sponsorBlockCount initial default must be 0');
+      assert.strictEqual('sponsorBlockCount' in defaults, false, 'sponsorBlockCount must be removed');
+      assert.strictEqual('adblockCount' in defaults, false, 'adblockCount must be removed');
     });
 
     test('initializes with settings from storage.sync and listens for live updates', async () => {
@@ -351,24 +352,10 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
         { id: 'seg-sponsor-1', start: 30.0, end: 60.0, category: 'sponsor', actionType: 'skip' }
       ]);
 
-      let blockedMsgReceived = false;
-      env.chrome.runtime.onMessage.addListener((message) => {
-        if (message.type === 'SPONSOR_BLOCKED') {
-          blockedMsgReceived = true;
-          assert.strictEqual(message.count, 1);
-        }
-      });
-
-      // Playhead approaches segment: at 25s, no skip
-      video.currentTime = 25.0;
-      api.checkSegmentState();
-      assert.strictEqual(video.currentTime, 25.0, 'Must not jump before start of sponsor');
-
       // Playhead enters sponsor segment at 30.5s: jumps to 60.0s
       video.currentTime = 30.5;
       api.checkSegmentState();
       assert.strictEqual(video.currentTime, 60.0, 'Must immediately seek to end of sponsor segment');
-      assert.strictEqual(blockedMsgReceived, true, 'Must send SPONSOR_BLOCKED event');
 
       // Shows HUD toast notice
       const notice = player.querySelector('.cineglow-sponsor-notice');
@@ -628,20 +615,18 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
     });
   });
 
-  describe('10. Background Service Worker Throttling & Telemetry', () => {
-    test('background.js handles FETCH_SPONSOR_BLOCK and SPONSOR_BLOCKED with throttled storage persistence', async () => {
+  describe('10. Background Service Worker Counter Removal', () => {
+    test('background.js does not persist removed adblockCount or sponsorBlockCount telemetry', async () => {
       const bgCode = fs.readFileSync(path.join(__dirname, '../background/background.js'), 'utf8');
       new Function(bgCode)();
 
-      // Dispatch SPONSOR_BLOCKED message
       env.chrome.runtime.onMessage.dispatch({ type: 'SPONSOR_BLOCKED', count: 1 });
-      await new Promise(r => setTimeout(r, 20));
+      env.chrome.runtime.onMessage.dispatch({ type: 'AD_BLOCKED', count: 1 });
+      await new Promise(r => setTimeout(r, 30));
 
-      // Wait for trailing-edge throttle flush (500ms)
-      await new Promise(r => setTimeout(r, 550));
-
-      const local = await env.chrome.storage.local.get('sponsorBlockCount');
-      assert.strictEqual(local.sponsorBlockCount, 1, 'sponsorBlockCount in storage.local must be 1');
+      const local = await env.chrome.storage.local.get(['sponsorBlockCount', 'adblockCount']);
+      assert.strictEqual(local.sponsorBlockCount, undefined, 'sponsorBlockCount must not be persisted');
+      assert.strictEqual(local.adblockCount, undefined, 'adblockCount must not be persisted');
     });
   });
 
@@ -712,11 +697,6 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
         { id: 'segB', start: 30, end: 50, category: 'selfpromo', actionType: 'skip' }
       ]);
 
-      let blockedCount = 0;
-      env.chrome.runtime.onMessage.addListener((msg) => {
-        if (msg.type === 'SPONSOR_BLOCKED') blockedCount += (msg.count || 1);
-      });
-
       // Enter segA
       video.currentTime = 15.0;
       api.checkSegmentState();
@@ -728,7 +708,6 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
       video.currentTime = 35.0;
       api.checkSegmentState();
       assert.strictEqual(video.playbackRate, 16.0);
-      assert.strictEqual(blockedCount, 1, 'First segment must be recorded as blocked');
       notice = player.querySelector('.cineglow-sponsor-notice');
       assert.ok(notice.textContent.includes('Fast-forwarding Self-Promo'), 'HUD notice must update to next segment');
 
@@ -736,7 +715,6 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
       video.currentTime = 51.0;
       api.checkSegmentState();
       assert.strictEqual(video.playbackRate, 1.0, 'Rate restored after exiting last segment');
-      assert.strictEqual(blockedCount, 2, 'Both consecutive segments must be recorded');
     });
 
     test('mode change mid-fastforward immediately restores speed and audio', async () => {
@@ -850,27 +828,10 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
       assert.strictEqual(api.isKilled(), true, 'Must automatically trigger teardown on invalid context');
     });
 
-    test('popup initial load synchronizes adblockCount and sponsorBlockCount from storage.local', async () => {
-      await env.chrome.storage.local.set({
-        adblockCount: 42,
-        sponsorBlockCount: 17
-      });
-
-      const localData = await env.chrome.storage.local.get(['auraKillSwitchActive', 'adblockCount', 'sponsorBlockCount']);
-      assert.strictEqual(localData.adblockCount, 42);
-      assert.strictEqual(localData.sponsorBlockCount, 17);
-
+    test('AURA_DEFAULTS excludes removed adblockCount and sponsorBlockCount telemetry keys', () => {
       const defaults = loadDefaults();
-      const settings = { ...defaults, ...(await env.chrome.storage.sync.get(defaults)) };
-      if (typeof localData.adblockCount === 'number') {
-        settings.adblockCount = localData.adblockCount;
-      }
-      if (typeof localData.sponsorBlockCount === 'number') {
-        settings.sponsorBlockCount = localData.sponsorBlockCount;
-      }
-
-      assert.strictEqual(settings.adblockCount, 42, 'adblockCount must be populated from storage.local');
-      assert.strictEqual(settings.sponsorBlockCount, 17, 'sponsorBlockCount must be populated from storage.local');
+      assert.strictEqual('adblockCount' in defaults, false);
+      assert.strictEqual('sponsorBlockCount' in defaults, false);
     });
   });
 

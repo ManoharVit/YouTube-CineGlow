@@ -40,21 +40,21 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(typeof d.enabled, 'boolean');
     assert.strictEqual(d.enabled, true);
 
-    // Glow properties
-    assert.strictEqual(d.opacity, 75);
-    assert.strictEqual(d.spread, 150);
+    // Glow properties (shifted balanced defaults)
+    assert.strictEqual(d.opacity, 90);
+    assert.strictEqual(d.spread, 200);
     assert.strictEqual(d.blur, 40);
-    assert.strictEqual(d.saturation, 110);
-    assert.strictEqual(d.contrast, 100);
-    assert.strictEqual(d.brightness, 100);
-    assert.strictEqual(d.smoothness, 60);
+    assert.strictEqual(d.saturation, 130);
+    assert.strictEqual(d.contrast, 110);
+    assert.strictEqual(d.brightness, 105);
+    assert.strictEqual(d.smoothness, 50);
     assert.strictEqual(d.fadeInDuration, 1);
     assert.strictEqual(d.fps, 30);
     assert.strictEqual(d.glowTop, true);
     assert.strictEqual(d.glowRight, true);
     assert.strictEqual(d.glowBottom, true);
     assert.strictEqual(d.glowLeft, true);
-    assert.strictEqual(d.screenXMode, false);
+    assert.strictEqual(d.screenXMode, true);
 
     // Audio properties
     assert.strictEqual(d.audioNormalizer, false);
@@ -76,7 +76,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(d.removeBlackBars, true);
     assert.strictEqual(d.ultrawideZoom, false);
     assert.strictEqual(d.lightsOut, false);
-    assert.strictEqual(d.lightsOutOpacity, 85);
+    assert.strictEqual(d.lightsOutOpacity, 95);
     assert.strictEqual(d.videoBrightness, 100);
     assert.strictEqual(d.videoContrast, 100);
     assert.strictEqual(d.videoSepia, 0);
@@ -89,7 +89,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(d.returnDislikes, false);
     assert.strictEqual(d.restoreAnnotations, false);
     assert.strictEqual(d.hideShorts, false);
-    assert.strictEqual(d.hideEndCards, false);
+    assert.strictEqual(d.hideEndCards, true);
     assert.strictEqual(d.autoPauseMode, 'off');
     assert.strictEqual(d.recordFormat, 'mkv');
     assert.strictEqual(d.recordFps, 30);
@@ -200,7 +200,7 @@ describe('Settings Schema & Configuration Integrity', () => {
       // 4. Wait for throttle window to elapse and verify storage was NOT overwritten with 20
       await new Promise(r => setTimeout(r, 600));
       const stored = await env.chrome.storage.sync.get('opacity');
-      assert.strictEqual(stored.opacity, 75, 'Storage must retain reset default (75), not overwritten by queued slider write');
+      assert.strictEqual(stored.opacity, 90, 'Storage must retain reset default (90), not overwritten by queued slider write');
 
       // 5. Test selective reset: queue glow (opacity) and audio (bassBoost) writes
       popup.queueSave('opacity', 30);
@@ -348,7 +348,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.ok(contentCss.includes('.aura-screenx-mode'), 'content.css must define .aura-screenx-mode styling');
     assert.ok(contentCss.includes('image-rendering: auto'), 'content.css must enable smooth image rendering for ScreenX');
     assert.ok(contentJs.includes('SCREENX_W') && contentJs.includes('SCREENX_H'), 'content.js must define high-definition ScreenX dimensions');
-    assert.ok(contentJs.includes('Math.round(numOr(settings.blur, 40) * 0.6)'), 'ScreenX mode must apply soft directional cinema blur rather than zero blur or muddy wash');
+    assert.ok(contentJs.includes('SCREENX_PROFILE') && contentJs.includes('const effectiveBlur = settings.screenXMode ? SCREENX_PROFILE.blur : settings.blur;'), 'ScreenX mode must enforce fixed ScreenX profile irrespective of preset');
     assert.ok(contentJs.includes('settings.screenXMode ? SCREENX_W : SAMPLE_W'), 'ScreenX mode must dynamically scale canvas resolution');
     assert.ok(contentJs.includes('settings.screenXMode || forceFullDraw'), 'ScreenX mode must bypass temporal smoothing to prevent motion ghosting');
   });

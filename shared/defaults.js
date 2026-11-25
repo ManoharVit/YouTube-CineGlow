@@ -2,12 +2,10 @@
 const AURA_DEFAULTS = Object.freeze({
   enabled: true,
   adblockEnabled: true,
-  adblockCount: 0,
   sponsorBlockEnabled: true,
   sponsorBlockMode: 'skip',      // 'skip' | 'fastforward'
   sponsorBlockCategories: Object.freeze(['sponsor', 'selfpromo', 'interaction']),
   sponsorBlockNotice: true,
-  sponsorBlockCount: 0,
   qualityEnabled: true,
   statsEnabled: false,
   preferredQuality: 'hd1080',
@@ -22,14 +20,14 @@ const AURA_DEFAULTS = Object.freeze({
   glowRight: true,
   glowBottom: true,
   glowLeft: true,
-  opacity: 75,           // % (balanced, comfortable default)
+  opacity: 90,           // % (balanced, comfortable default)
   fadeInDuration: 1,     // seconds
   blur: 40,              // px
-  spread: 150,           // % of video size (concentrated halo, avoids washing over page)
-  saturation: 110,       // %
-  contrast: 100,         // %
-  brightness: 100,       // %
-  smoothness: 60,        // % — temporal blend between frames
+  spread: 200,           // % of video size (concentrated halo, avoids washing over page)
+  saturation: 130,       // %
+  contrast: 110,         // %
+  brightness: 105,       // %
+  smoothness: 50,        // % — temporal blend between frames
   removeBlackBars: true,
   fps: 30,               // max glow updates per second
   audioNormalizer: false,
@@ -44,8 +42,8 @@ const AURA_DEFAULTS = Object.freeze({
   eqPreset: 'flat',      // 'flat' | 'bass' | 'vocal' | 'rock' | 'pop' | 'electro' | 'custom'
   audioReactive: true,
   lightsOut: false,
-  lightsOutOpacity: 85,  // % dimming amount (50% to 100%)
-  screenXMode: false,    // ScreenX 4-sided edge extrusion (270° frame expansion)
+  lightsOutOpacity: 95,  // % dimming amount (50% to 100%)
+  screenXMode: true,     // ScreenX 4-sided edge extrusion (270° frame expansion)
   abLoopEnabled: false,  // interactive A-B section repeat looper
   abLoopAutoClear: false, // auto-clear loop on video navigation
   ultrawideZoom: false,
@@ -58,7 +56,7 @@ const AURA_DEFAULTS = Object.freeze({
   returnDislikes: false, // restore public dislike count & rating
   hideShorts: false,     // hide YouTube Shorts shelves & feeds
   restoreAnnotations: false, // restore classic YouTube video annotations
-  hideEndCards: false    // hide video end cards, suggestions & subscribe overlays by default
+  hideEndCards: true     // hide video end cards, suggestions & subscribe overlays by default
 });
 
 if (typeof globalThis !== 'undefined') {

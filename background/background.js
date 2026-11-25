@@ -326,27 +326,6 @@ async function updateCodecBlockers() {
   }
 }
 
-// Serialized storage.local counter updates (no lost writes on SW termination)
-let counterWriteQueue = Promise.resolve();
-
-function incrementLocalCounter(key, delta = 1) {
-  const safeDelta = Number.isFinite(delta) && delta > 0 ? Math.floor(delta) : 1;
-  counterWriteQueue = counterWriteQueue
-    .then(async () => {
-      if (!chrome.storage?.local) return;
-      const localData = await chrome.storage.local.get(key);
-      let current = localData[key];
-      if (typeof current !== 'number') {
-        const syncData = await chrome.storage.sync?.get(key).catch(() => ({}));
-        current = typeof syncData?.[key] === 'number' ? syncData[key] : 0;
-      }
-      await chrome.storage.local.set({ [key]: current + safeDelta });
-    })
-    .catch((err) => {
-      console.error(`[Aura] Failed to update ${key}:`, err);
-    });
-}
-
 // --- LRU Annotations Cache ---
 const MAX_ANNOTATION_CACHE_ENTRIES = 5;
 
@@ -421,16 +400,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       error: 'Extension disabled by emergency kill-switch',
       killed: true
     });
-    return false;
-  }
-
-  if (message.type === 'AD_BLOCKED') {
-    if (!policyState.killSwitchActive) incrementLocalCounter('adblockCount', message.count || 1);
-    return false;
-  }
-
-  if (message.type === 'SPONSOR_BLOCKED') {
-    if (!policyState.killSwitchActive) incrementLocalCounter('sponsorBlockCount', message.count || 1);
     return false;
   }
 

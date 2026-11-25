@@ -273,4 +273,46 @@ describe('Aura Black Bar Detection & Auto-Crop (FP-5.1, FP-5.2, FP-5.3)', () => 
       assert.strictEqual(drawImageCount, 4, 'Hidden document must not scan even after 5000ms');
     });
   });
+
+  describe('Asymmetric Corner Overlay & Guardrails', () => {
+    test('crops symmetrical 21:9 letterbox bars when promo text watermark sits in top-left black bar', () => {
+      // 8 rows top, 8 rows bottom (12.5% letterbox) + white promo text in rows 1..5 at x=4..16 (~19% width)
+      fillLetterboxFrame(framePixelBuffer, 64, 64, 8, 8);
+      for (let y = 1; y <= 5; y++) {
+        setRowPixels(framePixelBuffer, 64, y, 255, 255, 255, 4, 16);
+      }
+
+      loadBlackBarScript();
+      for (let i = 0; i < 8; i++) tick();
+
+      assert.ok(globalThis.window.CineGlowCrop, 'Symmetric crop should ignore localized top-left promo overlay');
+      assert.ok(Math.abs(globalThis.window.CineGlowCrop.top - 0.131) < 0.01);
+      assert.ok(Math.abs(globalThis.window.CineGlowCrop.bottom - 0.131) < 0.01);
+      assert.ok(video.style.clipPath.includes('inset'), 'Video clipPath must remove letterbox bars');
+    });
+
+    test('crops symmetrical letterbox bars when subtitle text sits inside bottom black bar', () => {
+      fillLetterboxFrame(framePixelBuffer, 64, 64, 8, 8);
+      for (let y = 58; y <= 61; y++) {
+        setRowPixels(framePixelBuffer, 64, y, 240, 240, 240, 22, 42);
+      }
+
+      loadBlackBarScript();
+      for (let i = 0; i < 8; i++) tick();
+
+      assert.ok(globalThis.window.CineGlowCrop, 'Symmetric crop should tolerate subtitle inside bottom letterbox');
+      assert.ok(Math.abs(globalThis.window.CineGlowCrop.bottom - 0.131) < 0.01);
+    });
+
+    test('does NOT falsely crop 16:9 frame that has bright active content on top and dark floor on bottom', () => {
+      // Full-width bright scene on rows 0..55, dark shadow on bottom rows 56..63
+      fillLetterboxFrame(framePixelBuffer, 64, 64, 0, 8);
+
+      loadBlackBarScript();
+      for (let i = 0; i < 8; i++) tick();
+
+      assert.strictEqual(globalThis.window.CineGlowCrop, null, 'Must never crop active bright top picture');
+      assert.strictEqual(video.style.clipPath || '', '');
+    });
+  });
 });

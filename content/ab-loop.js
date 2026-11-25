@@ -8,7 +8,7 @@
   const lifecycle = new AbortController();
   const { signal } = lifecycle;
 
-  let settings = typeof AURA_DEFAULTS !== 'undefined' ? { ...AURA_DEFAULTS } : { abLoopEnabled: true };
+  let settings = typeof AURA_DEFAULTS !== 'undefined' ? { ...AURA_DEFAULTS } : { abLoopEnabled: false };
   let video = null;
   let videoAbortController = null;
   let player = null;
@@ -51,15 +51,13 @@
   function scheduleNextLoopCheck() {
     clearLoopBoundaryTimer();
     if (isKilled || !video || !isLooping || pointA === null || pointB === null) return;
-    if (video.paused || video.ended) return;
+    if (video.paused || video.ended || video.seeking) return;
 
     const remainingSec = pointB - video.currentTime;
-    if (remainingSec <= 0) {
-      onTimeUpdate();
-      return;
-    }
     const rate = Math.max(0.1, video.playbackRate || 1);
-    const delayMs = Math.max(10, Math.min(30_000, (remainingSec / rate) * 1000));
+    const delayMs = remainingSec <= 0
+      ? 20
+      : Math.max(10, Math.min(30_000, (remainingSec / rate) * 1000));
     loopBoundaryTimer = setTimeout(() => {
       loopBoundaryTimer = 0;
       onTimeUpdate();
@@ -152,15 +150,15 @@
           position: absolute;
           top: calc(100% + 8px);
           left: 0;
-          background: rgba(255, 0, 85, 0.95);
-          backdrop-filter: blur(8px);
+          background: rgba(15, 16, 22, 0.94);
+          backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 14px;
-          padding: 6px 14px;
+          border-radius: 8px;
+          padding: 7px 12px;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          font-size: 12px;
-          font-weight: 600;
-          color: #fff;
+          font-size: 11.5px;
+          font-weight: 500;
+          color: #f8fafc;
           white-space: nowrap;
           box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
           pointer-events: none;
@@ -383,6 +381,7 @@
 
   function onTimeUpdate() {
     if (isKilled || !video || !isLooping || pointA === null || pointB === null) return;
+    if (video.seeking || window.CineGlowPlayer?.isAdShowing) return;
     if (video.currentTime >= pointB) {
       jumpToLoopStart(false);
     } else {
@@ -498,9 +497,13 @@
   const handleStorageChange = (changes, area) => {
     if (isKilled || area !== 'sync') return;
     if (changes.abLoopEnabled) {
-      settings.abLoopEnabled = Boolean(changes.abLoopEnabled.newValue);
-      if (!changes.abLoopEnabled.newValue) {
+      const prevEnabled = Boolean(settings.abLoopEnabled);
+      const nextEnabled = Boolean(changes.abLoopEnabled.newValue);
+      settings.abLoopEnabled = nextEnabled;
+      if (!nextEnabled) {
         resetLoop();
+      } else if (!prevEnabled) {
+        showHUDToast('A-B Loop ON — [ Set A • ] Set B • \\ Toggle • Esc Clear', 4000);
       }
     }
   };
@@ -563,7 +566,7 @@
     if (v) bindVideo(v);
   }
 
-  chrome.storage?.sync?.get({ abLoopEnabled: true }).then((items) => {
+  chrome.storage?.sync?.get({ abLoopEnabled: false }).then((items) => {
     if (!isKilled && typeof items?.abLoopEnabled === 'boolean') {
       settings.abLoopEnabled = items.abLoopEnabled;
     }
