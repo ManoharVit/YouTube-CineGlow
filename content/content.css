@@ -651,7 +651,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
   align-items: center;
   gap: 5px;
   color: #fff;
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -835,7 +835,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
   align-items: center;
   gap: 6px;
   color: #fff;
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 13px;
   font-weight: 700;
 }
@@ -847,7 +847,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
 }
 
 .cineglow-rec-current-badge {
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 11px;
   font-weight: 800;
   color: #ef4444;
@@ -1018,7 +1018,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
   align-items: center;
   gap: 6px;
   color: #fff;
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 13px;
   font-weight: 700;
 }
@@ -1036,7 +1036,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
 }
 
 .cineglow-speed-current-val {
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 800;
   color: #3ea6ff;
@@ -1235,7 +1235,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: #fff;
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 700;
   padding: 7px 18px;
@@ -1263,7 +1263,7 @@ html.aura-ultrawide-zoom video.html5-main-video {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: #fff;
-  font-family: 'YouTube Sans', 'Roboto', sans-serif;
+  font-family: 'Noto Emoji', 'YouTube Sans', 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 700;
   padding: 7px 18px;

@@ -15,6 +15,19 @@
 
   if (typeof window !== 'undefined' && window.CineGlowKilled) return;
 
+  // Inject Noto Emoji font (CDN) into YouTube page so overlay toasts
+  // (speed icons 🐢🚀⚡ etc.) render consistently across all OS.
+  // Gated to youtube.com only — no DOM pollution on SaaS/non-YouTube pages.
+  if (!document.getElementById('cineglow-noto-emoji-font') &&
+      typeof location !== 'undefined' &&
+      /^https?:\/\/([^/]+\.)?youtube\.com\//.test(location.href)) {
+    const notoLink = document.createElement('link');
+    notoLink.id = 'cineglow-noto-emoji-font';
+    notoLink.rel = 'stylesheet';
+    notoLink.href = 'https://fonts.googleapis.com/css2?family=Noto+Emoji:wght@400&display=block';
+    (document.head || document.documentElement).appendChild(notoLink);
+  }
+
   const ROOT_CLASS = 'aura-active';
   const CANVAS_ID = 'aura-ambient-canvas';
   const SAMPLE_W = 128;

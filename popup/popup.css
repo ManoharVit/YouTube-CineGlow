@@ -3,6 +3,35 @@
    Deliberate, quiet, compact design with reserved ambient glow
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   Noto Emoji — bundled subsets (shipped locally, no CDN, MV3-safe)
+   Covers: objects/tools, symbols/UI, activities/sports used in CineGlow
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Noto Emoji';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../icons/fonts/NotoEmoji-objects.woff2') format('woff2');
+  /* Objects: 🔊🔒🔗🔩🗄️🗜️💡💿📁📃📊📋📝 */
+}
+@font-face {
+  font-family: 'Noto Emoji';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../icons/fonts/NotoEmoji-symbols.woff2') format('woff2');
+  /* Symbols/UI: 🌐🏷✅❌🔴🟢 */
+}
+@font-face {
+  font-family: 'Noto Emoji';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../icons/fonts/NotoEmoji-activities.woff2') format('woff2');
+  /* Activities: 🚀🛡️🐢⚡ */
+}
+
 :root {
   /* Color Roles */
   --bg-canvas: #0b0c10;
@@ -49,7 +78,7 @@ body {
   padding: 10px;
   background-color: var(--bg-canvas);
   color: var(--text-main);
-  font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, Helvetica, Arial, 'Noto Emoji', sans-serif;
   user-select: none;
 }
 
