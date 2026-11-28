@@ -712,7 +712,10 @@
     'ytd-compact-video-renderer',
     'ytd-grid-video-renderer',
     'ytd-playlist-video-renderer',
-    'yt-lockup-view-model'
+    'yt-lockup-view-model',
+    'ytd-reel-item-renderer',
+    'ytm-shorts-lockup-view-model',
+    'ytm-shorts-lockup-view-model-v2'
   ].join(', ');
 
   const FEED_ITEM_RENDERER_KEYS = new Set([
@@ -722,7 +725,8 @@
     'playlistVideoRenderer',
     'lockupViewModel',
     'reelItemRenderer',
-    'shortsLockupViewModel'
+    'shortsLockupViewModel',
+    'shortsLockupViewModelV2'
   ]);
 
   const MAX_FEED_DISCLOSED_IDS = 200;
@@ -785,7 +789,9 @@
     const navVid = item?.navigationEndpoint?.watchEndpoint?.videoId ||
       item?.navigationEndpoint?.reelWatchEndpoint?.videoId ||
       item?.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint?.videoId ||
-      item?.onTap?.innertubeCommand?.watchEndpoint?.videoId;
+      item?.rendererContext?.commandContext?.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId ||
+      item?.onTap?.innertubeCommand?.watchEndpoint?.videoId ||
+      item?.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
     if (typeof navVid === 'string' && navVid) return navVid;
     if (item.content && typeof item.content === 'object') {
       for (const k of FEED_ITEM_RENDERER_KEYS) {

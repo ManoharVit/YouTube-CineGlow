@@ -3,10 +3,10 @@
 **Release Version:** `3.0.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
 **Package Archive:** [`YouTube-CineGlow-v3.0.0.zip`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/YouTube-CineGlow-v3.0.0.zip)  
-**Package Size:** `364 KB` (372,741 bytes)  
-**File Count:** 51 entries (44 files, 7 directories)  
-**SHA-256 Checksum:** `3ccbedaec10710a24e27bc0de295df2c2372efc3ac63beef2d98f40350ceb5e1`  
-**Last Updated:** November 26, 2026  
+**Package Size:** `379.5 KB` (388,632 bytes)  
+**File Count:** 53 entries (46 files, 7 directories)  
+**SHA-256 Checksum:** `153ea0b4a4884f80f3cf3bf9beb2c2bc4bdf0c67d35ee60231147fa056cce904`  
+**Last Updated:** November 28, 2026  
 
 ---
 
@@ -38,15 +38,15 @@ Customise YouTube viewing with ambient lighting and related playback, audio, dis
 
 ---
 
-## 2. Release Notes / "What's New in v2.4.0" (for Reviewers & Users)
+## 2. Release Notes / "What's New in v3.0.0" (for Reviewers & Users)
 
 ```text
-Version 2.4.0:
-• Interactive A-B Section Looper: Continuous loop repeat for any segment with an on-player glassmorphic Shadow DOM HUD, timeline progress bar range overlay, and keyboard shortcuts ([ to set A, ] to set B, \ to toggle, and Esc/Backspace to clear).
-• Cinema Lights Out & Ambient Focus Dimmer: Enhanced cinema dimming with dynamic opacity slider (50% to 100%), hover reveal with 2.5s idle timeout, and Shift+D hotkey toggle.
-• Recording HUD Audio Status: Live audio track detection displaying AUDIO or NO AUDIO status tag during screen capture.
-• Enhanced CSS Custom Properties: Dynamic --cineglow-dim-opacity CSS variable binding for fluid page dimming transitions.
-• Storage Quota Optimization: 550ms trailing-edge sync throttle with instant cancellation on section resets.
+Version 3.0.0:
+• ScreenX Mode (Default ON) & Dark Cinema Watch Theme: 4-sided frame edge extrusion (640×360 canvas, calibrated 16px blur, outermost perimeter sampling, multi-stop radial mask) paired with readable translucent controls even on YouTube Light Theme.
+• Live-Tinted Popup & Offline Fonts: Unified Glow | Video | Audio | Tools tab interface using bundled offline .woff2 fonts (Bricolage Grotesque & Noto Emoji) and a willReadFrequently offscreen edge color sampler.
+• Volume Normalizer Default ON & Audio/Speed Hardening: Smooth dynamics normalization enabled out of the box with lazy AudioContext initialization, +9 dB makeup gain, double-click 1.0x speed reset, and SPA/ad speed persistence.
+• SponsorBlock & Chapter Skipping (Default ON) + Opt-In Hide AI Videos: Client-side sponsor/promo skipping alongside opt-in hiding of YouTube-disclosed synthetic content across Home/Search/Shorts feeds and Watch pages.
+• End Screens, Shorts, Auto-Crop, A-B Looper & MV3 Hardening: Info-card teaser suppression (.ytp-cards-teaser / .ytp-cards-button), MutationObserver-backed Shorts filtering, overlay-tolerant Auto-Crop Black Bars, centralized MV3 message authorization, and AbortSignal-aware network backoff.
 ```
 
 ---

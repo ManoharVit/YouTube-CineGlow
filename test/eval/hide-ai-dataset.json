@@ -265,6 +265,117 @@
           "shortDescription": "Disclosure: narration uses synthetic voiceover, footage is archival."
         }
       }
+    },
+    {
+      "id": "pos-watch-dom-structured-in-description",
+      "category": "confirmed_ai_watch_dom",
+      "surface": "watch_dom",
+      "expected": true,
+      "videoId": "posDom000001",
+      "domNodes": [
+        {
+          "tag": "div",
+          "attrs": { "id": "description" },
+          "children": [
+            {
+              "tag": "ytd-structured-description-content-renderer",
+              "children": [
+                {
+                  "tag": "ytd-video-attributes-renderer",
+                  "text": "How this content was made · Altered or synthetic content"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-watch-dom-empty-badge-style",
+      "category": "confirmed_ai_watch_dom",
+      "surface": "watch_dom",
+      "expected": true,
+      "videoId": "posDom000002",
+      "domNodes": [
+        {
+          "tag": "ytd-structured-description-content-renderer",
+          "children": [
+            {
+              "tag": "yt-badge-shape",
+              "attrs": { "badge-style": "BADGE_STYLE_TYPE_AI_DISCLOSURE" },
+              "text": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-feed-shorts-lockup-bridge",
+      "category": "confirmed_ai_feed_bridge",
+      "surface": "feed_dom_bridge",
+      "expected": true,
+      "videoId": "posShortBridge1",
+      "domNodes": [
+        {
+          "tag": "ytm-shorts-lockup-view-model",
+          "data": {
+            "shortsLockupViewModel": {
+              "onTap": { "innertubeCommand": { "reelWatchEndpoint": { "videoId": "posShortBridge1" } } },
+              "badges": [{ "badgeViewModel": { "badgeStyle": "BADGE_STYLE_TYPE_AI_DISCLOSURE" } }]
+            }
+          },
+          "children": [
+            { "tag": "a", "attrs": { "href": "/shorts/posShortBridge1" }, "text": "AI Short" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "neg-watch-dom-expander-prose",
+      "category": "hard_negative_watch_dom",
+      "surface": "watch_dom",
+      "expected": false,
+      "videoId": "negDom000001",
+      "domNodes": [
+        {
+          "tag": "div",
+          "attrs": { "id": "description" },
+          "children": [
+            {
+              "tag": "ytd-text-inline-expander",
+              "attrs": { "id": "description-inline-expander" },
+              "children": [
+                {
+                  "tag": "yt-attribute-view-model",
+                  "text": "How this content was made: discussing Altered or synthetic content rules"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "neg-watch-dom-sidebar-card-badge",
+      "category": "hard_negative_watch_dom",
+      "surface": "watch_dom",
+      "expected": false,
+      "videoId": "negDom000002",
+      "domNodes": [
+        {
+          "tag": "div",
+          "attrs": { "id": "related" },
+          "children": [
+            {
+              "tag": "ytd-compact-video-renderer",
+              "children": [
+                { "tag": "a", "attrs": { "href": "/watch?v=sidebarAi99" }, "text": "Sidebar AI Clip" },
+                { "tag": "yt-badge-shape", "attrs": { "badge-style": "BADGE_STYLE_TYPE_AI_DISCLOSURE" }, "text": "" }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }

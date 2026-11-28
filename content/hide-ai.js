@@ -10,7 +10,10 @@
     'ytd-compact-video-renderer',
     'ytd-grid-video-renderer',
     'ytd-playlist-video-renderer',
-    'yt-lockup-view-model'
+    'yt-lockup-view-model',
+    'ytd-reel-item-renderer',
+    'ytm-shorts-lockup-view-model',
+    'ytm-shorts-lockup-view-model-v2'
   ].join(', ');
 
   const CARD_BADGE_SELECTOR = [
@@ -44,6 +47,17 @@
     '#plain-snippet-text',
     '#attributed-snippet-text'
   ].join(', ');
+
+  const NON_WATCH_DISCLOSURE_CONTAINER_SELECTOR = [
+    DESCRIPTION_EXPANDER_SELECTOR,
+    CARD_SELECTOR,
+    '#related',
+    'ytd-watch-next-secondary-results-renderer',
+    '#comments',
+    'ytd-comments'
+  ].join(', ');
+
+  const MAIN_WORLD_FEED_THROTTLE_MS = 2500;
 
   const HIDDEN_CARD_ATTR = 'data-cineglow-ai-hidden';
   const WATCH_HIDDEN_ATTR = 'cineglow-ai-watch-hidden';
@@ -89,6 +103,8 @@
   let domObserver = null;
   let scanScheduled = false;
   let playGuardVideo = null;
+  let mainWorldCheckTimer = null;
+  let lastMainWorldCheckAt = 0;
 
   function isYouTubeContext() {
     if (typeof window === 'undefined' || !window.location) return false;
@@ -145,10 +161,10 @@
     if (existing) existing.remove();
   }
 
-  function isInsideDescriptionExpander(el) {
+  function isInsideNonWatchContainer(el) {
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return Boolean(el.closest(DESCRIPTION_EXPANDER_SELECTOR));
+      return Boolean(el.closest(NON_WATCH_DISCLOSURE_CONTAINER_SELECTOR));
     }
     let curr = el.parentElement || el.parentNode;
     while (curr) {
@@ -156,9 +172,22 @@
       const tag = (curr.tagName || '').toLowerCase();
       if (
         tag === 'ytd-text-inline-expander' ||
+        tag === 'ytd-watch-next-secondary-results-renderer' ||
+        tag === 'ytd-comments' ||
+        tag === 'ytd-rich-item-renderer' ||
+        tag === 'ytd-video-renderer' ||
+        tag === 'ytd-compact-video-renderer' ||
+        tag === 'ytd-grid-video-renderer' ||
+        tag === 'ytd-playlist-video-renderer' ||
+        tag === 'yt-lockup-view-model' ||
+        tag === 'ytd-reel-item-renderer' ||
+        tag === 'ytm-shorts-lockup-view-model' ||
+        tag === 'ytm-shorts-lockup-view-model-v2' ||
         id === 'description-inline-expander' ||
         id === 'plain-snippet-text' ||
-        id === 'attributed-snippet-text'
+        id === 'attributed-snippet-text' ||
+        id === 'related' ||
+        id === 'comments'
       ) return true;
       curr = curr.parentElement || curr.parentNode;
     }
@@ -272,8 +301,8 @@
     if (!root || typeof root.querySelectorAll !== 'function') return null;
     const nodes = root.querySelectorAll(WATCH_DISCLOSURE_SELECTOR);
     for (const el of nodes) {
-      // Never inspect free-form creator descriptions inside expanders
-      if (isInsideDescriptionExpander(el)) continue;
+      // Never inspect free-form creator descriptions, recommendation cards, or comments
+      if (isInsideNonWatchContainer(el)) continue;
       // Dedicated badge-style attribute is an instant match even without text content
       const badgeStyle = (el.getAttribute?.('badge-style') || '').trim();
       if (badgeStyle && badgeStyle.includes('AI_DISCLOSURE')) {
@@ -348,7 +377,9 @@
 
     const player = getActivePlayer();
     const video = getActiveVideo(player);
-    document.documentElement?.setAttribute(WATCH_HIDDEN_ATTR, 'true');
+    if (document.documentElement?.getAttribute?.(WATCH_HIDDEN_ATTR) !== 'true') {
+      document.documentElement?.setAttribute(WATCH_HIDDEN_ATTR, 'true');
+    }
 
     if (video) {
       if (playGuardVideo && playGuardVideo !== video) {
@@ -430,17 +461,48 @@
       host.appendChild(overlay);
     } else {
       const subtitle = overlay.querySelector('.cineglow-ai-reason');
-      if (subtitle) subtitle.textContent = reasonText;
+      if (subtitle && subtitle.textContent !== reasonText) {
+        subtitle.textContent = reasonText;
+      }
+    }
+  }
+
+  function clearMainWorldCheckTimer() {
+    if (mainWorldCheckTimer) {
+      clearTimeout(mainWorldCheckTimer);
+      mainWorldCheckTimer = null;
     }
   }
 
   function requestMainWorldDisclosureCheck() {
     if (isKilled || window.CineGlowKilled || !hideAiEnabled || !isYouTubeContext()) return;
+    lastMainWorldCheckAt = Date.now();
+    clearMainWorldCheckTimer();
     if (typeof window.postMessage === 'function') {
       try {
         window.postMessage({ type: 'CINEGLOW_CHECK_AI_DISCLOSURE' }, window.location.origin);
         window.postMessage({ type: 'CINEGLOW_CHECK_FEED_AI_DISCLOSURES' }, window.location.origin);
       } catch (_) {}
+    }
+  }
+
+  function scheduleMainWorldDisclosureCheck() {
+    if (isKilled || window.CineGlowKilled || !hideAiEnabled || !isYouTubeContext()) return;
+    const elapsed = Date.now() - lastMainWorldCheckAt;
+    if (elapsed >= MAIN_WORLD_FEED_THROTTLE_MS) {
+      requestMainWorldDisclosureCheck();
+      return;
+    }
+    if (!mainWorldCheckTimer && typeof setTimeout === 'function') {
+      mainWorldCheckTimer = setTimeout(() => {
+        mainWorldCheckTimer = null;
+        if (!isKilled && !window.CineGlowKilled && hideAiEnabled && isYouTubeContext()) {
+          requestMainWorldDisclosureCheck();
+        }
+      }, MAIN_WORLD_FEED_THROTTLE_MS - elapsed);
+      if (typeof mainWorldCheckTimer?.unref === 'function') {
+        mainWorldCheckTimer.unref();
+      }
     }
   }
 
@@ -483,16 +545,42 @@
     }
   }
 
+  function isOverlayNode(node) {
+    if (!node) return false;
+    const el = node.nodeType === 3 ? (node.parentElement || node.parentNode) : node;
+    if (!el) return false;
+    if (el.id === OVERLAY_ID) return true;
+    return Boolean(typeof el.closest === 'function' && el.closest(`#${OVERLAY_ID}`));
+  }
+
+  function isOverlayOnlyMutations(mutations) {
+    if (!Array.isArray(mutations) || mutations.length === 0) return false;
+    for (const m of mutations) {
+      if (isOverlayNode(m?.target)) continue;
+      const added = Array.from(m?.addedNodes || []);
+      const removed = Array.from(m?.removedNodes || []);
+      if (added.length === 0 && removed.length === 0) return false;
+      if (!added.every(isOverlayNode) || !removed.every(isOverlayNode)) return false;
+    }
+    return true;
+  }
+
   function ensureObserver() {
     if (domObserver || isKilled || window.CineGlowKilled || !hideAiEnabled || !isYouTubeContext()) return;
     if (typeof MutationObserver !== 'function') return;
     const target = document.body || document.documentElement;
     if (!target) return;
-    domObserver = new MutationObserver(() => scheduleScan());
+    domObserver = new MutationObserver((mutations) => {
+      if (isOverlayOnlyMutations(mutations)) return;
+      scheduleScan();
+      scheduleMainWorldDisclosureCheck();
+    });
     domObserver.observe(target, { childList: true, subtree: true });
   }
 
   function disconnectObserver() {
+    clearMainWorldCheckTimer();
+    scanScheduled = false;
     if (domObserver) {
       domObserver.disconnect();
       domObserver = null;
@@ -583,6 +671,7 @@
     hideAiEnabled = false;
     disclosedVideoId = null;
     disclosureReason = null;
+    lastMainWorldCheckAt = 0;
     dismissedVideoIds.clear();
     knownDisclosedVideoIds.clear();
     disconnectObserver();

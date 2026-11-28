@@ -17,8 +17,10 @@
     const active = Boolean(enabled && !isKilled && !window.CineGlowKilled && !userRevealed);
     if (document.documentElement) {
       if (active) {
-        document.documentElement.setAttribute('cineglow-hide-endcards', 'true');
-      } else {
+        if (document.documentElement.getAttribute('cineglow-hide-endcards') !== 'true') {
+          document.documentElement.setAttribute('cineglow-hide-endcards', 'true');
+        }
+      } else if (document.documentElement.hasAttribute('cineglow-hide-endcards')) {
         document.documentElement.removeAttribute('cineglow-hide-endcards');
       }
     }

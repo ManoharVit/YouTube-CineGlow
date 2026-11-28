@@ -4,7 +4,7 @@
 
 Following successful completion of **Phase 4 Pilot Governance** (Ring 0 and Ring 1), **Phase 5 Global Production Rollout (Ring 2)** executes deployment across all remaining enterprise endpoints in **20% daily increments** over 5 consecutive business days.
 
-- **Target Package**: `YouTube-CineGlow-v3.0.0.zip` (SHA-256: `3ccbedaec10710a24e27bc0de295df2c2372efc3ac63beef2d98f40350ceb5e1`)
+- **Target Package**: `YouTube-CineGlow-v3.0.0.zip` (SHA-256: `153ea0b4a4884f80f3cf3bf9beb2c2bc4bdf0c67d35ee60231147fa056cce904`)
 - **Lead Architect**: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 - **Deployment Mechanism**: Chrome Enterprise MDM Policy (`ExtensionInstallForcelist`) targeting regional Organizational Units (OUs).
 

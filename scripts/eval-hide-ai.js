@@ -8,9 +8,157 @@ const { MockElement } = require('../test/helpers/mock-dom');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const DATASET_PATH = path.join(REPO_ROOT, 'test/eval/hide-ai-dataset.json');
+const DEFAULTS_CODE = fs.readFileSync(path.join(REPO_ROOT, 'shared/defaults.js'), 'utf8');
+const HIDE_AI_CODE = fs.readFileSync(path.join(REPO_ROOT, 'content/hide-ai.js'), 'utf8');
 const MAIN_WORLD_CODE = fs.readFileSync(path.join(REPO_ROOT, 'content/main-world.js'), 'utf8');
 
+function buildMockNode(spec) {
+  if (!spec || typeof spec !== 'object') return null;
+  const el = new MockElement(spec.tag || 'div', spec.attrs || {});
+  if (spec.text !== undefined) el.textContent = spec.text;
+  if (spec.data !== undefined) el.data = spec.data;
+  if (Array.isArray(spec.children)) {
+    for (const childSpec of spec.children) {
+      const child = buildMockNode(childSpec);
+      if (child) el.appendChild(child);
+    }
+  }
+  return el;
+}
+
+function evaluateDomOrBridgeCase(testCase) {
+  const isWatch = testCase.surface === 'watch_dom';
+  const docEl = new MockElement('html');
+  const bodyEl = new MockElement('body');
+  docEl.appendChild(bodyEl);
+
+  const player = new MockElement('div', { id: 'movie_player' });
+  bodyEl.appendChild(player);
+
+  const targetNodes = [];
+  for (const nodeSpec of testCase.domNodes || []) {
+    const built = buildMockNode(nodeSpec);
+    if (built) {
+      bodyEl.appendChild(built);
+      targetNodes.push(built);
+    }
+  }
+
+  const origin = 'https://www.youtube.com';
+  const href = isWatch
+    ? `${origin}/watch?v=${testCase.videoId}`
+    : `${origin}/`;
+
+  const postedFromMain = [];
+  const mwListeners = [];
+  const hideAiListeners = [];
+
+  const mockChrome = {
+    storage: {
+      local: { get: () => Promise.resolve({}) },
+      managed: { get: () => Promise.resolve({}) },
+      sync: { get: () => Promise.resolve({ hideAiVideos: true }) },
+      onChanged: { addListener: () => {}, removeListener: () => {} }
+    },
+    runtime: {
+      onMessage: { addListener: () => {}, removeListener: () => {} }
+    }
+  };
+
+  const mockDoc = {
+    readyState: 'complete',
+    hidden: false,
+    documentElement: docEl,
+    body: bodyEl,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    createElement: (tag) => new MockElement(tag),
+    getElementById: (id) => {
+      if (id === 'movie_player') return player;
+      const walk = (n) => {
+        if (!n) return null;
+        if (n.id === id) return n;
+        for (const c of n.children || []) {
+          const hit = walk(c);
+          if (hit) return hit;
+        }
+        return null;
+      };
+      return walk(docEl);
+    },
+    querySelector: (sel) => bodyEl.querySelector(sel),
+    querySelectorAll: (sel) => bodyEl.querySelectorAll(sel)
+  };
+
+  const mwWindow = {
+    location: { href, pathname: isWatch ? '/watch' : '/', search: isWatch ? `?v=${testCase.videoId}` : '', origin },
+    ytInitialData: testCase.ytInitialData || null,
+    ytInitialPlayerResponse: testCase.ytInitialPlayerResponse || null,
+    addEventListener: (type, fn) => mwListeners.push({ type, fn }),
+    removeEventListener: () => {},
+    postMessage: (data, targetOrigin) => postedFromMain.push({ data, origin: targetOrigin })
+  };
+
+  vm.runInNewContext(MAIN_WORLD_CODE, {
+    window: mwWindow,
+    document: mockDoc,
+    URL,
+    JSON,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval
+  });
+
+  const mwHandler = mwListeners.find((l) => l.type === 'message' && l.fn.name === 'handleAiDisclosureMessage');
+
+  const hideWindow = {
+    location: { href, pathname: isWatch ? '/watch' : '/', search: isWatch ? `?v=${testCase.videoId}` : '', origin },
+    addEventListener: (type, fn) => hideAiListeners.push({ type, fn }),
+    removeEventListener: () => {},
+    postMessage: (data, targetOrigin) => {
+      if (mwHandler && data?.type) {
+        mwHandler.fn({ source: mwWindow, origin: targetOrigin, data });
+      }
+    }
+  };
+
+  vm.runInNewContext(`${DEFAULTS_CODE}\n${HIDE_AI_CODE}`, {
+    window: hideWindow,
+    document: mockDoc,
+    chrome: mockChrome,
+    URL,
+    MutationObserver: class {
+      observe() {}
+      disconnect() {}
+    },
+    setTimeout,
+    clearTimeout,
+    queueMicrotask
+  });
+
+  hideWindow.CineGlowHideAi.applyEnabledState(true);
+  for (const msg of postedFromMain) {
+    for (const l of hideAiListeners) {
+      if (l.type === 'message') {
+        l.fn({ source: hideWindow, origin, data: msg.data });
+      }
+    }
+  }
+  hideWindow.CineGlowHideAi.scanFeeds();
+  hideWindow.CineGlowHideAi.scanWatchDisclosure();
+
+  if (isWatch) {
+    return docEl.getAttribute('cineglow-ai-watch-hidden') === 'true';
+  }
+  const targetCard = targetNodes[0] || bodyEl.querySelector('[data-cineglow-target]') || targetNodes.at(-1);
+  return targetCard?.getAttribute('data-cineglow-ai-hidden') === 'true';
+}
+
 function evaluateCase(testCase) {
+  if (testCase.surface === 'watch_dom' || testCase.surface === 'feed_dom_bridge') {
+    return evaluateDomOrBridgeCase(testCase);
+  }
   const posted = [];
   const listeners = [];
 
