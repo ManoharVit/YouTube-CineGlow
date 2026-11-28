@@ -281,12 +281,13 @@
   }
 
   const onPlayerStateChange = () => checkAdState();
-  window.CineGlowPlayer?.addEventListener('state-change', onPlayerStateChange);
-  document.addEventListener('yt-page-data-updated', checkAdState, { passive: true });
-  document.addEventListener('yt-navigate-finish', () => {
+  let navFinishTimer = null;
+  const onNavigateFinish = () => {
+    if (isKilled) return;
     setupPopupObserver();
     checkAdState();
-    setTimeout(() => {
+    clearTimeout(navFinishTimer);
+    navFinishTimer = setTimeout(() => {
       const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
       const player = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
       if (video && video.paused && video.currentTime < 0.5 && !video.ended && !isAdActive() && !isKilled) {
@@ -302,17 +303,23 @@
         } catch (_) {}
       }
     }, 300);
-  }, { passive: true });
+  };
+  window.CineGlowPlayer?.addEventListener('state-change', onPlayerStateChange);
+  document.addEventListener('yt-page-data-updated', checkAdState, { passive: true });
+  document.addEventListener('yt-navigate-finish', onNavigateFinish, { passive: true });
 
   function teardownKillSwitch() {
     if (isKilled) return;
     isKilled = true;
     settings.adblockEnabled = false;
     window.CineGlowKilled = true;
+    clearTimeout(navFinishTimer);
+    navFinishTimer = null;
 
     chrome.storage?.onChanged?.removeListener(handleStorageChange);
     window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerStateChange);
     document.removeEventListener('yt-page-data-updated', checkAdState);
+    document.removeEventListener('yt-navigate-finish', onNavigateFinish);
 
     if (popupBootstrapObserver) {
       popupBootstrapObserver.disconnect();

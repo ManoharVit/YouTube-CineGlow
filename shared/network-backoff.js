@@ -39,13 +39,15 @@
     });
   }
 
+  const MAX_BACKOFF_EXPONENT = 30;
+
   function calculateBackoffDelay(attempt, config = {}) {
     const initial = Math.max(0, config.initialDelayMs ?? DEFAULT_BACKOFF_CONFIG.initialDelayMs);
     const maxDelay = Math.max(initial, config.maxDelayMs ?? DEFAULT_BACKOFF_CONFIG.maxDelayMs);
     const jitterRatio = Math.max(0, Math.min(1, config.jitterRatio ?? DEFAULT_BACKOFF_CONFIG.jitterRatio));
     const randomFn = config.randomFn ?? DEFAULT_BACKOFF_CONFIG.randomFn;
 
-    const power = Math.min(Math.max(0, attempt), 30);
+    const power = Math.min(Math.max(0, attempt), MAX_BACKOFF_EXPONENT);
     const baseDelay = Math.min(maxDelay, initial * Math.pow(2, power));
     const randomFactor = (randomFn() * 2 - 1) * jitterRatio;
     return Math.max(0, Math.round(baseDelay * (1 + randomFactor)));
@@ -57,7 +59,11 @@
 
   function isTransientNetworkError(err) {
     if (!err) return false;
-    if (err instanceof TypeError || err.name === 'TimeoutError' || err.name === 'AbortError') return true;
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') return true;
+    if (err instanceof TypeError) {
+      const msg = String(err.message || '').toLowerCase();
+      return msg === '' || msg.includes('fetch') || msg.includes('network') || msg.includes('load') || msg.includes('connect') || msg.includes('timeout');
+    }
     if (typeof err.message === 'string') {
       const msg = err.message.toLowerCase();
       if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('fetch failed')) {
@@ -69,12 +75,13 @@
 
   function getRetryAfterDelayMs(response, maxDelayMs) {
     const header = response?.headers?.get?.('Retry-After');
-    if (!header) return null;
-    const seconds = Number(header);
+    if (typeof header !== 'string' || header.trim() === '') return null;
+    const trimmed = header.trim();
+    const seconds = Number(trimmed);
     if (Number.isFinite(seconds) && seconds >= 0) {
       return Math.min(maxDelayMs, Math.round(seconds * 1000));
     }
-    const targetDateMs = Date.parse(header);
+    const targetDateMs = Date.parse(trimmed);
     if (Number.isFinite(targetDateMs)) {
       return Math.min(maxDelayMs, Math.max(0, targetDateMs - Date.now()));
     }
@@ -83,6 +90,11 @@
 
   async function fetchWithBackoff(url, options = {}, backoffConfig = {}) {
     const config = { ...DEFAULT_BACKOFF_CONFIG, ...backoffConfig };
+    const rawMaxRetries = config.maxRetries ?? DEFAULT_BACKOFF_CONFIG.maxRetries;
+    const maxRetries = Number.isFinite(Number(rawMaxRetries)) ? Math.max(0, Number(rawMaxRetries)) : DEFAULT_BACKOFF_CONFIG.maxRetries;
+    const rawMaxDelay = config.maxDelayMs ?? DEFAULT_BACKOFF_CONFIG.maxDelayMs;
+    const maxDelayMs = Number.isFinite(Number(rawMaxDelay)) ? Math.max(0, Number(rawMaxDelay)) : DEFAULT_BACKOFF_CONFIG.maxDelayMs;
+    const normalizedConfig = { ...config, maxRetries, maxDelayMs };
     const fetchFn = config.fetchFn || globalThis.fetch;
     const sleepFn = config.sleepFn || ((ms) => defaultSleep(ms, options?.signal));
 
@@ -109,24 +121,24 @@
         if (options?.signal?.aborted || networkError.name === 'AbortError') {
           throw networkError;
         }
-        if (attempt >= config.maxRetries || !isTransientNetworkError(networkError)) {
+        if (attempt >= maxRetries || !isTransientNetworkError(networkError)) {
           throw networkError;
         }
 
-        const delayMs = calculateBackoffDelay(attempt, config);
+        const delayMs = calculateBackoffDelay(attempt, normalizedConfig);
         config.onRetry?.(attempt, delayMs, networkError);
-        await sleepFn(delayMs);
+        await sleepFn(delayMs, options?.signal);
         attempt++;
         continue;
       }
 
       if (response && isTransientStatus(response.status, config.retryOnStatus)) {
-        if (attempt < config.maxRetries && !options?.signal?.aborted) {
+        if (attempt < maxRetries && !options?.signal?.aborted) {
           response.body?.cancel?.().catch(() => {});
-          const retryAfterMs = getRetryAfterDelayMs(response, config.maxDelayMs);
-          const delayMs = retryAfterMs ?? calculateBackoffDelay(attempt, config);
+          const retryAfterMs = getRetryAfterDelayMs(response, maxDelayMs);
+          const delayMs = retryAfterMs ?? calculateBackoffDelay(attempt, normalizedConfig);
           config.onRetry?.(attempt, delayMs, response);
-          await sleepFn(delayMs);
+          await sleepFn(delayMs, options?.signal);
           attempt++;
           continue;
         }

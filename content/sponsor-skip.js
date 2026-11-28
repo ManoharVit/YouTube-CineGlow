@@ -617,7 +617,6 @@
     notice.className = SPONSOR_NOTICE_CLASS;
     notice.setAttribute('role', 'status');
     notice.setAttribute('data-notice-text', messageText);
-    notice.textContent = messageText;
 
     const color = getCategoryColor(segment.category);
     const badge = document.createElement('span');
@@ -689,7 +688,8 @@
     for (const seg of segments) {
       if (!activeCategories.includes(seg.category)) continue;
       if (unskippedSegments.has(seg.id)) continue;
-      if (currentTime >= seg.start && currentTime < (seg.end - 0.15)) {
+      const matchEnd = (seg.end - seg.start) > 0.2 ? (seg.end - 0.15) : seg.end;
+      if (currentTime >= seg.start && currentTime < matchEnd) {
         matchedSegment = seg;
         break;
       }
@@ -906,6 +906,10 @@
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
         teardownKillSwitch();
+        if (!window._cineglowKillEventFired) {
+          window._cineglowKillEventFired = true;
+          window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+        }
         if (typeof sendResponse === 'function') {
           sendResponse({ success: true, script: 'sponsor-skip.js' });
         }

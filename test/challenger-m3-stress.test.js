@@ -266,16 +266,8 @@ describe('Milestone M3 Empirical Challenger & Adversarial Stress Suite', () => {
       assert.ok(estimatedBytes < 50000, 'Bounded cache must consume < 50KB memory');
     });
 
-    test('1.5 Web Audio hardware context limit defense: AudioContext cleanly closes and disconnects across 25 tabs', () => {
+    test('1.5 Web Audio hardware context limit defense: AudioContext cleanly bypasses and disconnects across 25 tabs', () => {
       const activeContexts = [];
-
-      // Add close() to MockAudioContext prototype if not already present
-      if (!MockAudioContext.prototype.close) {
-        MockAudioContext.prototype.close = function() {
-          this.state = 'closed';
-          return Promise.resolve();
-        };
-      }
 
       // Initialize 25 tabs with audio processors
       for (let i = 1; i <= 25; i++) {
@@ -300,9 +292,17 @@ describe('Milestone M3 Empirical Challenger & Adversarial Stress Suite', () => {
         runner(tabWin, env.document, env.chrome);
 
         if (tabWin.CineGlowAudioCtx) {
-          activeContexts.push({ id: i, ctx: tabWin.CineGlowAudioCtx, win: tabWin, env });
+          activeContexts.push({
+            id: i,
+            ctx: tabWin.CineGlowAudioCtx,
+            source: tabWin.CineGlowAudioGetActiveSource(),
+            win: tabWin,
+            env
+          });
         }
       }
+
+      assert.strictEqual(activeContexts.length, 25, 'All 25 tabs must instantiate an AudioContext under default audioNormalizer: true');
 
       // Dispatch emergency kill switch event to all tabs
       for (const item of activeContexts) {
@@ -312,8 +312,11 @@ describe('Milestone M3 Empirical Challenger & Adversarial Stress Suite', () => {
           timestamp: Date.now()
         });
 
-        // Verify AudioContext closed and hooks nullified
-        assert.strictEqual(item.ctx.state, 'closed', `Tab ${item.id} AudioContext must transition to closed state`);
+        // Under FP-6.3, AudioContext stays running while DSP is bypassed cleanly to destination
+        assert.strictEqual(item.ctx.state, 'running', `Tab ${item.id} AudioContext must remain running to avoid severing W3C audio`);
+        assert.ok(item.source.connections.includes(item.ctx.destination), `Tab ${item.id} source must bypass directly to destination`);
+        assert.strictEqual(item.ctx.gainNodes[0].gain.value, 1, `Tab ${item.id} dryGain must reset to 1`);
+        assert.strictEqual(item.ctx.gainNodes[1].gain.value, 0, `Tab ${item.id} wetGain must reset to 0`);
         assert.strictEqual(item.win.CineGlowAudioCtx, null, `Tab ${item.id} CineGlowAudioCtx must be null`);
         assert.strictEqual(item.win.CineGlowAudioAnalyser, null, `Tab ${item.id} CineGlowAudioAnalyser must be null`);
         assert.strictEqual(item.win.CineGlowAudioGainNode, null, `Tab ${item.id} CineGlowAudioGainNode must be null`);

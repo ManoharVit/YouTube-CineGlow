@@ -107,15 +107,16 @@
 
     displayFrames++;
 
-    const currentRenderCount = window.CineGlowMetrics ? window.CineGlowMetrics.renderCount : 0;
-    if (currentRenderCount !== lastSeenRenderCount) {
+    const metrics = window.CineGlowMetrics;
+    const currentRenderCount = metrics ? metrics.renderCount : 0;
+    if (metrics && currentRenderCount !== lastSeenRenderCount) {
       lastSeenRenderCount = currentRenderCount;
       const vf = videoFrameTimes[videoFrameTimes.length - 1];
 
       const ft = {
         video: vf,
-        drawStart: window.CineGlowMetrics.lastDrawStart,
-        drawEnd: window.CineGlowMetrics.lastDrawEnd,
+        drawStart: metrics.lastDrawStart,
+        drawEnd: metrics.lastDrawEnd,
         display: now,
         complete: performance.now()
       };
@@ -400,12 +401,18 @@
     closeSvg.setAttribute('stroke-width', '2.4');
     closeSvg.setAttribute('stroke-linecap', 'round');
     closeSvg.setAttribute('stroke-linejoin', 'round');
-    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    l1.setAttribute('x1', '18'); l1.setAttribute('y1', '6'); l1.setAttribute('x2', '6'); l1.setAttribute('y2', '18');
-    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    l2.setAttribute('x1', '6'); l2.setAttribute('y1', '6'); l2.setAttribute('x2', '18'); l2.setAttribute('y2', '18');
-    closeSvg.appendChild(l1);
-    closeSvg.appendChild(l2);
+    const lineOne = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    lineOne.setAttribute('x1', '18');
+    lineOne.setAttribute('y1', '6');
+    lineOne.setAttribute('x2', '6');
+    lineOne.setAttribute('y2', '18');
+    const lineTwo = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    lineTwo.setAttribute('x1', '6');
+    lineTwo.setAttribute('y1', '6');
+    lineTwo.setAttribute('x2', '18');
+    lineTwo.setAttribute('y2', '18');
+    closeSvg.appendChild(lineOne);
+    closeSvg.appendChild(lineTwo);
     closeBtn.appendChild(closeSvg);
 
     actions.appendChild(graphToggleBtn);
@@ -718,6 +725,7 @@
     if (!settings.statsEnabled || !overlayEl || document.hidden) return;
 
     const container = document.body;
+    if (!container) return;
     if (hostEl && (hostEl.parentElement !== container || !document.contains(hostEl))) {
       container.appendChild(hostEl);
     } else if (!hostEl && (overlayEl.parentElement !== container || !document.contains(overlayEl))) {
@@ -1038,6 +1046,7 @@
   function drawFrametimesCanvas() {
     if (isGraphCollapsed || !refs.canvas || frameTimes.length === 0) return;
     const ctx = refs.canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
     const width = 336;
     const height = 120;
     const xSize = 2.5;
@@ -1080,7 +1089,7 @@
     }));
 
     const averageMinTimes = offsettedFrameTimes
-      .map((ft) => ft.video ? Math.min(ft.video.decode || Infinity, ft.video.compose || Infinity) : ft.drawStart)
+      .map((ft) => ft.video ? Math.min(Number.isFinite(ft.video.decode) ? ft.video.decode : Infinity, Number.isFinite(ft.video.compose) ? ft.video.compose : Infinity) : ft.drawStart)
       .filter(isFinite)
       .sort((a, b) => a - b);
 
@@ -1092,7 +1101,7 @@
     }
 
     const averageMaxTimes = offsettedFrameTimes
-      .map((ft) => Math.max(ft.video?.display ?? -999, ft.drawEnd || -999, ft.nextCompose || -999, ft.nextDisplay || -999))
+      .map((ft) => Math.max(ft.video?.display ?? -999, Number.isFinite(ft.drawEnd) ? ft.drawEnd : -999, Number.isFinite(ft.nextCompose) ? ft.nextCompose : -999, Number.isFinite(ft.nextDisplay) ? ft.nextDisplay : -999))
       .filter(isFinite)
       .sort((a, b) => a - b);
 
@@ -1290,8 +1299,8 @@
     if (isKilled || window.CineGlowKilled) return;
     try {
       const [stored, localStored] = await Promise.all([
-        chrome.storage.sync.get(['statsEnabled', 'enableInPiP']),
-        chrome.storage.local?.get(['cineglow_hud_graph_collapsed']).catch(() => ({}))
+        chrome.storage?.sync?.get(['statsEnabled', 'enableInPiP']) || Promise.resolve({}),
+        chrome.storage?.local?.get(['cineglow_hud_graph_collapsed']).catch(() => ({})) || Promise.resolve({})
       ]);
       settings.statsEnabled = !!stored.statsEnabled;
       settings.enableInPiP = !!stored.enableInPiP;

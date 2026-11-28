@@ -255,6 +255,32 @@ describe('Network Backoff & Emergency Kill-Switch Suite', () => {
 
       assert.strictEqual(callCount, 1);
     });
+
+    test('fetchWithBackoff handles undefined maxRetries/maxDelayMs and whitespace Retry-After safely', async () => {
+      let callCount = 0;
+      const recordedDelays = [];
+      const mockFetch = async () => {
+        callCount++;
+        return {
+          ok: false,
+          status: 503,
+          headers: { get: (name) => (name === 'Retry-After' ? '   ' : null) }
+        };
+      };
+
+      const res = await fetchWithBackoff('https://example.com/retry', {}, {
+        fetchFn: mockFetch,
+        maxRetries: undefined,
+        maxDelayMs: undefined,
+        initialDelayMs: 10,
+        jitterRatio: 0,
+        sleepFn: async (ms) => { recordedDelays.push(ms); }
+      });
+
+      assert.strictEqual(res.status, 503);
+      assert.strictEqual(callCount, 4); // default 3 retries + 1 initial attempt (no infinite loop)
+      assert.deepStrictEqual(recordedDelays, [10, 20, 40]);
+    });
   });
 
   describe('3. Managed Schema Draft-03 Integrity', () => {

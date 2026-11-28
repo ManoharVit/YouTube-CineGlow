@@ -37,19 +37,45 @@
   const ctx = offscreenCtx || (canvas && canvas.getContext ? canvas.getContext('2d', { willReadFrequently: true }) : null);
 
   const STABLE_THRESHOLD = 8;
+  const UNFOCUSED_STABLE_THRESHOLD = 4; // ~6s at 2000ms unfocused scan cadence
+  const RELEASE_THRESHOLD = 2;
+  const EDGE_OVERSCAN_RATIO = 0.006;
+  const MAX_SINGLE_SIDE_CROP = 0.25;
+  const MAX_ASYMMETRY_RATIO = 0.05;
+  const STABILITY_MATCH_TOLERANCE = 0.02;
+  const BLACK_LUMA_THRESHOLD = 15;
+  const STRICT_PILLAR_AVG_LUMA = 8;
+  const MIN_AXIS_CROP_RATIO = 0.04;
+
   let stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
   let stabilityCount = 0;
+  let releaseCount = 0;
+
+  /**
+   * Return true when the document is visible in an unfocused window (e.g. secondary monitor).
+   * @returns {boolean}
+   */
+  function isUnfocusedDocument() {
+    return typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus();
+  }
 
   function calculateCropFromDimensions(topBar, bottomBar, leftBar, rightBar, width, height) {
     if (topBar === height || leftBar === width) return;
-    const overscanY = (topBar > 0 || bottomBar > 0) ? 0.006 : 0;
-    const overscanX = (leftBar > 0 || rightBar > 0) ? 0.006 : 0;
+    const overscanY = (topBar > 0 || bottomBar > 0) ? EDGE_OVERSCAN_RATIO : 0;
+    const overscanX = (leftBar > 0 || rightBar > 0) ? EDGE_OVERSCAN_RATIO : 0;
 
-    const cropTop = topBar > 0 ? (topBar / height) + overscanY : 0;
-    const cropBottom = bottomBar > 0 ? (bottomBar / height) + overscanY : 0;
-    const cropLeft = leftBar > 0 ? (leftBar / width) + overscanX : 0;
-    const cropRight = rightBar > 0 ? (rightBar / width) + overscanX : 0;
+    let cropTop = topBar > 0 ? (topBar / height) + overscanY : 0;
+    let cropBottom = bottomBar > 0 ? (bottomBar / height) + overscanY : 0;
+    let cropLeft = leftBar > 0 ? (leftBar / width) + overscanX : 0;
+    let cropRight = rightBar > 0 ? (rightBar / width) + overscanX : 0;
+
+    // Never crop all 4 edges into a miniature box when letterbox bars exist;
+    // dark vertical vignettes in 21:9 cinema frames must not trim horizontal sides.
+    if (cropTop >= MIN_AXIS_CROP_RATIO && cropBottom >= MIN_AXIS_CROP_RATIO) {
+      cropLeft = 0;
+      cropRight = 0;
+    }
 
     handleCropResult({ cropTop, cropBottom, cropLeft, cropRight });
   }
@@ -58,22 +84,52 @@
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled)) return;
     if (!video || (!settings.removeBlackBars && !settings.screenXMode)) return;
 
-    if (result.cropTop > 0.25 || result.cropBottom > 0.25 || result.cropLeft > 0.25 || result.cropRight > 0.25) {
+    if (
+      result.cropTop > MAX_SINGLE_SIDE_CROP ||
+      result.cropBottom > MAX_SINGLE_SIDE_CROP ||
+      result.cropLeft > MAX_SINGLE_SIDE_CROP ||
+      result.cropRight > MAX_SINGLE_SIDE_CROP
+    ) {
       return;
     }
-    if (Math.abs(result.cropTop - result.cropBottom) > 0.05) return;
-    if (Math.abs(result.cropLeft - result.cropRight) > 0.05) return;
+    if (Math.abs(result.cropTop - result.cropBottom) > MAX_ASYMMETRY_RATIO) return;
+    if (Math.abs(result.cropLeft - result.cropRight) > MAX_ASYMMETRY_RATIO) return;
 
-    const tolerance = 0.02;
+    const needsRelease =
+      (stableCrop.top > 0 && result.cropTop < stableCrop.top - STABILITY_MATCH_TOLERANCE) ||
+      (stableCrop.bottom > 0 && result.cropBottom < stableCrop.bottom - STABILITY_MATCH_TOLERANCE) ||
+      (stableCrop.left > 0 && result.cropLeft < stableCrop.left - STABILITY_MATCH_TOLERANCE) ||
+      (stableCrop.right > 0 && result.cropRight < stableCrop.right - STABILITY_MATCH_TOLERANCE);
+
+    if (needsRelease) {
+      releaseCount++;
+      if (releaseCount >= RELEASE_THRESHOLD) {
+        releaseCount = 0;
+        const relaxed = {
+          top: result.cropTop < stableCrop.top - STABILITY_MATCH_TOLERANCE ? result.cropTop : stableCrop.top,
+          bottom: result.cropBottom < stableCrop.bottom - STABILITY_MATCH_TOLERANCE ? result.cropBottom : stableCrop.bottom,
+          left: result.cropLeft < stableCrop.left - STABILITY_MATCH_TOLERANCE ? result.cropLeft : stableCrop.left,
+          right: result.cropRight < stableCrop.right - STABILITY_MATCH_TOLERANCE ? result.cropRight : stableCrop.right
+        };
+        applyCrop(relaxed, true);
+        candidateCrop = { ...relaxed };
+        stabilityCount = 1;
+        return;
+      }
+    } else {
+      releaseCount = 0;
+    }
+
     const isSameCandidate =
-      Math.abs(result.cropTop - candidateCrop.top) < tolerance &&
-      Math.abs(result.cropBottom - candidateCrop.bottom) < tolerance &&
-      Math.abs(result.cropLeft - candidateCrop.left) < tolerance &&
-      Math.abs(result.cropRight - candidateCrop.right) < tolerance;
+      Math.abs(result.cropTop - candidateCrop.top) < STABILITY_MATCH_TOLERANCE &&
+      Math.abs(result.cropBottom - candidateCrop.bottom) < STABILITY_MATCH_TOLERANCE &&
+      Math.abs(result.cropLeft - candidateCrop.left) < STABILITY_MATCH_TOLERANCE &&
+      Math.abs(result.cropRight - candidateCrop.right) < STABILITY_MATCH_TOLERANCE;
 
     if (isSameCandidate) {
       stabilityCount++;
-      if (stabilityCount === STABLE_THRESHOLD) {
+      const requiredStability = isUnfocusedDocument() ? UNFOCUSED_STABLE_THRESHOLD : STABLE_THRESHOLD;
+      if (stabilityCount >= requiredStability) {
         applyCrop(candidateCrop);
       }
     } else {
@@ -123,16 +179,20 @@
     stableCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     candidateCrop = { top: 0, bottom: 0, left: 0, right: 0 };
     stabilityCount = 0;
+    releaseCount = 0;
     if (video) {
       video.style.clipPath = '';
     }
   }
 
-  function processScan(data, width, height) {
-    const threshold = 15;
+  function processScan(rgbaPixels, width, height) {
     function isBlack(x, y) {
-      const i = (y * width + x) * 4;
-      return data[i] <= threshold && data[i + 1] <= threshold && data[i + 2] <= threshold;
+      const idx = (y * width + x) * 4;
+      return (
+        rgbaPixels[idx] <= BLACK_LUMA_THRESHOLD &&
+        rgbaPixels[idx + 1] <= BLACK_LUMA_THRESHOLD &&
+        rgbaPixels[idx + 2] <= BLACK_LUMA_THRESHOLD
+      );
     }
     function isRowBlack(y) {
       const startX = Math.floor(width * 0.05);
@@ -147,18 +207,22 @@
       }
       return true;
     }
-    function isColBlack(x) {
-      const startY = Math.floor(height * 0.25);
-      const endY = Math.floor(height * 0.75);
-      const tolerance = Math.max(1, Math.floor((endY - startY) * 0.05));
+    function isColBlack(x, startY, endY) {
+      if (endY <= startY) return false;
+      const span = endY - startY;
+      const tolerance = Math.max(1, Math.floor(span * 0.05));
       let nonBlack = 0;
+      let lumaSum = 0;
       for (let y = startY; y < endY; y++) {
-        if (!isBlack(x, y)) {
+        const idx = (y * width + x) * 4;
+        const maxCh = Math.max(rgbaPixels[idx], rgbaPixels[idx + 1], rgbaPixels[idx + 2]);
+        lumaSum += maxCh;
+        if (maxCh > BLACK_LUMA_THRESHOLD) {
           nonBlack++;
           if (nonBlack > tolerance) return false;
         }
       }
-      return true;
+      return (lumaSum / span) <= STRICT_PILLAR_AVG_LUMA;
     }
 
     function bandBlackRatio(isHorizontal, start, end, spanStart, spanEnd) {
@@ -187,7 +251,7 @@
       const bandStart = isStartSide ? 0 : size - strictOther;
       const bandEnd = isStartSide ? strictOther : size;
       const boundaryIndex = isStartSide ? strictOther : size - 1 - strictOther;
-      const edgeCheck = isHorizontal ? isRowBlack(boundaryIndex) : isColBlack(boundaryIndex);
+      const edgeCheck = isHorizontal ? isRowBlack(boundaryIndex) : isColBlack(boundaryIndex, spanStart, spanEnd);
       if (edgeCheck) return strictSelf;
 
       const ratio = bandBlackRatio(isHorizontal, bandStart, bandEnd, spanStart, spanEnd);
@@ -202,19 +266,21 @@
     for (let y = height - 1; y >= 0; y--) {
       if (!isRowBlack(y)) { bottomBar = height - 1 - y; break; }
     }
+
+    const colSpanStart = Math.max(Math.floor(height * 0.05), topBar < height ? topBar : 0);
+    const colSpanEnd = Math.min(Math.floor(height * 0.95), bottomBar < height ? height - bottomBar : height);
+
     let leftBar = width;
     for (let x = 0; x < width; x++) {
-      if (!isColBlack(x)) { leftBar = x; break; }
+      if (!isColBlack(x, colSpanStart, colSpanEnd)) { leftBar = x; break; }
     }
     let rightBar = width;
     for (let x = width - 1; x >= 0; x--) {
-      if (!isColBlack(x)) { rightBar = width - 1 - x; break; }
+      if (!isColBlack(x, colSpanStart, colSpanEnd)) { rightBar = width - 1 - x; break; }
     }
 
     const rowSpanStart = Math.floor(width * 0.05);
     const rowSpanEnd = Math.floor(width * 0.95);
-    const colSpanStart = Math.floor(height * 0.25);
-    const colSpanEnd = Math.floor(height * 0.75);
 
     const recoveredTop = recoverAsymmetricBar(topBar, bottomBar, height, rowSpanStart, rowSpanEnd, true, true);
     const recoveredBottom = recoverAsymmetricBar(bottomBar, topBar, height, rowSpanStart, rowSpanEnd, true, false);
@@ -229,7 +295,7 @@
     if ((!settings.removeBlackBars && !settings.screenXMode) || isAdShowing || !video || video.readyState < 2 || video.paused) return;
     if (typeof document !== 'undefined' && document.hidden) return;
 
-    if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus()) {
+    if (isUnfocusedDocument()) {
       if (now - lastUnfocusedScan < 2000) {
         return;
       }
@@ -250,7 +316,7 @@
     if (isKilled || (typeof window !== 'undefined' && window.CineGlowKilled) || (!settings.removeBlackBars && !settings.screenXMode) || !video || isAdShowing) return;
     const currentTime = typeof Date !== 'undefined' ? Date.now() : now;
     const hasLockedCrop = Boolean(stableCrop.top || stableCrop.bottom || stableCrop.left || stableCrop.right);
-    const minInterval = (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus())
+    const minInterval = isUnfocusedDocument()
       ? 2000
       : (hasLockedCrop ? 500 : 150);
     if (currentTime - lastScanAt >= minInterval) {

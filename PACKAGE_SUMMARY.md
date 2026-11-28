@@ -1,12 +1,12 @@
-# Chrome Web Store Package Summary — CineGlow Pro for YouTube v2.4.0
+# Chrome Web Store Package Summary — CineGlow Pro for YouTube v3.0.0
 
-**Release Version:** `2.4.0`  
+**Release Version:** `3.0.0`  
 **Manifest Version:** `3` (Manifest V3 compliant)  
-**Package Archive:** [`YouTube-CineGlow-v2.4.0.zip`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/YouTube-CineGlow-v2.4.0.zip)  
-**Package Size:** `163 KB`  
-**File Count:** 46 entries (40 files, 6 directories)  
-**SHA-256 Checksum:** `ce77a620df5da614d065eb883e0e589622622182b18819f5dac7afde4ab425f8`  
-**Last Updated:** November 12, 2026  
+**Package Archive:** [`YouTube-CineGlow-v3.0.0.zip`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/YouTube-CineGlow-v3.0.0.zip)  
+**Package Size:** `364 KB` (372,741 bytes)  
+**File Count:** 51 entries (44 files, 7 directories)  
+**SHA-256 Checksum:** `46beeb2d1e19fcd1da8a50802cec0b237f6a324977bcafc29b25cb8391727811`  
+**Last Updated:** November 26, 2026  
 
 ---
 
@@ -17,7 +17,7 @@
 |---|---|---|
 | **Extension Name** | `CineGlow Pro for YouTube` | Max 45 chars (Current: 24 chars) |
 | **Short Name** | `CineGlow Pro` | Max 12 chars (Current: 12 chars) |
-| **Version** | `2.4.0` | Matches `manifest.json` & `package.json` |
+| **Version** | `3.0.0` | Matches `manifest.json` & `package.json` |
 | **Category** | `Photos` / `Accessibility` | Single primary category |
 | **Primary Language** | `English` | |
 
@@ -70,16 +70,16 @@ Version 2.4.0:
 
 | Asset Type | Required Dimensions | Recommended Size | Project File Path |
 |---|---|---|---|
-| **Store Icon** | 128 × 128 px (PNG) | < 50 KB | [`icons/icon-128.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/icons/icon-128.png) |
-| **Small Promo Tile** | 440 × 280 px (PNG) | < 500 KB | [`store_assets/promo_tile_440x280.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/promo_tile_440x280.png) |
-| **Marquee Promo Tile** | 1400 × 560 px (PNG) | 1.5 – 2.5 MB | [`store_assets/marquee_promo_1400x560.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/marquee_promo_1400x560.png) (2.24 MB) |
-| **Screenshot 1: Ambient Lighting** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_1_ambient_lighting.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_1_ambient_lighting.png) (985 KB) |
-| **Screenshot 2: Playback Settings** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_2_playback_settings.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_2_playback_settings.png) (1.4 MB) |
-| **Screenshot 3: Quality Stats HUD** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_3_stats_overlay.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_3_stats_overlay.png) (1.3 MB) |
-| **Screenshot 4: Clean Theater Mode** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_4_theatre_mode.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_4_theatre_mode.png) (1.1 MB) |
-| **Screenshot 5: Frame Snap & Tools** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_5_frame_snap.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_5_frame_snap.png) (1.4 MB) |
-| **Alternate / Crop Black Bars** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_autocrop_blackbars.png`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/screenshot_autocrop_blackbars.png) (1.2 MB) |
-| **Demonstration Video** | 1920 × 1080 px (MP4, 4.2+ Mbps) | < 100 MB | [`store_assets/YouTube_CineGlow_Pro_Demo.mp4`](file:///Users/girimanoharv/Downloads/Misc/aura-ambient-light/store_assets/YouTube_CineGlow_Pro_Demo.mp4) (26.8 MB) |
+| **Store Icon** | 128 × 128 px (PNG) | < 50 KB | [`icons/icon-128.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/icons/icon-128.png) |
+| **Small Promo Tile** | 440 × 280 px (PNG) | < 500 KB | [`store_assets/promo_tile_440x280.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/promo_tile_440x280.png) |
+| **Marquee Promo Tile** | 1400 × 560 px (PNG) | 1.5 – 2.5 MB | [`store_assets/marquee_promo_1400x560.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/marquee_promo_1400x560.png) (2.24 MB) |
+| **Screenshot 1: Ambient Lighting** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_1_ambient_lighting.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/screenshot_1_ambient_lighting.png) (985 KB) |
+| **Screenshot 2: Playback Settings** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_2_playback_settings.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/screenshot_2_playback_settings.png) (1.4 MB) |
+| **Screenshot 3: Quality Stats HUD** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_3_stats_overlay.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/screenshot_3_stats_overlay.png) (1.3 MB) |
+| **Screenshot 4: Clean Theater Mode** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_4_theatre_mode.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/screenshot_4_theatre_mode.png) (1.1 MB) |
+| **Screenshot 5: Frame Snap & Tools** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_5_frame_snap.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/screenshot_5_frame_snap.png) (1.4 MB) |
+| **Alternate / Crop Black Bars** | 1280 × 800 px (PNG) | 0.9 – 2.0 MB | [`store_assets/screenshot_autocrop_blackbars.png`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/screenshot_autocrop_blackbars.png) (1.2 MB) |
+| **Demonstration Video** | 1920 × 1080 px (MP4, 4.2+ Mbps) | < 100 MB | [`store_assets/YouTube_CineGlow_Pro_Demo.mp4`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/store_assets/YouTube_CineGlow_Pro_Demo.mp4) (26.8 MB) |
 
 ---
 

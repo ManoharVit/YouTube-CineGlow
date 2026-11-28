@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube CineGlow Pro: technical guide</title>
   <style>
     @page {
@@ -15,7 +16,7 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       @bottom-left {
-        content: "Version 2.2.0 Pro · MIT License · Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)";
+        content: "Version 3.0.0 Pro · MIT License · Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)";
         font-size: 7.5pt;
         font-weight: 500;
         color: #475569;
@@ -374,20 +375,19 @@
       font-weight: 500;
       page-break-inside: avoid;
     }
+    pre code { background:transparent;border:0;padding:0;border-radius:0;color:inherit;font-weight:inherit;font-size:inherit; }
+    pre { white-space:pre-wrap;overflow-wrap:normal; }
+    a { color:#6d28d9;text-decoration:none; }
+    p,li { orphans:3;widows:3; }
+    .section-break { break-before:page; }
+    table code { overflow-wrap:anywhere; }
+    .settings-table th:nth-child(1) { width:25%; }
+    .settings-table th:nth-child(2) { width:12%; }
+    .settings-table th:nth-child(3) { width:12%; }
+    .settings-table th:nth-child(4) { width:51%; }
+    @media screen { body { max-width:1000px;margin:24px auto;padding:0 28px; } .cover-container {height:auto;max-height:none;gap:32px;margin-bottom:40px;} }
   </style>
-<style>
- pre code { background:transparent;border:0;padding:0;border-radius:0;color:inherit;font-weight:inherit;font-size:inherit; }
- pre { white-space:pre-wrap;overflow-wrap:normal; }
- a { color:#6d28d9;text-decoration:none; }
- p,li { orphans:3;widows:3; }
- .section-break { break-before:page; }
- table code { overflow-wrap:anywhere; }
- .settings-table th:nth-child(1) { width:25%; }
- .settings-table th:nth-child(2) { width:12%; }
- .settings-table th:nth-child(3) { width:12%; }
- .settings-table th:nth-child(4) { width:51%; }
- @media screen { body { max-width:1000px;margin:24px auto;padding:0 28px; } .cover-container {height:auto;max-height:none;gap:32px;margin-bottom:40px;} }
- </style></head>
+</head>
 <body>
   <!-- COVER PAGE -->
   <div class="cover-container page-break">
@@ -412,7 +412,7 @@
         <div class="cover-grid">
           <div class="cover-grid-item">
             <span class="cover-grid-label">Application Version</span>
-            <span class="cover-grid-val">2.2.0 Pro</span>
+            <span class="cover-grid-val">3.0.0 Pro</span>
           </div>
           <div class="cover-grid-item">
             <span class="cover-grid-label">Core Pipeline</span>

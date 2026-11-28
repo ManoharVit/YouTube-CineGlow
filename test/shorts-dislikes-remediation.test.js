@@ -6,6 +6,7 @@ const path = require('node:path');
 const { setupMockEnvironment, MockElement } = require('./helpers/mock-dom');
 
 const hideShortsCode = fs.readFileSync(path.join(__dirname, '../content/hide-shorts.js'), 'utf8');
+const hideEndcardsCode = fs.readFileSync(path.join(__dirname, '../content/hide-endcards.js'), 'utf8');
 const returnDislikesCode = fs.readFileSync(path.join(__dirname, '../content/return-dislikes.js'), 'utf8');
 const defaultsCode = fs.readFileSync(path.join(__dirname, '../shared/defaults.js'), 'utf8');
 
@@ -165,5 +166,134 @@ describe('Remediations FP-8.1, FP-8.2, FP-8.3, FP-8.4', () => {
     assert.strictEqual(dislikeButton.getAttribute('data-cineglow-video-id'), 'shortSlide2');
     assert.strictEqual(countEl.getAttribute('data-cineglow-video-id'), 'shortSlide2');
     assert.strictEqual(countEl.textContent, '2.5K');
+  });
+
+  test('hide-endcards hides top-right info card teaser and button when enabled and restores on disable', async () => {
+    const player = new MockElement('div', { id: 'movie_player' });
+    const teaser = new MockElement('div', { class: 'ytp-cards-teaser' });
+    const cardBtn = new MockElement('button', { class: 'ytp-cards-button' });
+    player.appendChild(teaser);
+    player.appendChild(cardBtn);
+    env.document.body.appendChild(player);
+    env.elements.set('#movie_player', player);
+
+    env.chrome.storage.sync._data = { hideEndCards: true };
+    new Function(hideEndcardsCode)();
+    await new Promise(resolve => setTimeout(resolve, 20));
+
+    assert.strictEqual(env.document.documentElement.getAttribute('cineglow-hide-endcards'), 'true');
+    assert.strictEqual(teaser.style.display, 'none');
+    assert.strictEqual(cardBtn.style.display, 'none');
+
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ hideEndCards: { newValue: false } }, 'sync');
+    }
+
+    assert.strictEqual(env.document.documentElement.getAttribute('cineglow-hide-endcards'), null);
+    assert.strictEqual(teaser.style.display, '');
+    assert.strictEqual(cardBtn.style.display, '');
+
+    globalThis.window.CineGlowEndCardsTeardown?.();
+  });
+
+  test('hide-shorts DOM fallback hides Home shelf without [is-shorts] and Shorts sidebar entry, restores on disable, and spares @shorts handles', async () => {
+    const guideShorts = new MockElement('ytd-guide-entry-renderer');
+    const guideText = new MockElement('yt-formatted-string', { class: 'title' });
+    guideText.textContent = 'Shorts';
+    guideShorts.appendChild(guideText);
+
+    const shelfSection = new MockElement('ytd-rich-section-renderer');
+    const richShelf = new MockElement('ytd-rich-shelf-renderer');
+    const shelfTitle = new MockElement('span', { id: 'title' });
+    shelfTitle.textContent = 'Shorts';
+    const shortCard = new MockElement('ytm-shorts-lockup-view-model');
+    richShelf.appendChild(shelfTitle);
+    richShelf.appendChild(shortCard);
+    shelfSection.appendChild(richShelf);
+
+    const creatorVideo = new MockElement('ytd-rich-item-renderer');
+    const creatorLink = new MockElement('a', { href: 'https://www.youtube.com/@shortsCreator' });
+    creatorVideo.appendChild(creatorLink);
+
+    env.document.body.appendChild(guideShorts);
+    env.document.body.appendChild(shelfSection);
+    env.document.body.appendChild(creatorVideo);
+
+    env.chrome.storage.sync._data = { hideShorts: true };
+    new Function(hideShortsCode)();
+    await new Promise(resolve => setTimeout(resolve, 15));
+
+    assert.strictEqual(env.document.documentElement.getAttribute('cineglow-hide-shorts'), 'true');
+    assert.strictEqual(guideShorts.getAttribute('data-cineglow-shorts-hidden'), 'true');
+    assert.strictEqual(shelfSection.getAttribute('data-cineglow-shorts-hidden'), 'true');
+    assert.strictEqual(creatorVideo.hasAttribute('data-cineglow-shorts-hidden'), false);
+
+    for (const listener of env.chrome.storage.onChanged._listeners) {
+      listener({ hideShorts: { newValue: false } }, 'sync');
+    }
+
+    assert.strictEqual(env.document.documentElement.getAttribute('cineglow-hide-shorts'), null);
+    assert.strictEqual(guideShorts.hasAttribute('data-cineglow-shorts-hidden'), false);
+    assert.strictEqual(shelfSection.hasAttribute('data-cineglow-shorts-hidden'), false);
+  });
+
+  test('hide-shorts un-hides recycled items converted to regular videos and spares query-string /shorts/ links', () => {
+    env.chrome.storage.sync._data = { hideShorts: true };
+
+    const recycledItem = new MockElement('ytd-rich-item-renderer');
+    const shortLink = new MockElement('a', { href: '/shorts/shortABC12' });
+    recycledItem.appendChild(shortLink);
+    env.document.body.appendChild(recycledItem);
+
+    new Function(hideShortsCode)();
+    assert.strictEqual(recycledItem.getAttribute('data-cineglow-shorts-hidden'), 'true');
+
+    // Polymer recycles the card into a normal watch video
+    shortLink.setAttribute('href', '/watch?v=normalVid99');
+    env.window.dispatchEvent(new Event('popstate'));
+    assert.strictEqual(recycledItem.hasAttribute('data-cineglow-shorts-hidden'), false, 'Recycled card must un-hide');
+
+    // Click on watch link whose query string mentions /shorts/ must NOT be intercepted
+    const watchWithQuery = new MockElement('a', { href: 'https://www.youtube.com/watch?v=normalVid99&next=/shorts/shortABC12' });
+    watchWithQuery.hostname = 'www.youtube.com';
+    env.document.body.appendChild(watchWithQuery);
+    const clickEvt = new Event('click', { bubbles: true, cancelable: true });
+    Object.defineProperty(clickEvt, 'target', { value: watchWithQuery });
+    env.document.dispatchEvent(clickEvt);
+    assert.strictEqual(clickEvt.defaultPrevented, false);
+  });
+
+  test('content.css contains no nested :has() inside :has() or :is() and isolates Shorts JS fallback rule', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../content/content.css'), 'utf8');
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    function findNestedPseudoHas(source) {
+      const violations = [];
+      for (const kw of [':has(', ':is(']) {
+        let idx = 0;
+        while ((idx = source.indexOf(kw, idx)) !== -1) {
+          let depth = 1;
+          let j = idx + kw.length;
+          while (j < source.length && depth > 0) {
+            if (source[j] === '(') depth++;
+            else if (source[j] === ')') depth--;
+            j++;
+          }
+          const inner = source.slice(idx + kw.length, j - 1);
+          if (inner.includes(':has(')) {
+            violations.push(`${kw}${inner})`);
+          }
+          idx = idx + kw.length;
+        }
+      }
+      return violations;
+    }
+
+    const nestedViolations = findNestedPseudoHas(stripped);
+    assert.deepStrictEqual(nestedViolations, [], 'Chromium drops CSS rules with :has() nested inside :has() or :is()');
+    assert.ok(
+      /html\[cineglow-hide-shorts="true"\]\s+\[data-cineglow-shorts-hidden="true"\]\s*\{/.test(stripped),
+      'data-cineglow-shorts-hidden rule must remain standalone so compound selectors never invalidate it'
+    );
   });
 });

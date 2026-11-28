@@ -2,9 +2,9 @@
 
 ## 1. Executive Summary & Objective
 
-This runbook establishes the operational execution framework, telemetry monitoring protocols, and incident escalation procedures for **Phase 4 Pilot Deployment** of **CineGlow Pro for YouTube** (`v2.4.0`).
+This runbook establishes the operational execution framework, telemetry monitoring protocols, and incident escalation procedures for **Phase 4 Pilot Deployment** of **CineGlow Pro for YouTube** (`v3.0.0`).
 
-- **Target Package**: `YouTube-CineGlow-v2.4.0.zip` (SHA-256: `ce77a620df5da614d065eb883e0e589622622182b18819f5dac7afde4ab425f8`)
+- **Target Package**: `YouTube-CineGlow-v3.0.0.zip` (SHA-256: `46beeb2d1e19fcd1da8a50802cec0b237f6a324977bcafc29b25cb8391727811`)
 - **Lead Architect / Developer**: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 - **Deployment Strategy**: Ring-fenced rollout across corporate endpoints via Chrome Enterprise policy (`ExtensionInstallForcelist`).
 

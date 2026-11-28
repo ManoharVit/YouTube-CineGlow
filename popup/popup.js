@@ -73,18 +73,19 @@ function syncScreenXLock(isScreenX) {
 let activeManagedPolicies = null;
 
 function applyManagedOverrides(targetSettings) {
-  if (!activeManagedPolicies || typeof activeManagedPolicies !== 'object') return targetSettings;
+  const next = { ...targetSettings };
+  if (!activeManagedPolicies || typeof activeManagedPolicies !== 'object') return next;
   if (activeManagedPolicies.DisableAdBlock) {
-    targetSettings.adblockEnabled = false;
+    next.adblockEnabled = false;
   }
   if (activeManagedPolicies.DisableThirdPartyAPIs) {
-    targetSettings.returnDislikes = false;
-    targetSettings.restoreAnnotations = false;
+    next.returnDislikes = false;
+    next.restoreAnnotations = false;
   }
   if (activeManagedPolicies.ForceDefaultQuality) {
-    targetSettings.preferredQuality = activeManagedPolicies.ForceDefaultQuality;
+    next.preferredQuality = activeManagedPolicies.ForceDefaultQuality;
   }
-  return targetSettings;
+  return next;
 }
 
 function syncManagedControlLocks() {
@@ -116,17 +117,24 @@ function updateActiveGlowPresetPill(activeKey) {
 }
 
 function checkMatchingGlowPreset() {
-  const op = Number(document.getElementById('opacity')?.value);
-  const sp = Number(document.getElementById('spread')?.value);
-  const sm = Number(document.getElementById('smoothness')?.value);
-  const bl = Number(document.getElementById('blur')?.value);
-  const sa = Number(document.getElementById('saturation')?.value);
-  const co = Number(document.getElementById('contrast')?.value);
-  const br = Number(document.getElementById('brightness')?.value);
+  const opacityValue = Number(document.getElementById('opacity')?.value);
+  const spreadValue = Number(document.getElementById('spread')?.value);
+  const smoothnessValue = Number(document.getElementById('smoothness')?.value);
+  const blurValue = Number(document.getElementById('blur')?.value);
+  const saturationValue = Number(document.getElementById('saturation')?.value);
+  const contrastValue = Number(document.getElementById('contrast')?.value);
+  const brightnessValue = Number(document.getElementById('brightness')?.value);
 
-  for (const [key, p] of Object.entries(GLOW_PRESETS)) {
-    if (p.opacity === op && p.spread === sp && p.smoothness === sm &&
-        p.blur === bl && p.saturation === sa && p.contrast === co && p.brightness === br) {
+  for (const [key, preset] of Object.entries(GLOW_PRESETS)) {
+    if (
+      preset.opacity === opacityValue &&
+      preset.spread === spreadValue &&
+      preset.smoothness === smoothnessValue &&
+      preset.blur === blurValue &&
+      preset.saturation === saturationValue &&
+      preset.contrast === contrastValue &&
+      preset.brightness === brightnessValue
+    ) {
       updateActiveGlowPresetPill(key);
       return;
     }
@@ -200,6 +208,7 @@ const preferredSpeedValEl = document.getElementById('preferredSpeedVal');
 const autoPauseModeEl = document.getElementById('autoPauseMode');
 const returnDislikesEl = document.getElementById('returnDislikes');
 const hideShortsEl = document.getElementById('hideShorts');
+const hideAiVideosEl = document.getElementById('hideAiVideos');
 const restoreAnnotationsEl = document.getElementById('restoreAnnotations');
 const hideEndCardsEl = document.getElementById('hideEndCards');
 const controlsEl = document.getElementById('controls');
@@ -214,7 +223,7 @@ const toolsResetEl = document.getElementById('toolsReset');
 const GLOW_KEYS = ['opacity', 'spread', 'smoothness', 'blur', 'saturation', 'contrast', 'brightness', 'fadeInDuration', 'glowTop', 'glowRight', 'glowBottom', 'glowLeft', 'enableInPiP', 'audioReactive', 'screenXMode', 'fps'];
 const VIDEO_KEYS = ['qualityEnabled', 'preferredQuality', 'preferredSpeed', 'videoBrightness', 'videoContrast', 'videoSepia', 'removeBlackBars', 'ultrawideZoom', 'lightsOut', 'lightsOutOpacity', 'hideInTheater', 'hideScrollbar', 'blockAV1', 'blockVP9', 'block60fps'];
 const AUDIO_KEYS = ['audioNormalizer', 'audioBoost', 'bassBoost', 'vocalBoost', 'eq60', 'eq250', 'eq1000', 'eq4000', 'eq12000', 'eqPreset'];
-const TOOLS_KEYS = ['adblockEnabled', 'sponsorBlockEnabled', 'sponsorBlockMode', 'statsEnabled', 'abLoopEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'restoreAnnotations', 'hideEndCards'];
+const TOOLS_KEYS = ['adblockEnabled', 'sponsorBlockEnabled', 'sponsorBlockMode', 'statsEnabled', 'abLoopEnabled', 'autoPauseMode', 'returnDislikes', 'hideShorts', 'hideAiVideos', 'restoreAnnotations', 'hideEndCards'];
 
 async function save(partial) {
   try {
@@ -252,7 +261,19 @@ function queueSave(key, value) {
   flushTimer = setTimeout(flushPendingNow, delay);
 }
 
-window.addEventListener('pagehide', flushPendingNow);
+let edgeSyncTimer = 0;
+
+function stopEdgeSyncTimer() {
+  if (edgeSyncTimer) {
+    clearInterval(edgeSyncTimer);
+    edgeSyncTimer = 0;
+  }
+}
+
+window.addEventListener('pagehide', () => {
+  flushPendingNow();
+  stopEdgeSyncTimer();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     flushPendingNow();
@@ -287,17 +308,19 @@ async function resetSectionKeys(keys) {
   for (const k of keys) {
     partial[k] = AURA_DEFAULTS[k];
   }
-  applyManagedOverrides(partial);
-  const merged = applyManagedOverrides({ ...current, ...partial });
+  const managedPartial = applyManagedOverrides(partial);
+  const merged = applyManagedOverrides({ ...current, ...managedPartial });
   render(merged);
-  await save(partial);
+  await save(managedPartial);
 }
 
 function formatSpeedDisplay(rate) {
-  if (rate === 1) return '1.0×';
-  if (Number.isInteger(rate)) return `${rate}.0×`;
-  const rounded = Math.round(rate * 100) / 100;
-  if (Math.round(rounded * 10) === rounded * 10) {
+  const num = Number(rate);
+  if (!Number.isFinite(num) || num <= 0) return '1.0×';
+  if (num === 1) return '1.0×';
+  if (Number.isInteger(num)) return `${num}.0×`;
+  const rounded = Math.round(num * 100) / 100;
+  if (Math.round(rounded * 100) % 10 === 0) {
     return `${rounded.toFixed(1)}×`;
   }
   return `${rounded.toFixed(2)}×`;
@@ -321,14 +344,15 @@ function syncABLoopGuide(isEnabled) {
 }
 
 function render(settings) {
-  enabledEl.checked = settings.enabled;
+  if (enabledEl) enabledEl.checked = settings.enabled;
   updateMasterStatus(settings.enabled);
-  adblockEnabledEl.checked = settings.adblockEnabled;
+  if (adblockEnabledEl) adblockEnabledEl.checked = settings.adblockEnabled;
   if (sponsorBlockEnabledEl) sponsorBlockEnabledEl.checked = Boolean(settings.sponsorBlockEnabled);
   if (sponsorBlockModeEl) sponsorBlockModeEl.value = settings.sponsorBlockMode || 'skip';
   if (autoPauseModeEl) autoPauseModeEl.value = settings.autoPauseMode || 'off';
   if (returnDislikesEl) returnDislikesEl.checked = Boolean(settings.returnDislikes);
   if (hideShortsEl) hideShortsEl.checked = Boolean(settings.hideShorts);
+  if (hideAiVideosEl) hideAiVideosEl.checked = Boolean(settings.hideAiVideos);
   if (restoreAnnotationsEl) restoreAnnotationsEl.checked = Boolean(settings.restoreAnnotations);
   if (hideEndCardsEl) hideEndCardsEl.checked = Boolean(settings.hideEndCards);
   if (preferredSpeedEl) {
@@ -404,11 +428,12 @@ function render(settings) {
     if (el) el.value = settings[key];
     setOutput(key, settings[key]);
   }
-  fpsEl.value = String(settings.fps);
+  if (fpsEl) fpsEl.value = String(settings.fps);
   checkMatchingGlowPreset();
 }
 
 function renderDeactivatedBanner() {
+  stopEdgeSyncTimer();
   const controls = document.getElementById('controls');
   if (controls) {
     controls.style.display = 'none';
@@ -422,7 +447,6 @@ function renderDeactivatedBanner() {
     banner.id = 'cineglow-killswitch-banner';
     banner.className = 'cineglow-deactivated-banner';
     banner.setAttribute('role', 'alert');
-    banner.style.cssText = 'margin: 16px; padding: 16px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; color: #fca5a5; font-size: 13px; line-height: 1.5; text-align: center; font-weight: 500;';
     banner.textContent = 'CineGlow Pro Disabled: Deactivated by enterprise policy or emergency kill-switch';
     const header = document.querySelector('.app-header');
     if (header?.parentNode) {
@@ -612,7 +636,7 @@ async function init() {
     console.error('[Aura] Failed to load settings:', err);
   }
 
-  applyManagedOverrides(settings);
+  settings = applyManagedOverrides(settings);
   syncManagedControlLocks();
   render(settings);
 
@@ -625,7 +649,8 @@ async function init() {
   } catch (_) {}
 
   syncLiveEdgeColors();
-  const edgeSyncTimer = setInterval(syncLiveEdgeColors, 550);
+  stopEdgeSyncTimer();
+  edgeSyncTimer = setInterval(syncLiveEdgeColors, 550);
   if (typeof edgeSyncTimer?.unref === 'function') edgeSyncTimer.unref();
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -683,23 +708,16 @@ async function init() {
   });
 
   const navPills = document.querySelectorAll('.nav-pill');
-  const sectionDropdowns = document.querySelectorAll('details.section-dropdown');
+  const sectionPanels = document.querySelectorAll('.section-dropdown');
 
   function activateTabSection(targetId) {
     navPills.forEach((pill) => {
       const match = pill.getAttribute('data-target') === targetId;
       pill.classList.toggle('active', match);
       pill.setAttribute('aria-selected', match ? 'true' : 'false');
-      if (match) {
-        pill.setAttribute('aria-current', 'true');
-      } else {
-        pill.removeAttribute('aria-current');
-      }
     });
-    sectionDropdowns.forEach((sec) => {
-      const isActive = sec.id === targetId;
-      sec.open = isActive;
-      sec.hidden = !isActive;
+    sectionPanels.forEach((sec) => {
+      sec.hidden = sec.id !== targetId;
     });
   }
 
@@ -863,6 +881,7 @@ async function init() {
   autoPauseModeEl?.addEventListener('change', () => save({ autoPauseMode: autoPauseModeEl.value }));
   returnDislikesEl?.addEventListener('change', () => save({ returnDislikes: returnDislikesEl.checked }));
   hideShortsEl?.addEventListener('change', () => save({ hideShorts: hideShortsEl.checked }));
+  hideAiVideosEl?.addEventListener('change', () => save({ hideAiVideos: hideAiVideosEl.checked }));
   restoreAnnotationsEl?.addEventListener('change', () => save({ restoreAnnotations: restoreAnnotationsEl.checked }));
   hideEndCardsEl?.addEventListener('change', () => save({ hideEndCards: hideEndCardsEl.checked }));
   preferredQualityEl.addEventListener('change', () => save({ preferredQuality: preferredQualityEl.value }));
@@ -911,6 +930,7 @@ async function init() {
   for (const key of SLIDER_KEYS) {
     const el = document.getElementById(key);
     const numEl = document.getElementById(`${key}-val`);
+    if (!el) continue;
 
     el.addEventListener('input', () => {
       const value = Number(el.value);
@@ -959,9 +979,9 @@ async function init() {
     });
   }
 
-  fpsEl.addEventListener('change', () => save({ fps: Number(fpsEl.value) }));
+  fpsEl?.addEventListener('change', () => save({ fps: Number(fpsEl.value) }));
 
-  resetEl.addEventListener('click', async () => {
+  resetEl?.addEventListener('click', async () => {
     cancelPendingWrites();
     const syncDefaults = applyManagedOverrides({ ...AURA_DEFAULTS });
     render(syncDefaults);

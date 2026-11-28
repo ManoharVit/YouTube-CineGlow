@@ -30,7 +30,7 @@ The comprehensive E2E Enterprise Coexistence Test Suite for CineGlow Pro for You
 
 ### Dedicated E2E Enterprise Suite
 ```bash
-cd /Users/girimanoharv/Downloads/Misc/aura-ambient-light
+cd /Users/girimanoharv/Downloads/Misc/CineGlow
 node --test test/e2e-enterprise-coexistence.test.js
 ```
 ```
@@ -46,7 +46,7 @@ node --test test/e2e-enterprise-coexistence.test.js
 
 ### Full Repository Test Suite (`npm test`)
 ```bash
-cd /Users/girimanoharv/Downloads/Misc/aura-ambient-light
+cd /Users/girimanoharv/Downloads/Misc/CineGlow
 npm test
 ```
 ```

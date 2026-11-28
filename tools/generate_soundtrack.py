@@ -1,228 +1,341 @@
 #!/usr/bin/env python3
-"""
-YouTube CineGlow Pro — Soundtrack Synthesizer
-Generates a broadcast-quality, synchronized 48-second stereo electronic tech soundtrack
-matching the 6 scenes of the CineGlow Pro demo video.
+"""YouTube CineGlow Pro — Soundtrack Synthesizer.
+
+Generates a broadcast-quality, synchronized 48-second stereo electronic tech
+soundtrack matching the 6 scenes of the CineGlow Pro demo video.
 
 Tempo: 120 BPM (1 bar = 2.0s, 4 bars = 8.0s per scene)
 Sample Rate: 48,000 Hz, 16-bit PCM Stereo
 """
 
-import math
-import numpy as np
-import wave
 import os
+import wave
+
+import numpy as np
 
 SAMPLE_RATE = 48000
-DURATION = 48.0
-TOTAL_SAMPLES = int(SAMPLE_RATE * DURATION)
+DURATION_SEC = 48.0
 BPM = 120.0
-BEAT_DUR = 60.0 / BPM  # 0.5s
-BAR_DUR = BEAT_DUR * 4  # 2.0s
+BEAT_SEC = 60.0 / BPM
+RNG_SEED = 42
 
-t = np.linspace(0, DURATION, TOTAL_SAMPLES, endpoint=False)
-left = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
-right = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
+# Synth & mix constants
+PAD_CHUNK_SEC = 0.25
+DETUNE_DOWN = 0.998
+DETUNE_UP = 1.002
+TREMOLO_BASE = 0.85
+TREMOLO_DEPTH = 0.15
+TREMOLO_RATE_HZ = 1.5
+PAD_MIX = 0.28
 
-# Musical Chord Progression (each chord 2 bars = 4.0s):
-# Am9 -> Fmaj7 -> Cmaj9 -> G6 (repeated 6 times across 48s)
-# Root frequencies:
-# Am9:   A2 (110.0), C3 (130.8), E3 (164.8), G3 (196.0), B3 (246.9)
-# Fmaj7: F2 (87.3),  A2 (110.0), C3 (130.8), E3 (164.8)
-# Cmaj9: C2 (65.4),  E2 (82.4),  G2 (98.0),  B2 (123.5), D3 (146.8)
-# G6:    G2 (98.0),  B2 (123.5), D3 (146.8), E3 (164.8)
+BASS_START_SEC = 2.0
+BASS_STEP_SEC = 0.5
+BASS_BOOST_START_SEC = 16.0
+BASS_BOOST_END_SEC = 24.0
+BASS_BOOST_GAIN = 1.4
+BASS_MIX = 0.35
 
-CHORDS = [
-    # Am9
-    [110.0, 164.8, 196.0, 246.9, 329.6],
-    # Fmaj7
-    [87.3, 130.8, 164.8, 220.0, 261.6],
-    # Cmaj9
-    [65.4, 130.8, 196.0, 246.9, 293.7],
-    # G6
-    [98.0, 146.8, 196.0, 246.9, 329.6],
+ARP_STEP_SEC = 0.125
+ARP_START_SEC = 4.0
+ARP_END_SEC = 46.0
+ARP_MIX = 0.22
+ARP_PATTERN = (0, 2, 4, 1, 3, 2, 4, 3)
+
+PERC_START_SEC = 8.0
+KICK_END_SEC = 42.0
+HAT_END_SEC = 41.5
+HAT_STEP_SEC = 0.25
+
+TRANSITION_TIMES_SEC = (7.5, 15.5, 23.5, 31.5, 39.5)
+TRANSITION_DURATION_SEC = 0.8
+
+FADE_IN_SEC = 1.5
+FADE_OUT_SEC = 3.5
+LIMITER_CEILING = 0.95
+MIN_PEAK_FLOOR = 0.001
+
+CHORDS: list[list[float]] = [
+    [110.0, 164.8, 196.0, 246.9, 329.6],  # Am9
+    [87.3, 130.8, 164.8, 220.0, 261.6],   # Fmaj7
+    [65.4, 130.8, 196.0, 246.9, 293.7],   # Cmaj9
+    [98.0, 146.8, 196.0, 246.9, 329.6],   # G6
 ]
 
-def get_chord(time_sec):
+
+def get_chord(time_sec: float) -> list[float]:
+    """Return chord voice frequencies active at time_sec."""
+    if not CHORDS:
+        raise ValueError("CHORDS progression must not be empty")
     cycle = (time_sec % 16.0) / 4.0
-    idx = int(cycle) % len(CHORDS)
-    return CHORDS[idx]
+    chord_index = int(cycle) % len(CHORDS)
+    return CHORDS[chord_index]
 
-print("Synthesizing warm ambient pads...")
-# 1. Warm Ambient Pads with stereo detuning
-pad_left = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
-pad_right = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
 
-# Sample chord at intervals of 0.25s
-chunk_len = int(SAMPLE_RATE * 0.25)
-for i in range(0, TOTAL_SAMPLES, chunk_len):
-    cur_t = i / SAMPLE_RATE
-    chord = get_chord(cur_t)
-    sub_t = t[i:min(i + chunk_len, TOTAL_SAMPLES)]
-    
-    layer_l = np.zeros(len(sub_t), dtype=np.float32)
-    layer_r = np.zeros(len(sub_t), dtype=np.float32)
-    
-    for f in chord:
-        # Detuned saw/sine hybrid for warm analog pad
-        f_l = f * 0.998
-        f_r = f * 1.002
-        # Soft envelope filter
-        layer_l += (np.sin(2 * np.pi * f_l * sub_t) * 0.6 + np.sin(4 * np.pi * f_l * sub_t) * 0.2)
-        layer_r += (np.sin(2 * np.pi * f_r * sub_t) * 0.6 + np.sin(4 * np.pi * f_r * sub_t) * 0.2)
-        
-    pad_left[i:min(i + chunk_len, TOTAL_SAMPLES)] = layer_l / len(chord)
-    pad_right[i:min(i + chunk_len, TOTAL_SAMPLES)] = layer_r / len(chord)
+def add_pad_layer(
+    left: np.ndarray,
+    right: np.ndarray,
+    time_axis: np.ndarray,
+    sample_rate: int,
+) -> None:
+    """Synthesize warm stereo-detuned ambient chord pads into left/right buffers."""
+    total_samples = len(time_axis)
+    pad_left = np.zeros(total_samples, dtype=np.float32)
+    pad_right = np.zeros(total_samples, dtype=np.float32)
+    chunk_len = max(1, int(sample_rate * PAD_CHUNK_SEC))
 
-# Gentle tremolo on pad
-tremolo = 0.85 + 0.15 * np.sin(2 * np.pi * 1.5 * t)
-left += pad_left * tremolo * 0.28
-right += pad_right * tremolo * 0.28
+    for sample_idx in range(0, total_samples, chunk_len):
+        end_idx = min(sample_idx + chunk_len, total_samples)
+        chord = get_chord(sample_idx / sample_rate)
+        sub_time = time_axis[sample_idx:end_idx]
 
-print("Synthesizing bassline...")
-# 2. Warm Sub & Mid Bass (active after 4 seconds)
-bass = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
-bass_step_samples = int(SAMPLE_RATE * 0.5)  # 8th notes
-for i in range(0, TOTAL_SAMPLES, bass_step_samples):
-    cur_t = i / SAMPLE_RATE
-    if cur_t < 2.0:
-        continue
-    chord = get_chord(cur_t)
-    root_f = chord[0]
-    
-    sub_t = t[i:min(i + bass_step_samples, TOTAL_SAMPLES)]
-    rel_t = sub_t - cur_t
-    env = np.exp(-rel_t * 5.0)  # plucky bass decay
-    
-    # Extra boost during Scene 3 (Audio DSP: 16s - 24s)
-    boost = 1.4 if (16.0 <= cur_t < 24.0) else 1.0
-    
-    bass_note = (np.sin(2 * np.pi * root_f * sub_t) * 0.8 + 
-                 np.sin(2 * np.pi * (root_f * 2) * sub_t) * 0.3) * env * boost
-    bass[i:min(i + bass_step_samples, TOTAL_SAMPLES)] += bass_note
+        layer_l = np.zeros(len(sub_time), dtype=np.float32)
+        layer_r = np.zeros(len(sub_time), dtype=np.float32)
+        for freq_hz in chord:
+            freq_l = freq_hz * DETUNE_DOWN
+            freq_r = freq_hz * DETUNE_UP
+            layer_l += (
+                np.sin(2 * np.pi * freq_l * sub_time) * 0.6
+                + np.sin(4 * np.pi * freq_l * sub_time) * 0.2
+            )
+            layer_r += (
+                np.sin(2 * np.pi * freq_r * sub_time) * 0.6
+                + np.sin(4 * np.pi * freq_r * sub_time) * 0.2
+            )
 
-left += bass * 0.35
-right += bass * 0.35
+        pad_left[sample_idx:end_idx] = layer_l / len(chord)
+        pad_right[sample_idx:end_idx] = layer_r / len(chord)
 
-print("Synthesizing arpeggiated synth motif...")
-# 3. 16th-note Tech Arpeggio (ping-pong panning)
-arp_step = int(SAMPLE_RATE * 0.125)  # 16th note at 120 bpm = 0.125s
-arp_l = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
-arp_r = np.zeros(TOTAL_SAMPLES, dtype=np.float32)
+    tremolo = TREMOLO_BASE + TREMOLO_DEPTH * np.sin(
+        2 * np.pi * TREMOLO_RATE_HZ * time_axis
+    )
+    left[:] += pad_left * tremolo * PAD_MIX
+    right[:] += pad_right * tremolo * PAD_MIX
 
-arp_pattern = [0, 2, 4, 1, 3, 2, 4, 3]  # chord indices
-for step_idx, i in enumerate(range(0, TOTAL_SAMPLES, arp_step)):
-    cur_t = i / SAMPLE_RATE
-    if cur_t < 4.0 or cur_t > 46.0:
-        continue
-    chord = get_chord(cur_t)
-    note_idx = arp_pattern[step_idx % len(arp_pattern)]
-    note_f = chord[note_idx % len(chord)] * 2.0  # one octave up
-    
-    sub_t = t[i:min(i + arp_step, TOTAL_SAMPLES)]
-    rel_t = sub_t - cur_t
-    env = np.exp(-rel_t * 22.0)  # crisp pluck decay
-    
-    tone = np.sin(2 * np.pi * note_f * sub_t) * env
-    # Ping-pong pan alternating every note
-    pan_l = 0.8 if (step_idx % 2 == 0) else 0.2
-    pan_r = 1.0 - pan_l
-    
-    arp_l[i:min(i + arp_step, TOTAL_SAMPLES)] += tone * pan_l
-    arp_r[i:min(i + arp_step, TOTAL_SAMPLES)] += tone * pan_r
 
-left += arp_l * 0.22
-right += arp_r * 0.22
+def add_bass_layer(
+    left: np.ndarray,
+    right: np.ndarray,
+    time_axis: np.ndarray,
+    sample_rate: int,
+) -> None:
+    """Synthesize 8th-note sub/mid bass pulses into left/right buffers."""
+    total_samples = len(time_axis)
+    bass = np.zeros(total_samples, dtype=np.float32)
+    step_samples = max(1, int(sample_rate * BASS_STEP_SEC))
 
-print("Synthesizing subtle percussion & groove...")
-# 4. Modern Tech Beat (Kick on beats 1, 2, 3, 4; crisp hat on offbeats)
-# Active from 8.0s to 42.0s
-beat_samples = int(SAMPLE_RATE * BEAT_DUR)  # 0.5s
-for i in range(0, TOTAL_SAMPLES, beat_samples):
-    cur_t = i / SAMPLE_RATE
-    if cur_t < 8.0 or cur_t > 42.0:
-        continue
-    
-    # Kick Drum: rapid pitch drop from 140Hz to 45Hz
-    kick_len = int(SAMPLE_RATE * 0.18)
-    sub_t = t[i:min(i + kick_len, TOTAL_SAMPLES)]
-    rel_t = sub_t - cur_t
-    kick_freq = 45.0 + 95.0 * np.exp(-rel_t * 35.0)
-    kick_phase = 2 * np.pi * np.cumsum(kick_freq) / SAMPLE_RATE
-    kick_env = np.exp(-rel_t * 18.0)
-    kick_wave = np.sin(kick_phase) * kick_env * 0.45
-    
-    left[i:min(i + kick_len, TOTAL_SAMPLES)] += kick_wave
-    right[i:min(i + kick_len, TOTAL_SAMPLES)] += kick_wave
+    for sample_idx in range(0, total_samples, step_samples):
+        cur_sec = sample_idx / sample_rate
+        if cur_sec < BASS_START_SEC:
+            continue
+        end_idx = min(sample_idx + step_samples, total_samples)
+        root_freq = get_chord(cur_sec)[0]
 
-# Hi-hat on 8th note off-beats (cur_t + 0.25s)
-hat_step = int(SAMPLE_RATE * 0.25)
-for i in range(hat_step, TOTAL_SAMPLES, hat_step * 2):
-    cur_t = i / SAMPLE_RATE
-    if cur_t < 8.0 or cur_t > 41.5:
-        continue
-    hat_len = int(SAMPLE_RATE * 0.05)
-    sub_t = t[i:min(i + hat_len, TOTAL_SAMPLES)]
-    rel_t = sub_t - cur_t
-    noise = (np.random.rand(len(sub_t)) * 2 - 1).astype(np.float32)
-    hat_env = np.exp(-rel_t * 60.0)
-    hat_wave = noise * hat_env * 0.12
-    left[i:min(i + hat_len, TOTAL_SAMPLES)] += hat_wave * 0.7
-    right[i:min(i + hat_len, TOTAL_SAMPLES)] += hat_wave * 0.7
+        rel_time = time_axis[sample_idx:end_idx] - cur_sec
+        attack = np.minimum(1.0, rel_time / 0.005).astype(np.float32)
+        envelope = np.exp(-rel_time * 5.0) * attack
+        boost = (
+            BASS_BOOST_GAIN
+            if BASS_BOOST_START_SEC <= cur_sec < BASS_BOOST_END_SEC
+            else 1.0
+        )
 
-print("Synthesizing scene transition swooshes...")
-# 5. Scene Transition Risers / Whooshes (every 8 seconds: 7.5s, 15.5s, 23.5s, 31.5s, 39.5s)
-trans_times = [7.5, 15.5, 23.5, 31.5, 39.5]
-for tr_t in trans_times:
-    tr_start = int(SAMPLE_RATE * tr_t)
-    tr_len = int(SAMPLE_RATE * 0.8)
-    sub_t = t[tr_start:min(tr_start + tr_len, TOTAL_SAMPLES)]
-    rel_t = (sub_t - tr_t) / 0.8  # 0 to 1
-    
-    # White noise sweep with rising sine pitch
-    noise = (np.random.rand(len(sub_t)) * 2 - 1).astype(np.float32)
-    rise_f = 200.0 + 800.0 * (rel_t ** 2)
-    rise_phase = 2 * np.pi * np.cumsum(rise_f) / SAMPLE_RATE
-    rise_tone = np.sin(rise_phase)
-    
-    env = np.sin(np.pi * rel_t)  # bell-shaped envelope
-    swoosh = (noise * 0.6 + rise_tone * 0.4) * env * 0.18
-    left[tr_start:min(tr_start + tr_len, TOTAL_SAMPLES)] += swoosh
-    right[tr_start:min(tr_start + tr_len, TOTAL_SAMPLES)] += swoosh
+        bass_note = (
+            np.sin(2 * np.pi * root_freq * rel_time) * 0.8
+            + np.sin(2 * np.pi * (root_freq * 2) * rel_time) * 0.3
+        ) * envelope * boost
+        bass[sample_idx:end_idx] += bass_note
 
-print("Applying master limiter & fade in/out envelopes...")
-# 6. Master Volume Envelope (1.5s fade in, 3.5s outro fade out)
-master_env = np.ones(TOTAL_SAMPLES, dtype=np.float32)
-# Fade in
-fade_in_samples = int(SAMPLE_RATE * 1.5)
-master_env[:fade_in_samples] = np.linspace(0.0, 1.0, fade_in_samples)
-# Fade out
-fade_out_samples = int(SAMPLE_RATE * 3.5)
-master_env[-fade_out_samples:] = np.linspace(1.0, 0.0, fade_out_samples)
+    left[:] += bass * BASS_MIX
+    right[:] += bass * BASS_MIX
 
-left *= master_env
-right *= master_env
 
-# Soft saturation limiter to prevent digital clipping
-max_peak = max(np.max(np.abs(left)), np.max(np.abs(right)), 0.001)
-left = np.tanh(left / max_peak * 0.95)
-right = np.tanh(right / max_peak * 0.95)
+def add_arpeggio_layer(
+    left: np.ndarray,
+    right: np.ndarray,
+    time_axis: np.ndarray,
+    sample_rate: int,
+) -> None:
+    """Synthesize ping-pong panned 16th-note arpeggio tones."""
+    total_samples = len(time_axis)
+    arp_left = np.zeros(total_samples, dtype=np.float32)
+    arp_right = np.zeros(total_samples, dtype=np.float32)
+    step_samples = max(1, int(sample_rate * ARP_STEP_SEC))
 
-# Convert to 16-bit PCM
-left_i16 = (left * 32767).astype(np.int16)
-right_i16 = (right * 32767).astype(np.int16)
+    for step_idx, sample_idx in enumerate(range(0, total_samples, step_samples)):
+        cur_sec = sample_idx / sample_rate
+        if cur_sec < ARP_START_SEC or cur_sec > ARP_END_SEC:
+            continue
+        end_idx = min(sample_idx + step_samples, total_samples)
+        chord = get_chord(cur_sec)
+        note_slot = ARP_PATTERN[step_idx % len(ARP_PATTERN)]
+        note_freq = chord[note_slot % len(chord)] * 2.0
 
-# Interleave stereo channels
-stereo_i16 = np.empty((TOTAL_SAMPLES * 2,), dtype=np.int16)
-stereo_i16[0::2] = left_i16
-stereo_i16[1::2] = right_i16
+        rel_time = time_axis[sample_idx:end_idx] - cur_sec
+        attack = np.minimum(1.0, rel_time / 0.003).astype(np.float32)
+        envelope = np.exp(-rel_time * 22.0) * attack
+        tone = np.sin(2 * np.pi * note_freq * rel_time) * envelope
 
-output_wav = os.path.join(os.path.dirname(__file__), 'soundtrack.wav')
-with wave.open(output_wav, 'wb') as wf:
-    wf.setnchannels(2)
-    wf.setsampwidth(2)
-    wf.setframerate(SAMPLE_RATE)
-    wf.writeframes(stereo_i16.tobytes())
+        pan_left = 0.8 if (step_idx % 2 == 0) else 0.2
+        arp_left[sample_idx:end_idx] += tone * pan_left
+        arp_right[sample_idx:end_idx] += tone * (1.0 - pan_left)
 
-wav_size_mb = os.path.getsize(output_wav) / (1024 * 1024)
-print(f"Generated soundtrack: {output_wav} ({wav_size_mb:.2f} MB, {DURATION}s @ {SAMPLE_RATE} Hz stereo)")
+    left[:] += arp_left * ARP_MIX
+    right[:] += arp_right * ARP_MIX
+
+
+def add_percussion_layers(
+    left: np.ndarray,
+    right: np.ndarray,
+    time_axis: np.ndarray,
+    sample_rate: int,
+    rng: np.random.Generator,
+) -> None:
+    """Synthesize four-on-the-floor kick and off-beat hi-hat hits."""
+    total_samples = len(time_axis)
+    beat_samples = max(1, int(sample_rate * BEAT_SEC))
+    kick_len = max(1, int(sample_rate * 0.18))
+
+    for sample_idx in range(0, total_samples, beat_samples):
+        cur_sec = sample_idx / sample_rate
+        if cur_sec < PERC_START_SEC or cur_sec > KICK_END_SEC:
+            continue
+        end_idx = min(sample_idx + kick_len, total_samples)
+        rel_time = time_axis[sample_idx:end_idx] - cur_sec
+        kick_freq = 45.0 + 95.0 * np.exp(-rel_time * 35.0)
+        kick_phase = 2 * np.pi * np.cumsum(kick_freq) / sample_rate
+        kick_wave = np.sin(kick_phase) * np.exp(-rel_time * 18.0) * 0.45
+        left[sample_idx:end_idx] += kick_wave
+        right[sample_idx:end_idx] += kick_wave
+
+    hat_step = max(1, int(sample_rate * HAT_STEP_SEC))
+    hat_len = max(1, int(sample_rate * 0.05))
+    for sample_idx in range(hat_step, total_samples, hat_step * 2):
+        cur_sec = sample_idx / sample_rate
+        if cur_sec < PERC_START_SEC or cur_sec > HAT_END_SEC:
+            continue
+        end_idx = min(sample_idx + hat_len, total_samples)
+        rel_time = time_axis[sample_idx:end_idx] - cur_sec
+        noise = rng.uniform(-1.0, 1.0, len(rel_time)).astype(np.float32)
+        hat_wave = noise * np.exp(-rel_time * 60.0) * 0.12 * 0.7
+        left[sample_idx:end_idx] += hat_wave
+        right[sample_idx:end_idx] += hat_wave
+
+
+def add_transition_swooshes(
+    left: np.ndarray,
+    right: np.ndarray,
+    time_axis: np.ndarray,
+    sample_rate: int,
+    rng: np.random.Generator,
+) -> None:
+    """Synthesize filtered noise/sine risers at 8-second scene boundaries."""
+    total_samples = len(time_axis)
+    swoosh_len = max(1, int(sample_rate * TRANSITION_DURATION_SEC))
+
+    for start_sec in TRANSITION_TIMES_SEC:
+        start_idx = int(sample_rate * start_sec)
+        if start_idx >= total_samples:
+            continue
+        end_idx = min(start_idx + swoosh_len, total_samples)
+        sub_time = time_axis[start_idx:end_idx]
+        if len(sub_time) == 0:
+            continue
+
+        rel_progress = (sub_time - start_sec) / TRANSITION_DURATION_SEC
+        noise = rng.uniform(-1.0, 1.0, len(sub_time)).astype(np.float32)
+        rise_freq = 200.0 + 800.0 * (rel_progress ** 2)
+        rise_phase = 2 * np.pi * np.cumsum(rise_freq) / sample_rate
+        rise_tone = np.sin(rise_phase)
+
+        envelope = np.sin(np.pi * rel_progress)
+        swoosh = (noise * 0.6 + rise_tone * 0.4) * envelope * 0.18
+        left[start_idx:end_idx] += swoosh
+        right[start_idx:end_idx] += swoosh
+
+
+def export_master_wav(
+    left: np.ndarray,
+    right: np.ndarray,
+    sample_rate: int,
+    output_wav: str,
+) -> float:
+    """Apply master fade envelope, soft limiter, and write 16-bit stereo WAV."""
+    total_samples = len(left)
+    master_env = np.ones(total_samples, dtype=np.float32)
+    fade_in = min(int(sample_rate * FADE_IN_SEC), total_samples)
+    if fade_in > 0:
+        master_env[:fade_in] = np.linspace(0.0, 1.0, fade_in)
+    fade_out = min(int(sample_rate * FADE_OUT_SEC), total_samples)
+    if fade_out > 0:
+        master_env[-fade_out:] *= np.linspace(1.0, 0.0, fade_out)
+
+    out_left = left * master_env
+    out_right = right * master_env
+
+    max_peak = max(
+        float(np.max(np.abs(out_left))),
+        float(np.max(np.abs(out_right))),
+        MIN_PEAK_FLOOR,
+    )
+    limited_l = np.tanh(out_left / max_peak * LIMITER_CEILING)
+    limited_r = np.tanh(out_right / max_peak * LIMITER_CEILING)
+
+    int16_max = np.iinfo(np.int16).max
+    stereo_i16 = np.empty((total_samples * 2,), dtype=np.int16)
+    stereo_i16[0::2] = (limited_l * int16_max).astype(np.int16)
+    stereo_i16[1::2] = (limited_r * int16_max).astype(np.int16)
+
+    with wave.open(output_wav, 'wb') as wav_file:
+        wav_file.setnchannels(2)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(stereo_i16.tobytes())
+
+    return os.path.getsize(output_wav) / (1024 * 1024)
+
+
+def main() -> None:
+    """Synthesize and write the 48s stereo soundtrack WAV to tools/soundtrack.wav."""
+    total_samples = int(SAMPLE_RATE * DURATION_SEC)
+    if SAMPLE_RATE <= 0 or DURATION_SEC <= 0 or total_samples <= 0:
+        raise ValueError(
+            f"SAMPLE_RATE and DURATION_SEC must be positive "
+            f"(got {SAMPLE_RATE}, {DURATION_SEC})"
+        )
+    if not CHORDS or not all(CHORDS):
+        raise ValueError("CHORDS must contain at least one non-empty chord")
+
+    time_axis = np.linspace(
+        0, DURATION_SEC, total_samples, endpoint=False, dtype=np.float32
+    )
+    left = np.zeros(total_samples, dtype=np.float32)
+    right = np.zeros(total_samples, dtype=np.float32)
+    rng = np.random.default_rng(RNG_SEED)
+
+    print("Synthesizing warm ambient pads...")
+    add_pad_layer(left, right, time_axis, SAMPLE_RATE)
+
+    print("Synthesizing bassline...")
+    add_bass_layer(left, right, time_axis, SAMPLE_RATE)
+
+    print("Synthesizing arpeggiated synth motif...")
+    add_arpeggio_layer(left, right, time_axis, SAMPLE_RATE)
+
+    print("Synthesizing subtle percussion & groove...")
+    add_percussion_layers(left, right, time_axis, SAMPLE_RATE, rng)
+
+    print("Synthesizing scene transition swooshes...")
+    add_transition_swooshes(left, right, time_axis, SAMPLE_RATE, rng)
+
+    print("Applying master limiter & fade in/out envelopes...")
+    output_dir = os.path.dirname(os.path.abspath(__file__))
+    output_wav = os.path.join(output_dir, 'soundtrack.wav')
+    wav_size_mb = export_master_wav(left, right, SAMPLE_RATE, output_wav)
+    print(
+        f"Generated soundtrack: {output_wav} "
+        f"({wav_size_mb:.2f} MB, {DURATION_SEC}s @ {SAMPLE_RATE} Hz stereo)"
+    )
+
+
+if __name__ == '__main__':
+    main()

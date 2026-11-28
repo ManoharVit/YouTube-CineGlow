@@ -41,7 +41,14 @@
     lastRevealHeartbeat = now;
 
     const playerEl = window.CineGlowPlayer?.player || document.getElementById('movie_player');
-    const isOverPlayer = playerEl && playerEl.contains(e.target);
+    let isOverPlayer = false;
+    if (playerEl && e?.target && typeof e.target === 'object') {
+      try {
+        isOverPlayer = playerEl.contains(e.target);
+      } catch (_) {
+        isOverPlayer = false;
+      }
+    }
 
     if (!isOverPlayer) {
       if (!isHoverRevealed) {
@@ -98,7 +105,7 @@
     updateLightsOutClasses();
   }
 
-  const onPlayerStateChange = (e) => handlePlayerState(e.detail);
+  const onPlayerStateChange = (e) => handlePlayerState(e?.detail);
 
   const handleStorageChange = (changes, area) => {
     if (isKilled || window.CineGlowKilled) return;

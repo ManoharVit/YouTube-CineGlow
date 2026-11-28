@@ -7,7 +7,7 @@
 
   function extractVideoInfo(loc = window.location) {
     const path = loc.pathname || '';
-    if (path === '/watch' || path.startsWith('/watch')) {
+    if (path === '/watch' || path.startsWith('/watch/')) {
       return {
         isWatchPage: true,
         videoId: new URLSearchParams(loc.search).get('v')
@@ -148,14 +148,38 @@
 
       let changed = false;
 
-      if (this.isWatchPage !== isWatchPage) { this.isWatchPage = isWatchPage; changed = true; }
-      if (this.videoId !== videoId) { this.videoId = videoId; changed = true; }
-      if (this.isFullscreen !== isFullscreen) { this.isFullscreen = isFullscreen; changed = true; }
-      if (this.isMiniplayer !== isMiniplayer) { this.isMiniplayer = isMiniplayer; changed = true; }
-      if (this.isTheater !== isTheater) { this.isTheater = isTheater; changed = true; }
-      if (this.isAdShowing !== isAdShowing) { this.isAdShowing = isAdShowing; changed = true; }
-      if (this.isPiP !== isPiP) { this.isPiP = isPiP; changed = true; }
-      if (this.isPlaying !== isPlaying) { this.isPlaying = isPlaying; changed = true; }
+      if (this.isWatchPage !== isWatchPage) {
+        this.isWatchPage = isWatchPage;
+        changed = true;
+      }
+      if (this.videoId !== videoId) {
+        this.videoId = videoId;
+        changed = true;
+      }
+      if (this.isFullscreen !== isFullscreen) {
+        this.isFullscreen = isFullscreen;
+        changed = true;
+      }
+      if (this.isMiniplayer !== isMiniplayer) {
+        this.isMiniplayer = isMiniplayer;
+        changed = true;
+      }
+      if (this.isTheater !== isTheater) {
+        this.isTheater = isTheater;
+        changed = true;
+      }
+      if (this.isAdShowing !== isAdShowing) {
+        this.isAdShowing = isAdShowing;
+        changed = true;
+      }
+      if (this.isPiP !== isPiP) {
+        this.isPiP = isPiP;
+        changed = true;
+      }
+      if (this.isPlaying !== isPlaying) {
+        this.isPlaying = isPlaying;
+        changed = true;
+      }
 
       const inTheaterMode = !!(this.isTheater && this.isWatchPage && !this.isFullscreen);
       if (this._lastTheaterAttrState !== inTheaterMode && document.documentElement) {
@@ -290,6 +314,9 @@
         this.video.removeEventListener('ended', this.handlePlayState);
         this.video = null;
       }
+      this.player = null;
+      this.app = null;
+      this.watchFlexy = null;
 
       window.dispatchEvent(new CustomEvent('cineglow:kill-switch'));
     }
@@ -319,20 +346,26 @@
     chrome.storage.onChanged?.addListener(handleStorageChange);
   }
 
+  let onKillSwitchMessage = null;
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    onKillSwitchMessage = (message, _sender, sendResponse) => {
       if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
-        chrome.storage?.onChanged?.removeListener(handleStorageChange);
+        try { chrome.storage?.onChanged?.removeListener(handleStorageChange); } catch (_) {}
+        try { chrome.runtime?.onMessage?.removeListener(onKillSwitchMessage); } catch (_) {}
         playerManager.teardownKillSwitch();
         if (typeof sendResponse === 'function') {
           sendResponse({ success: true, script: 'player-manager.js' });
         }
       }
-    });
+    };
+    chrome.runtime.onMessage.addListener(onKillSwitchMessage);
   }
 
   window.addEventListener('cineglow:kill-switch', () => {
-    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+    try { chrome.storage?.onChanged?.removeListener(handleStorageChange); } catch (_) {}
+    if (onKillSwitchMessage) {
+      try { chrome.runtime?.onMessage?.removeListener(onKillSwitchMessage); } catch (_) {}
+    }
     playerManager.teardownKillSwitch();
   }, { once: true });
 })();

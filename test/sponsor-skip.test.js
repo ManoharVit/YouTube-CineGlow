@@ -360,7 +360,7 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
       // Shows HUD toast notice
       const notice = player.querySelector('.cineglow-sponsor-notice');
       assert.ok(notice, 'HUD toast notice must appear after skipping');
-      assert.ok(notice.textContent.includes('Skipped Sponsor (0:30 - 1:00)'));
+      assert.ok((notice.getAttribute('data-notice-text') || notice.textContent || '').includes('Skipped Sponsor (0:30 - 1:00)'));
     });
 
     test('does not seek video when user is actively scrubbing (video.seeking = true)', async () => {
@@ -403,7 +403,7 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
 
       const notice = player.querySelector('.cineglow-sponsor-notice');
       assert.ok(notice, 'HUD toast must show fast-forwarding state');
-      assert.ok(notice.textContent.includes('Fast-forwarding Sponsor'));
+      assert.ok((notice.getAttribute('data-notice-text') || notice.textContent || '').includes('Fast-forwarding Sponsor'));
 
       // 2. Playhead passes end of segment at 141s
       video.currentTime = 141.0;
@@ -702,14 +702,14 @@ describe('Creator Branded Content & In-Video Sponsor Segment Skipping', () => {
       api.checkSegmentState();
       assert.strictEqual(video.playbackRate, 16.0);
       let notice = player.querySelector('.cineglow-sponsor-notice');
-      assert.ok(notice.textContent.includes('Fast-forwarding Sponsor'));
+      assert.ok((notice.getAttribute('data-notice-text') || notice.textContent || '').includes('Fast-forwarding Sponsor'));
 
       // Advance directly to segB at 35.0s
       video.currentTime = 35.0;
       api.checkSegmentState();
       assert.strictEqual(video.playbackRate, 16.0);
       notice = player.querySelector('.cineglow-sponsor-notice');
-      assert.ok(notice.textContent.includes('Fast-forwarding Self-Promo'), 'HUD notice must update to next segment');
+      assert.ok((notice.getAttribute('data-notice-text') || notice.textContent || '').includes('Fast-forwarding Self-Promo'), 'HUD notice must update to next segment');
 
       // Exit segB at 51.0s
       video.currentTime = 51.0;

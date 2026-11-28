@@ -25,7 +25,7 @@
 }
 
 .cineglow-annotation[hidden] {
-  display: none !important;
+  display: none;
 }
 
 .cineglow-annotation-content {
@@ -64,16 +64,17 @@
 }
 
 /* Spotlight / Highlight outline */
-.cineglow-annotation-highlight {
+.cineglow-annotation.cineglow-annotation-highlight {
   border: 2px solid rgba(255, 255, 255, 0.35);
-  background-color: transparent !important;
+  background-color: transparent;
   cursor: pointer;
   transition: border 0.15s ease, background-color 0.15s ease;
 }
 
-.cineglow-annotation-highlight:hover {
-  border: 2.5px solid rgba(255, 255, 255, 0.85);
-  background-color: rgba(255, 255, 255, 0.12) !important;
+.cineglow-annotation.cineglow-annotation-highlight:hover {
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 /* Speech Bubble SVG tail */
@@ -91,6 +92,11 @@
 /* Clickable annotations cursor */
 .cineglow-annotation[data-clickable="true"] {
   cursor: pointer;
+}
+
+.cineglow-annotation[data-clickable="true"]:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
 }
 
 /* Retro Dismiss Close Button */
@@ -124,6 +130,12 @@
   border-color: #ef4444;
 }
 
-.cineglow-annotation:hover .cineglow-annotation-close {
+.cineglow-annotation-close:focus-visible {
+  display: flex;
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+.cineglow-annotation:is(:hover, :focus-within) .cineglow-annotation-close {
   display: flex;
 }

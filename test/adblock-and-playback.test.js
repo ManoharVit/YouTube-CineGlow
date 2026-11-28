@@ -801,4 +801,38 @@ describe('AdBlock Rules & Video Playback Integrity', () => {
       globalThis.location = origLoc;
     }
   });
+
+  test('main-world.js blocks fetch(new URL(...)) targeting ad endpoints and restores cleanly', async () => {
+    const env = setupMockEnvironment('https://www.youtube.com/watch?v=urlBlock1');
+    const origWin = globalThis.window;
+    const origDoc = globalThis.document;
+    const origLoc = globalThis.location;
+    const origFetch = env.window.fetch;
+    let upstreamCalls = 0;
+    env.window.fetch = async () => {
+      upstreamCalls++;
+      return new Response('ok', { status: 200 });
+    };
+
+    try {
+      globalThis.window = env.window;
+      globalThis.document = env.document;
+      globalThis.location = env.window.location;
+
+      new Function(fs.readFileSync(path.join(__dirname, '../content/main-world.js'), 'utf8'))();
+
+      const blockedResp = await env.window.fetch(new URL('https://doubleclick.net/pagead/ads'));
+      assert.strictEqual(upstreamCalls, 0, 'Ad URL passed as URL instance must be blocked');
+      assert.strictEqual(await blockedResp.text(), '{}');
+
+      await env.window.fetch(new URL('https://www.youtube.com/api/stats/watchtime'));
+      assert.strictEqual(upstreamCalls, 1, 'Non-ad URL instance must pass through');
+    } finally {
+      globalThis.window.dispatchEvent(new Event('cineglow:kill-switch'));
+      env.window.fetch = origFetch;
+      globalThis.window = origWin;
+      globalThis.document = origDoc;
+      globalThis.location = origLoc;
+    }
+  });
 });

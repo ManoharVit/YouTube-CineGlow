@@ -5,6 +5,21 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [3.0.0] — 2026-11-26
+
+Major release hardening the extension core, accessibility, defaults, and release architecture:
+
+### Changed & Improved
+- **Audio Normalizer enabled by default**: Smooth loudness normalization (`audioNormalizer: true`) now activates out of the box alongside ScreenX ambient glow.
+- **Info Card Teaser Suppression**: Enabling **Hide End Screens** (`hideEndCards`) now also hides YouTube's top-right info card teasers and cue buttons (`.ytp-cards-teaser`, `.ytp-cards-button`).
+- **Popup Accessibility & Styling**: Rebuilt tab semantics (`tablist`/`tabpanel`), numeric input labels/controls, speed display toggling (`<button>`), and unified CSS spacing/danger design tokens (`--space-*`, `--danger-*`).
+- **Core Reliability & Security Hardening (Tiers 1–3)**:
+  - Guarded Canvas 2D contexts, `findVideo()` lookup in popup edge sampling, and `smoothness` fallback defaults in `content/content.js`.
+  - Wrapped policy-state checks in error handlers, centralized sender authorization (`authorizeApiMessage`), validated YouTube video IDs (`/^[a-zA-Z0-9_-]{11}$/`), and serialized LRU annotation cache updates in `background/background.js`.
+  - Hardened exponential backoff parameter sanitization, `Retry-After` parsing, `AbortSignal` forwarding, and narrowed network error retries in `shared/network-backoff.js`.
+  - Added URL object parsing in page-context `fetch` interception, `WeakSet` cycle guards, writable XHR mock handling, isolated 16x ad fast-forward state, and identity-checked teardown in `content/main-world.js`.
+  - Hardened helper tooling (`tools/test-local.sh` with `set -euo pipefail`, Python media scripts, and demo/docs HTML semantics).
+
 ## [2.3.0] — 2026-11-11
 
 ### Chrome Web Store Compliance & Targeted Release Patch

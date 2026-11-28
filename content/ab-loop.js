@@ -48,16 +48,21 @@
     }
   }
 
+  const MIN_PLAYBACK_RATE = 0.1;
+  const EXPIRED_LOOP_RETRY_MS = 20;
+  const MIN_BOUNDARY_DELAY_MS = 10;
+  const MAX_BOUNDARY_DELAY_MS = 30_000;
+
   function scheduleNextLoopCheck() {
     clearLoopBoundaryTimer();
     if (isKilled || !video || !isLooping || pointA === null || pointB === null) return;
     if (video.paused || video.ended || video.seeking) return;
 
     const remainingSec = pointB - video.currentTime;
-    const rate = Math.max(0.1, video.playbackRate || 1);
+    const rate = Math.max(MIN_PLAYBACK_RATE, video.playbackRate || 1);
     const delayMs = remainingSec <= 0
-      ? 20
-      : Math.max(10, Math.min(30_000, (remainingSec / rate) * 1000));
+      ? EXPIRED_LOOP_RETRY_MS
+      : Math.max(MIN_BOUNDARY_DELAY_MS, Math.min(MAX_BOUNDARY_DELAY_MS, (remainingSec / rate) * 1000));
     loopBoundaryTimer = setTimeout(() => {
       loopBoundaryTimer = 0;
       onTimeUpdate();
@@ -539,6 +544,10 @@
   chrome.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'AURA_EMERGENCY_KILL_SWITCH') {
       teardownKillSwitch();
+      if (!window._cineglowKillEventFired) {
+        window._cineglowKillEventFired = true;
+        window.dispatchEvent(new CustomEvent('cineglow:kill-switch', { detail: message }));
+      }
       sendResponse?.({ success: true, script: 'ab-loop.js' });
     }
   });

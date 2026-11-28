@@ -38,10 +38,10 @@
     opacity: 100,
     spread: 200,
     smoothness: 0,
-    blur: 20,
-    saturation: 115,
-    contrast: 100,
-    brightness: 100,
+    blur: 16,
+    saturation: 105,
+    contrast: 106,
+    brightness: 108,
     audioReactive: false
   });
   const SETTLE_FRAMES = 30;     // Extra draws after the video stops, so smoothing converges
@@ -147,8 +147,14 @@
   canvas.setAttribute('aria-hidden', 'true');
   canvas.style.pointerEvents = 'none';
   const ctx = canvas.getContext('2d', { alpha: false });
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'low';
+  if (ctx) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'low';
+  }
+  const EDGE_SAMPLE_W = 32;
+  const EDGE_SAMPLE_H = 18;
+  let sampleReadCanvas = null;
+  let sampleReadCtx = null;
 
   function ensureCanvasMounted() {
     if (isKilled || window.CineGlowKilled) return;
@@ -170,8 +176,10 @@
     if (canvas.width !== targetW || canvas.height !== targetH) {
       canvas.width = targetW;
       canvas.height = targetH;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = settings.screenXMode ? 'high' : 'low';
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = settings.screenXMode ? 'high' : 'low';
+      }
       forceFullDraw = true;
     }
 
@@ -354,28 +362,36 @@
     canvas.style.clipPath = `inset(${topClip}px ${rightClip}px ${bottomClip}px ${leftClip}px)`;
   }
 
-  function drawScreenXFrame(v, c) {
-    const W = canvas.width;
-    const H = canvas.height;
-    const vw = v.videoWidth;
-    const vh = v.videoHeight;
-    let sx = 0, sy = 0, sw = vw, sh = vh;
-    if (c && (1 - c.left - c.right) > 0.05 && (1 - c.top - c.bottom) > 0.05) {
-      sx = vw * c.left;
-      sy = vh * c.top;
-      sw = vw * (1 - c.left - c.right);
-      sh = vh * (1 - c.top - c.bottom);
+  /**
+   * Draw active frame surrounded by 4 mirrored ScreenX perimeter edge bands.
+   * @param {HTMLVideoElement} videoEl
+   * @param {{top:number,right:number,bottom:number,left:number}|null} cropRect
+   */
+  function drawScreenXFrame(videoEl, cropRect) {
+    const width = canvas.width;
+    const height = canvas.height;
+    const vw = videoEl.videoWidth;
+    const vh = videoEl.videoHeight;
+    let sx = 0;
+    let sy = 0;
+    let sw = vw;
+    let sh = vh;
+    if (cropRect && (1 - cropRect.left - cropRect.right) > 0.05 && (1 - cropRect.top - cropRect.bottom) > 0.05) {
+      sx = vw * cropRect.left;
+      sy = vh * cropRect.top;
+      sw = vw * (1 - cropRect.left - cropRect.right);
+      sh = vh * (1 - cropRect.top - cropRect.bottom);
     }
 
     const scale = getCanvasScale();
-    const cx = Math.round(W * (scale - 1) / (2 * scale));
-    const cw = Math.round(W / scale);
-    const cy = Math.round(H * (scale - 1) / (2 * scale));
-    const ch = Math.round(H / scale);
+    const cx = Math.round(width * (scale - 1) / (2 * scale));
+    const cw = Math.round(width / scale);
+    const cy = Math.round(height * (scale - 1) / (2 * scale));
+    const ch = Math.round(height / scale);
     const rightX = cx + cw;
-    const rightW = W - rightX;
+    const rightW = width - rightX;
     const bottomY = cy + ch;
-    const bottomH = H - bottomY;
+    const bottomH = height - bottomY;
 
     // Sample only the outermost perimeter edge band (~6% W, ~8% H) so edge colors,
     // ceiling lights, and floor highlights extend vividly outward without interior dilution.
@@ -383,64 +399,64 @@
     const edgeH = Math.max(4, Math.min(sh, Math.round(sh * 0.08)));
 
     // Center video
-    ctx.drawImage(v, sx, sy, sw, sh, cx, cy, cw, ch);
+    ctx.drawImage(videoEl, sx, sy, sw, sh, cx, cy, cw, ch);
 
     // Left Wing (extruded leftward seamlessly from x = cx to x = 0)
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(-1, 1);
-    ctx.drawImage(v, sx, sy, edgeW, sh, 0, 0, cx, ch);
+    ctx.drawImage(videoEl, sx, sy, edgeW, sh, 0, 0, cx, ch);
     ctx.restore();
 
-    // Right Wing (extruded rightward seamlessly from x = rightX to x = W)
+    // Right Wing (extruded rightward seamlessly from x = rightX to x = width)
     ctx.save();
     ctx.translate(rightX, cy);
     ctx.scale(-1, 1);
-    ctx.drawImage(v, sx + sw - edgeW, sy, edgeW, sh, -rightW, 0, rightW, ch);
+    ctx.drawImage(videoEl, sx + sw - edgeW, sy, edgeW, sh, -rightW, 0, rightW, ch);
     ctx.restore();
 
     // Top Wing (extruded upward seamlessly from y = cy to y = 0)
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(1, -1);
-    ctx.drawImage(v, sx, sy, sw, edgeH, 0, 0, cw, cy);
+    ctx.drawImage(videoEl, sx, sy, sw, edgeH, 0, 0, cw, cy);
     ctx.restore();
 
-    // Bottom Wing (extruded downward seamlessly from y = bottomY to y = H)
+    // Bottom Wing (extruded downward seamlessly from y = bottomY to y = height)
     ctx.save();
     ctx.translate(cx, bottomY);
     ctx.scale(1, -1);
-    ctx.drawImage(v, sx, sy + sh - edgeH, sw, edgeH, 0, -bottomH, cw, bottomH);
+    ctx.drawImage(videoEl, sx, sy + sh - edgeH, sw, edgeH, 0, -bottomH, cw, bottomH);
     ctx.restore();
 
     // 4 Corners (extruded diagonally seamlessly)
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(-1, -1);
-    ctx.drawImage(v, sx, sy, edgeW, edgeH, 0, 0, cx, cy);
+    ctx.drawImage(videoEl, sx, sy, edgeW, edgeH, 0, 0, cx, cy);
     ctx.restore();
 
     ctx.save();
     ctx.translate(rightX, cy);
     ctx.scale(-1, -1);
-    ctx.drawImage(v, sx + sw - edgeW, sy, edgeW, edgeH, -rightW, 0, rightW, cy);
+    ctx.drawImage(videoEl, sx + sw - edgeW, sy, edgeW, edgeH, -rightW, 0, rightW, cy);
     ctx.restore();
 
     ctx.save();
     ctx.translate(cx, bottomY);
     ctx.scale(-1, -1);
-    ctx.drawImage(v, sx, sy + sh - edgeH, edgeW, edgeH, 0, -bottomH, cx, bottomH);
+    ctx.drawImage(videoEl, sx, sy + sh - edgeH, edgeW, edgeH, 0, -bottomH, cx, bottomH);
     ctx.restore();
 
     ctx.save();
     ctx.translate(rightX, bottomY);
     ctx.scale(-1, -1);
-    ctx.drawImage(v, sx + sw - edgeW, sy + sh - edgeH, edgeW, edgeH, -rightW, -bottomH, rightW, bottomH);
+    ctx.drawImage(videoEl, sx + sw - edgeW, sy + sh - edgeH, edgeW, edgeH, -rightW, -bottomH, rightW, bottomH);
     ctx.restore();
   }
 
   function draw(v, now) {
-    if (v.readyState < 2 || v.videoWidth < 2 || v.videoHeight < 2) return true;
+    if (!ctx || v.readyState < 2 || v.videoWidth < 2 || v.videoHeight < 2) return true;
 
     const t = v.currentTime;
     if (t !== lastVideoTime) {
@@ -453,7 +469,7 @@
     lastVideoTime = t;
     settleFrames--;
 
-    const smoothing = (settings.screenXMode || forceFullDraw) ? 0 : numOr(settings.smoothness, 60) / 100;
+    const smoothing = (settings.screenXMode || forceFullDraw) ? 0 : numOr(settings.smoothness, SAFE_DEFAULTS.smoothness) / 100;
     ctx.globalAlpha = 1 - smoothing * 0.9;
     forceFullDraw = false;
 
@@ -778,6 +794,8 @@
 
     document.getElementById(CANVAS_ID)?.remove();
     canvas?.remove();
+    sampleReadCanvas = null;
+    sampleReadCtx = null;
 
     syncCodecPolicyToPage();
 
@@ -822,45 +840,69 @@
     }
   }
 
+  /**
+   * Sample average RGB edge strips from a small willReadFrequently offscreen canvas
+   * to keep the main display canvas GPU-accelerated.
+   * @returns {{active: boolean, colors?: {top:number[], right:number[], bottom:number[], left:number[]}}}
+   */
   function sampleEdgeColors() {
     if (!isActive || isKilled || window.CineGlowKilled || isTaintedVideo || !canvas || !ctx) {
       return { active: false };
     }
-    const currentVideo = video || findVideo();
+    const currentVideo = video || window.CineGlowPlayer?.video || document.querySelector('video.html5-main-video, video');
     if (!currentVideo || currentVideo.readyState < 2 || canvas.width < 8 || canvas.height < 8) {
       return { active: false };
     }
-    const W = canvas.width;
-    const H = canvas.height;
-    const tx = Math.floor(W * 0.2);
-    const tw = Math.max(2, Math.floor(W * 0.6));
-    const ly = Math.floor(H * 0.2);
-    const lh = Math.max(2, Math.floor(H * 0.6));
-
-    const avgStrip = (rx, ry, rw, rh) => {
-      const data = ctx.getImageData(rx, ry, rw, rh).data;
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let count = 0;
-      for (let i = 0; i < data.length; i += 8) {
-        r += data[i];
-        g += data[i + 1];
-        b += data[i + 2];
-        count++;
-      }
-      if (count === 0) return [0, 0, 0];
-      return [Math.round(r / count), Math.round(g / count), Math.round(b / count)];
-    };
 
     try {
+      if (!sampleReadCanvas) {
+        sampleReadCanvas = document.createElement('canvas');
+        sampleReadCanvas.width = EDGE_SAMPLE_W;
+        sampleReadCanvas.height = EDGE_SAMPLE_H;
+        sampleReadCtx = sampleReadCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+      }
+      if (!sampleReadCtx) {
+        return { active: false };
+      }
+
+      sampleReadCtx.drawImage(canvas, 0, 0, EDGE_SAMPLE_W, EDGE_SAMPLE_H);
+      const data = sampleReadCtx.getImageData(0, 0, EDGE_SAMPLE_W, EDGE_SAMPLE_H).data;
+      if (!data || data.length < EDGE_SAMPLE_W * EDGE_SAMPLE_H * 4) {
+        return { active: false };
+      }
+
+      const txStart = Math.floor(EDGE_SAMPLE_W * 0.2);
+      const txEnd = Math.min(EDGE_SAMPLE_W, txStart + Math.max(2, Math.floor(EDGE_SAMPLE_W * 0.6)));
+      const lyStart = Math.floor(EDGE_SAMPLE_H * 0.2);
+      const lyEnd = Math.min(EDGE_SAMPLE_H, lyStart + Math.max(2, Math.floor(EDGE_SAMPLE_H * 0.6)));
+
+      const avgRect = (rx, ry, rw, rh) => {
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let count = 0;
+        const xEnd = Math.min(EDGE_SAMPLE_W, rx + rw);
+        const yEnd = Math.min(EDGE_SAMPLE_H, ry + rh);
+        for (let py = Math.max(0, ry); py < yEnd; py++) {
+          for (let px = Math.max(0, rx); px < xEnd; px++) {
+            const idx = (py * EDGE_SAMPLE_W + px) * 4;
+            r += data[idx];
+            g += data[idx + 1];
+            b += data[idx + 2];
+            count++;
+          }
+        }
+        if (count === 0) return [0, 0, 0];
+        return [Math.round(r / count), Math.round(g / count), Math.round(b / count)];
+      };
+
       return {
         active: true,
         colors: {
-          top: avgStrip(tx, 2, tw, 2),
-          right: avgStrip(W - 4, ly, 2, lh),
-          bottom: avgStrip(tx, H - 4, tw, 2),
-          left: avgStrip(2, ly, 2, lh)
+          top: avgRect(txStart, 1, txEnd - txStart, 2),
+          right: avgRect(EDGE_SAMPLE_W - 3, lyStart, 2, lyEnd - lyStart),
+          bottom: avgRect(txStart, EDGE_SAMPLE_H - 3, txEnd - txStart, 2),
+          left: avgRect(1, lyStart, 2, lyEnd - lyStart)
         }
       };
     } catch (_) {

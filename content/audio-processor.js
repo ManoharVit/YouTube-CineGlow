@@ -249,7 +249,7 @@
         if (!onUserInteractionResume && typeof window !== 'undefined') {
           onUserInteractionResume = () => {
             if (audioCtx && audioCtx.state === 'suspended') {
-              audioCtx.resume();
+              Promise.resolve(audioCtx.resume()).catch(() => {});
             }
           };
           window.addEventListener('click', onUserInteractionResume, { passive: true });
@@ -289,7 +289,7 @@
       if (!video._cineGlowResumeAttached) {
         onVideoPlaybackResume = () => {
           if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
+            Promise.resolve(audioCtx.resume()).catch(() => {});
           }
         };
         video.addEventListener('play', onVideoPlaybackResume);
@@ -300,7 +300,7 @@
         boundResumeVideo = video;
       }
       if (!video.paused && audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        Promise.resolve(audioCtx.resume()).catch(() => {});
       }
 
       updateAudioParams();
@@ -413,10 +413,15 @@
       } catch (_) {}
     }
 
-    // 4. Detach video flags
+    // 4. Detach video flags and collect videos before clearing currentVideo
+    const videosToClean = [];
     if (currentVideo) {
+      videosToClean.push(currentVideo);
       currentVideo.cineGlowAudioAttached = false;
       currentVideo = null;
+    }
+    if (boundResumeVideo && !videosToClean.includes(boundResumeVideo)) {
+      videosToClean.push(boundResumeVideo);
     }
 
     // 5. Remove window interaction listeners
@@ -431,9 +436,6 @@
     }
 
     // 6. Remove video playback resume listeners
-    const videosToClean = [];
-    if (currentVideo) videosToClean.push(currentVideo);
-    if (boundResumeVideo && !videosToClean.includes(boundResumeVideo)) videosToClean.push(boundResumeVideo);
     for (const v of videosToClean) {
       const handler = v._cineGlowResumeHandler || onVideoPlaybackResume;
       if (handler && typeof v.removeEventListener === 'function') {

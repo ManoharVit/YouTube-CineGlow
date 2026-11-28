@@ -193,6 +193,7 @@ describe('Empirical Challenger 2: SaaS Isolation, Network Outages & Kill-Switch 
         'content/speed-button.js',
         'content/return-dislikes.js',
         'content/hide-shorts.js',
+        'content/hide-ai.js',
         'content/annotations.js',
         'content/hide-endcards.js'
       ];
@@ -861,12 +862,13 @@ describe('Empirical Challenger 2: SaaS Isolation, Network Outages & Kill-Switch 
       }
     });
 
-    test('3.4 All 15 content scripts register emergency kill switch listener with zero omissions', () => {
+    test('3.4 All 16 content scripts register emergency kill switch listener with zero omissions', () => {
       const contentFiles = [
         'content/annotations.js',
         'content/audio-processor.js',
         'content/blackbar.js',
         'content/content.js',
+        'content/hide-ai.js',
         'content/hide-endcards.js',
         'content/hide-shorts.js',
         'content/pip-button.js',

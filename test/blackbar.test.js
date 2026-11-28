@@ -272,6 +272,26 @@ describe('Aura Black Bar Detection & Auto-Crop (FP-5.1, FP-5.2, FP-5.3)', () => 
       tick();
       assert.strictEqual(drawImageCount, 4, 'Hidden document must not scan even after 5000ms');
     });
+
+    test('unfocused secondary-monitor playback locks letterbox crop in 4 scans (~6s at 2000ms cadence)', () => {
+      fillLetterboxFrame(framePixelBuffer, 64, 64, 8, 8);
+      globalThis.document.hasFocus = () => false;
+      globalThis.document.hidden = false;
+
+      loadBlackBarScript();
+
+      // Scans 1-3 (0s, 2s, 4s): not locked yet
+      for (let step = 0; step < 3; step++) {
+        tick();
+        assert.strictEqual(globalThis.window.CineGlowCrop, null, `Must not lock before unfocused scan ${step + 1}`);
+        simulatedTime += 2000;
+      }
+
+      // Scan 4 (~6s): locks crop without waiting ~14s
+      tick();
+      assert.ok(globalThis.window.CineGlowCrop?.top > 0.1, 'Unfocused crop must lock on 4th scan (~6s)');
+      assert.ok(video.style.clipPath.includes('inset'));
+    });
   });
 
   describe('Asymmetric Corner Overlay & Guardrails', () => {
@@ -313,6 +333,64 @@ describe('Aura Black Bar Detection & Auto-Crop (FP-5.1, FP-5.2, FP-5.3)', () => 
 
       assert.strictEqual(globalThis.window.CineGlowCrop, null, 'Must never crop active bright top picture');
       assert.strictEqual(video.style.clipPath || '', '');
+    });
+
+    test('never applies 4-sided miniature crop when 21:9 letterbox frame has dark side shadows', () => {
+      // Top 8 rows & bottom 8 rows black letterbox + dark shadows (RGB 10,10,10) on left 10 cols & right 10 cols
+      framePixelBuffer.fill(0);
+      for (let y = 8; y < 56; y++) {
+        setRowPixels(framePixelBuffer, 64, y, 10, 10, 10, 0, 10);
+        setRowPixels(framePixelBuffer, 64, y, 210, 180, 140, 10, 54);
+        setRowPixels(framePixelBuffer, 64, y, 10, 10, 10, 54, 64);
+      }
+
+      loadBlackBarScript();
+      for (let i = 0; i < 8; i++) tick();
+
+      assert.ok(globalThis.window.CineGlowCrop, 'Should still crop horizontal letterbox bars');
+      assert.ok(globalThis.window.CineGlowCrop.top > 0.1);
+      assert.ok(globalThis.window.CineGlowCrop.bottom > 0.1);
+      assert.strictEqual(globalThis.window.CineGlowCrop.left, 0, 'Must never crop left side on letterboxed video');
+      assert.strictEqual(globalThis.window.CineGlowCrop.right, 0, 'Must never crop right side on letterboxed video');
+    });
+
+    test('does not falsely pillarbox dark cinematic shadows (RGB 12) on 16:9 video, while cropping true 4:3 black pillarboxes', () => {
+      // Dark shadows RGB 12 on side edges of a 16:9 frame
+      framePixelBuffer.fill(0);
+      for (let y = 0; y < 64; y++) {
+        setRowPixels(framePixelBuffer, 64, y, 12, 12, 12, 0, 10);
+        setRowPixels(framePixelBuffer, 64, y, 190, 190, 190, 10, 54);
+        setRowPixels(framePixelBuffer, 64, y, 12, 12, 12, 54, 64);
+      }
+
+      loadBlackBarScript();
+      for (let i = 0; i < 8; i++) tick();
+      assert.strictEqual(globalThis.window.CineGlowCrop, null, 'Must not treat dark shadows as pillarbox');
+
+      // Now simulate true pure-black 4:3 pillarbox (RGB 0 on side columns)
+      for (let y = 0; y < 64; y++) {
+        setRowPixels(framePixelBuffer, 64, y, 0, 0, 0, 0, 10);
+        setRowPixels(framePixelBuffer, 64, y, 200, 200, 200, 10, 54);
+        setRowPixels(framePixelBuffer, 64, y, 0, 0, 0, 54, 64);
+      }
+      for (let i = 0; i < 8; i++) tick();
+      assert.ok(globalThis.window.CineGlowCrop, 'True 4:3 pillarbox should still crop');
+      assert.ok(globalThis.window.CineGlowCrop.left > 0.1);
+      assert.ok(globalThis.window.CineGlowCrop.right > 0.1);
+    });
+
+    test('rapidly releases crop within 2 frames when active bright content enters cropped edge', () => {
+      fillLetterboxFrame(framePixelBuffer, 64, 64, 8, 8);
+      loadBlackBarScript();
+      for (let i = 0; i < 8; i++) tick();
+      assert.ok(globalThis.window.CineGlowCrop?.top > 0.1);
+
+      // Video switches to full 16:9 frame
+      fillLetterboxFrame(framePixelBuffer, 64, 64, 0, 0);
+      tick();
+      tick();
+      assert.strictEqual(globalThis.window.CineGlowCrop, null, 'Crop must release promptly within 2 frames');
+      assert.strictEqual(video.style.clipPath, '');
     });
   });
 });

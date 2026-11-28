@@ -246,7 +246,8 @@
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       if (isKilled) return;
-      const state = e.detail;
+      const state = e?.detail;
+      if (!state) return;
       if (state.isWatchPage && state.player) {
         if (!currentButton || !state.player.contains(currentButton)) {
           injectPipButton(state);

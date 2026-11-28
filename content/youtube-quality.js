@@ -150,7 +150,8 @@
 
   const onPlayerStateChange = (e) => {
     if (isKilled || window.CineGlowKilled) return;
-    const state = e.detail;
+    const state = e?.detail;
+    if (!state) return;
     const adJustEnded = wasAdShowing && !state.isAdShowing;
     wasAdShowing = Boolean(state.isAdShowing);
 

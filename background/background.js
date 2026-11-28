@@ -96,11 +96,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
           })?.catch?.(() => {});
         } else {
           (async () => {
-            const { adblockEnabled = true } = await chrome.storage.sync.get('adblockEnabled');
-            if (adblockEnabled) {
-              await chrome.declarativeNetRequest?.updateEnabledRulesets({
-                enableRulesetIds: ['adblock_rules']
-              }).catch(() => {});
+            try {
+              const { adblockEnabled = true } = await chrome.storage.sync.get('adblockEnabled');
+              if (adblockEnabled) {
+                await chrome.declarativeNetRequest?.updateEnabledRulesets({
+                  enableRulesetIds: ['adblock_rules']
+                });
+              }
+            } catch (err) {
+              console.error('[Aura] Failed to re-enable adblock ruleset:', err);
             }
           })();
         }
@@ -328,54 +332,65 @@ async function updateCodecBlockers() {
 
 // --- LRU Annotations Cache ---
 const MAX_ANNOTATION_CACHE_ENTRIES = 5;
+let annotationCacheQueue = Promise.resolve();
 
-async function getCachedAnnotation(cacheKey) {
-  try {
-    if (!chrome.storage?.local) return null;
-    const data = await chrome.storage.local.get([cacheKey, 'ar_cache_keys']);
-    if (data?.[cacheKey]) {
-      const keys = Array.isArray(data.ar_cache_keys)
-        ? data.ar_cache_keys.filter((k) => k !== cacheKey)
-        : [];
-      keys.push(cacheKey);
-      await chrome.storage.local.set({ ar_cache_keys: keys }).catch(() => {});
-      return data[cacheKey];
-    }
-  } catch (_) {}
-  return null;
+function enqueueAnnotationCacheOp(fn) {
+  const next = annotationCacheQueue.then(fn, fn);
+  annotationCacheQueue = next.catch(() => {});
+  return next;
 }
 
-async function setCachedAnnotation(cacheKey, xml) {
-  try {
-    if (!chrome.storage?.local) return;
-    const data = await chrome.storage.local.get('ar_cache_keys');
-    let keys = Array.isArray(data?.ar_cache_keys)
-      ? data.ar_cache_keys.filter((k) => k !== cacheKey)
-      : null;
-
-    if (!keys) {
-      const allLocal = await chrome.storage.local.get(null).catch(() => ({}));
-      keys = Object.keys(allLocal).filter(
-        (k) => k.startsWith('ar_') && k !== 'ar_cache_keys' && k !== cacheKey
-      );
-    }
-    keys.push(cacheKey);
-
-    const keysToRemove = [];
-    while (keys.length > MAX_ANNOTATION_CACHE_ENTRIES) {
-      const oldestKey = keys.shift();
-      if (oldestKey && oldestKey !== cacheKey) {
-        keysToRemove.push(oldestKey);
+function getCachedAnnotation(cacheKey) {
+  return enqueueAnnotationCacheOp(async () => {
+    try {
+      if (!chrome.storage?.local) return null;
+      const data = await chrome.storage.local.get([cacheKey, 'ar_cache_keys']);
+      if (data?.[cacheKey]) {
+        const keys = Array.isArray(data.ar_cache_keys)
+          ? data.ar_cache_keys.filter((k) => k !== cacheKey)
+          : [];
+        keys.push(cacheKey);
+        await chrome.storage.local.set({ ar_cache_keys: keys }).catch(() => {});
+        return data[cacheKey];
       }
-    }
+    } catch (_) {}
+    return null;
+  });
+}
 
-    if (keysToRemove.length > 0) {
-      await chrome.storage.local.remove(keysToRemove).catch(() => {});
+function setCachedAnnotation(cacheKey, xml) {
+  return enqueueAnnotationCacheOp(async () => {
+    try {
+      if (!chrome.storage?.local) return;
+      const data = await chrome.storage.local.get('ar_cache_keys');
+      let keys = Array.isArray(data?.ar_cache_keys)
+        ? data.ar_cache_keys.filter((k) => k !== cacheKey)
+        : null;
+
+      if (!keys) {
+        const allLocal = await chrome.storage.local.get(null).catch(() => ({}));
+        keys = Object.keys(allLocal).filter(
+          (k) => k.startsWith('ar_') && k !== 'ar_cache_keys' && k !== cacheKey
+        );
+      }
+      keys.push(cacheKey);
+
+      const keysToRemove = [];
+      while (keys.length > MAX_ANNOTATION_CACHE_ENTRIES) {
+        const oldestKey = keys.shift();
+        if (oldestKey && oldestKey !== cacheKey) {
+          keysToRemove.push(oldestKey);
+        }
+      }
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove).catch(() => {});
+      }
+      await chrome.storage.local.set({ [cacheKey]: xml, ar_cache_keys: keys });
+    } catch (err) {
+      console.error('[Aura] Failed to cache annotation:', err);
     }
-    await chrome.storage.local.set({ [cacheKey]: xml, ar_cache_keys: keys });
-  } catch (err) {
-    console.error('[Aura] Failed to cache annotation:', err);
-  }
+  });
 }
 
 async function readPossiblyGzippedText(resp) {
@@ -388,6 +403,26 @@ async function readPossiblyGzippedText(resp) {
     return await new Response(decompressedStream).text();
   }
   return new TextDecoder('utf-8').decode(bytes);
+}
+
+async function authorizeApiMessage(sendResponse) {
+  const state = await getPolicyState();
+  if (state.killSwitchActive) {
+    sendResponse({
+      success: false,
+      error: 'Extension disabled by emergency kill-switch',
+      killed: true
+    });
+    return null;
+  }
+  if (state.thirdPartyAPIsDisabled) {
+    sendResponse({
+      success: false,
+      error: 'Blocked by enterprise policy'
+    });
+    return null;
+  }
+  return state;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -405,28 +440,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'FETCH_SPONSOR_BLOCK') {
     (async () => {
-      const state = await getPolicyState();
-      if (state.killSwitchActive) {
-        sendResponse({
-          success: false,
-          error: 'Extension disabled by emergency kill-switch',
-          killed: true
-        });
-        return;
-      }
-      if (state.thirdPartyAPIsDisabled) {
-        sendResponse({
-          success: false,
-          error: 'Blocked by enterprise policy'
-        });
-        return;
-      }
-      const videoId = message.videoId;
-      if (!videoId || typeof videoId !== 'string') {
-        sendResponse({ success: false, error: 'Invalid video ID' });
-        return;
-      }
       try {
+        if (!(await authorizeApiMessage(sendResponse))) return;
+        const videoId = message.videoId;
+        if (!videoId || typeof videoId !== 'string') {
+          sendResponse({ success: false, error: 'Invalid video ID' });
+          return;
+        }
         const categories = Array.isArray(message.categories) && message.categories.length > 0
           ? message.categories
           : ['sponsor', 'selfpromo', 'interaction'];
@@ -444,7 +464,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const data = await resp.json();
         sendResponse({ success: true, segments: Array.isArray(data) ? data : [] });
       } catch (err) {
-        sendResponse({ success: false, error: err.message });
+        sendResponse({ success: false, error: err?.message || 'Unexpected background error' });
       }
     })();
     return true;
@@ -452,28 +472,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'FETCH_DISLIKES') {
     (async () => {
-      const state = await getPolicyState();
-      if (state.killSwitchActive) {
-        sendResponse({
-          success: false,
-          error: 'Extension disabled by emergency kill-switch',
-          killed: true
-        });
-        return;
-      }
-      if (state.thirdPartyAPIsDisabled) {
-        sendResponse({
-          success: false,
-          error: 'Blocked by enterprise policy'
-        });
-        return;
-      }
-      const videoId = message.videoId;
-      if (!videoId || typeof videoId !== 'string') {
-        sendResponse({ success: false, error: 'Invalid video ID' });
-        return;
-      }
       try {
+        if (!(await authorizeApiMessage(sendResponse))) return;
+        const videoId = message.videoId;
+        if (!videoId || typeof videoId !== 'string') {
+          sendResponse({ success: false, error: 'Invalid video ID' });
+          return;
+        }
         const fetchFn = typeof fetchWithBackoff === 'function' ? fetchWithBackoff : fetch;
         const resp = await fetchFn(`https://returnyoutubedislikeapi.com/votes?videoId=${encodeURIComponent(videoId)}`, {
           cache: 'no-cache'
@@ -485,7 +490,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const data = await resp.json();
         sendResponse({ success: true, data });
       } catch (err) {
-        sendResponse({ success: false, error: err.message });
+        sendResponse({ success: false, error: err?.message || 'Unexpected background error' });
       }
     })();
     return true;
@@ -493,28 +498,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'FETCH_ANNOTATIONS') {
     (async () => {
-      const state = await getPolicyState();
-      if (state.killSwitchActive) {
-        sendResponse({
-          success: false,
-          error: 'Extension disabled by emergency kill-switch',
-          killed: true
-        });
-        return;
-      }
-      if (state.thirdPartyAPIsDisabled) {
-        sendResponse({
-          success: false,
-          error: 'Blocked by enterprise policy'
-        });
-        return;
-      }
-      const videoId = message.videoId;
-      if (!videoId || typeof videoId !== 'string' || videoId.length !== 11) {
-        sendResponse({ success: false, error: 'Invalid video ID' });
-        return;
-      }
       try {
+        if (!(await authorizeApiMessage(sendResponse))) return;
+        const videoId = message.videoId;
+        if (!videoId || typeof videoId !== 'string' || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+          sendResponse({ success: false, error: 'Invalid video ID' });
+          return;
+        }
         const cacheKey = `ar_${videoId}`;
         const cachedXml = await getCachedAnnotation(cacheKey);
         if (cachedXml) {
@@ -538,7 +528,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         sendResponse({ success: true, xml, cached: false });
       } catch (err) {
-        sendResponse({ success: false, error: err.message });
+        sendResponse({ success: false, error: err?.message || 'Unexpected background error' });
       }
     })();
     return true;

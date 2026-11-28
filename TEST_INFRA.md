@@ -186,14 +186,14 @@ test/
 
 ### 1. Execute Dedicated E2E Enterprise Coexistence Suite (163 Tests)
 ```bash
-cd /Users/girimanoharv/Downloads/Misc/aura-ambient-light
+cd /Users/girimanoharv/Downloads/Misc/CineGlow
 node --test test/e2e-enterprise-coexistence.test.js
 ```
 *Expected Result*: All 163 test cases pass with exit code `0` in $$< 3.0\text{ seconds}$$.
 
 ### 2. Execute Full Project Verification Suite (Baseline + E2E)
 ```bash
-cd /Users/girimanoharv/Downloads/Misc/aura-ambient-light
+cd /Users/girimanoharv/Downloads/Misc/CineGlow
 npm test
 ```
 *Expected Result*: All 222 test cases pass across 8 test suites (59 baseline + 163 enterprise) with exit code `0`.

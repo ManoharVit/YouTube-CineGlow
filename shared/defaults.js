@@ -1,5 +1,8 @@
-// Default settings shared by the content script and the popup.
-const AURA_DEFAULTS = Object.freeze({
+/**
+ * Default settings shared by extension content scripts, popup UI, and service worker.
+ * @type {Readonly<Record<string, unknown>>}
+ */
+var AURA_DEFAULTS = Object.freeze({
   enabled: true,
   adblockEnabled: true,
   sponsorBlockEnabled: true,
@@ -30,7 +33,7 @@ const AURA_DEFAULTS = Object.freeze({
   smoothness: 50,        // % — temporal blend between frames
   removeBlackBars: true,
   fps: 30,               // max glow updates per second
-  audioNormalizer: false,
+  audioNormalizer: true,
   audioBoost: 100,       // %
   bassBoost: 0,          // dB (0 to 15)
   vocalBoost: 0,         // dB (0 to 12)
@@ -55,6 +58,7 @@ const AURA_DEFAULTS = Object.freeze({
   recordFps: 30,         // 30 | 60
   returnDislikes: false, // restore public dislike count & rating
   hideShorts: false,     // hide YouTube Shorts shelves & feeds
+  hideAiVideos: false,   // hide/flag videos carrying YouTube official AI disclosure
   restoreAnnotations: false, // restore classic YouTube video annotations
   hideEndCards: true     // hide video end cards, suggestions & subscribe overlays by default
 });

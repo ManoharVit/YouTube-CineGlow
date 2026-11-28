@@ -57,7 +57,7 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.strictEqual(d.screenXMode, true);
 
     // Audio properties
-    assert.strictEqual(d.audioNormalizer, false);
+    assert.strictEqual(d.audioNormalizer, true);
     assert.strictEqual(d.audioBoost, 100);
     assert.strictEqual(d.bassBoost, 0);
     assert.strictEqual(d.vocalBoost, 0);
@@ -351,5 +351,90 @@ describe('Settings Schema & Configuration Integrity', () => {
     assert.ok(contentJs.includes('SCREENX_PROFILE') && contentJs.includes('const effectiveBlur = settings.screenXMode ? SCREENX_PROFILE.blur : settings.blur;'), 'ScreenX mode must enforce fixed ScreenX profile irrespective of preset');
     assert.ok(contentJs.includes('settings.screenXMode ? SCREENX_W : SAMPLE_W'), 'ScreenX mode must dynamically scale canvas resolution');
     assert.ok(contentJs.includes('settings.screenXMode || forceFullDraw'), 'ScreenX mode must bypass temporal smoothing to prevent motion ghosting');
+  });
+
+  test('sampleEdgeColors uses a dedicated willReadFrequently offscreen context instead of reading back display canvas', async () => {
+    const { setupMockEnvironment, MockElement, MockVideoElement } = require('./helpers/mock-dom');
+    const env = setupMockEnvironment();
+    const origWindow = globalThis.window;
+    const origDoc = globalThis.document;
+    const origChrome = globalThis.chrome;
+    const origResizeObserver = globalThis.ResizeObserver;
+    const origCineGlowPlayer = globalThis.window?.CineGlowPlayer;
+
+    const video = new MockVideoElement();
+    video.readyState = 4;
+    video.paused = false;
+    video.videoWidth = 1280;
+    video.videoHeight = 720;
+    video.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1280, height: 720, right: 1280, bottom: 720 });
+    env.document.body.prepend = (el) => env.document.body.appendChild(el);
+    env.document.visibilityState = 'visible';
+
+    globalThis.window = env.window;
+    globalThis.document = env.document;
+    globalThis.chrome = env.chrome;
+    globalThis.ResizeObserver = env.window.ResizeObserver;
+    env.window.CineGlowPlayer = {
+      isWatchPage: true,
+      isTheater: false,
+      isPiP: false,
+      video,
+      videoId: 'edge123',
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    };
+
+    const readbackContexts = [];
+    const createElementOrig = env.document.createElement.bind(env.document);
+    env.document.createElement = (tag) => {
+      const el = createElementOrig(tag);
+      if (tag === 'canvas') {
+        el.getContext = (_type, opts) => {
+          return {
+            drawImage: () => {},
+            fillRect: () => {},
+            clearRect: () => {},
+            getImageData: (_x, _y, w, h) => {
+              readbackContexts.push({ id: el.id || 'offscreen', opts });
+              const data = new Uint8ClampedArray(w * h * 4);
+              data.fill(180);
+              return { data };
+            }
+          };
+        };
+      }
+      return el;
+    };
+
+    try {
+      const defaultsCode = fs.readFileSync(path.join(__dirname, '../shared/defaults.js'), 'utf8');
+      new Function('globalThis', `${defaultsCode}; globalThis.AURA_DEFAULTS = AURA_DEFAULTS;`)(globalThis);
+      const contentJs = fs.readFileSync(path.join(__dirname, '../content/content.js'), 'utf8');
+      new Function(contentJs)();
+      await new Promise(r => setTimeout(r, 40));
+
+      let response = null;
+      for (const listener of env.chrome.runtime.onMessage._listeners) {
+        listener({ type: 'AURA_GET_EDGE_COLORS' }, {}, (res) => { response = res; });
+      }
+
+      assert.strictEqual(readbackContexts.length, 1, 'Expected a single getImageData readback');
+      assert.strictEqual(readbackContexts[0].id, 'offscreen', 'Main display canvas must never run getImageData');
+      assert.strictEqual(readbackContexts[0].opts?.willReadFrequently, true, 'Readback context must set willReadFrequently: true');
+      assert.strictEqual(response?.active, true);
+      assert.deepStrictEqual(response?.colors?.top, [180, 180, 180]);
+    } finally {
+      for (const listener of [...env.chrome.runtime.onMessage._listeners]) {
+        listener({ type: 'AURA_EMERGENCY_KILL_SWITCH' }, {}, () => {});
+      }
+      delete globalThis.AURA_DEFAULTS;
+      delete globalThis.window.CineGlowKilled;
+      env.window.CineGlowPlayer = origCineGlowPlayer;
+      globalThis.ResizeObserver = origResizeObserver;
+      globalThis.window = origWindow;
+      globalThis.document = origDoc;
+      globalThis.chrome = origChrome;
+    }
   });
 });

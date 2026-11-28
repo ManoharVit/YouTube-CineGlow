@@ -558,7 +558,7 @@
       len++;
       mask >>= 1;
     }
-    if (len > 8) return null;
+    if (len > 8 || offset + len > buf.length) return null;
     let val = b & (mask - 1);
     for (let i = 1; i < len; i++) {
       val = (val * 256) + buf[offset + i];
@@ -567,19 +567,21 @@
   }
 
   function writeVint(val) {
+    if (!Number.isFinite(val) || val < 0) return new Uint8Array([0x80]);
+    const bigVal = BigInt(Math.floor(val));
     let len = 1;
-    let maxVal = 0x7E;
-    let flag = 0x80;
-    while (val > maxVal && len < 8) {
+    let maxVal = 0x7En;
+    let flag = 0x80n;
+    while (bigVal > maxVal && len < 8) {
       len++;
-      flag *= 0x80;
-      maxVal = (maxVal * 0x80) + 0x7F;
+      flag *= 0x80n;
+      maxVal = (maxVal * 0x80n) + 0x7Fn;
     }
     const out = new Uint8Array(len);
-    let v = flag + val;
+    let v = flag + bigVal;
     for (let i = len - 1; i >= 0; i--) {
-      out[i] = v % 256;
-      v = Math.floor(v / 256);
+      out[i] = Number(v & 0xFFn);
+      v >>= 8n;
     }
     return out;
   }
@@ -608,7 +610,7 @@
 
       const infoDataStart = infoOffset + 4 + infoSizeVint.len;
       const infoDataEnd = infoDataStart + infoSizeVint.val;
-      if (infoDataEnd > u8.length) return blob;
+      if (!Number.isFinite(infoDataEnd) || infoDataEnd > u8.length) return blob;
 
       let timecodeScaleNs = 1000000;
       for (let j = infoDataStart; j < infoDataEnd - 4; j++) {
@@ -869,7 +871,23 @@
       try {
         mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
       } catch (_) {
-        mediaRecorder = new MediaRecorder(combinedStream);
+        try {
+          mediaRecorder = new MediaRecorder(combinedStream);
+        } catch (err) {
+          console.error('[CineGlow Record] MediaRecorder initialization failed:', err);
+          if (canvasPipelineCleanup) {
+            canvasPipelineCleanup();
+            canvasPipelineCleanup = null;
+          }
+          cleanupAudioTap();
+          if (activeStream) {
+            activeStream.getTracks().forEach((t) => t.stop());
+            activeStream = null;
+          }
+          const playerEl = window.CineGlowPlayer?.player || document.getElementById('movie_player');
+          showToast('Recording is unavailable for this video.', playerEl);
+          return;
+        }
       }
     }
 
@@ -895,7 +913,10 @@
     };
 
     mediaRecorder.onstop = () => {
-      finalizeRecording();
+      finalizeRecording().catch((err) => {
+        console.error('[CineGlow Record] Failed to finalize recording:', err);
+        hideHUD(null);
+      });
     };
 
     mediaRecorder.start(1000);
@@ -956,43 +977,50 @@
       return;
     }
 
-    const effectiveMime = mediaRecorder?.mimeType || recordedChunks[0]?.type || activeRecordedMimeType;
-    if (effectiveMime) {
-      activeRecordedMimeType = effectiveMime;
+    try {
+      const effectiveMime = mediaRecorder?.mimeType || recordedChunks[0]?.type || activeRecordedMimeType;
+      if (effectiveMime) {
+        activeRecordedMimeType = effectiveMime;
+      }
+
+      const durationMs = Math.max(500, Date.now() - recordingStartTime);
+      const durationSec = Math.round(durationMs / 1000);
+      const ext = deriveContainerExtension(activeRecordedMimeType, activeRecordingFormat);
+
+      const finalBlob = ext === 'mp4'
+        ? new Blob(recordedChunks, { type: activeRecordedMimeType || 'video/mp4' })
+        : await fixDurationAndFormat(
+            new Blob(recordedChunks, { type: activeRecordedMimeType || 'video/webm' }),
+            durationMs,
+            ext
+          );
+      recordedChunks = [];
+
+      const sizeMB = (finalBlob.size / (1024 * 1024)).toFixed(1);
+      const filename = getRecordingFilename(document.title || 'YouTube', durationSec, ext);
+
+      const url = URL.createObjectURL(finalBlob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      (document.body || document.documentElement)?.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        a.remove();
+        try { URL.revokeObjectURL(url); } catch (_) {}
+      }, 1000);
+
+      hideHUD(`Saved as ${ext.toUpperCase()} (${sizeMB} MB)`);
+    } catch (err) {
+      console.error('[CineGlow Record] Recording export error:', err);
+      recordedChunks = [];
+      hideHUD(null);
+    } finally {
+      activeRecordingFormat = null;
+      activeRecordingFps = null;
     }
-
-    const durationMs = Math.max(500, Date.now() - recordingStartTime);
-    const durationSec = Math.round(durationMs / 1000);
-    const ext = deriveContainerExtension(activeRecordedMimeType, activeRecordingFormat);
-
-    const finalBlob = ext === 'mp4'
-      ? new Blob(recordedChunks, { type: activeRecordedMimeType || 'video/mp4' })
-      : await fixDurationAndFormat(
-          new Blob(recordedChunks, { type: activeRecordedMimeType || 'video/webm' }),
-          durationMs,
-          ext
-        );
-    recordedChunks = [];
-
-    const sizeMB = (finalBlob.size / (1024 * 1024)).toFixed(1);
-    const filename = getRecordingFilename(document.title || 'YouTube', durationSec, ext);
-
-    const url = URL.createObjectURL(finalBlob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-
-    setTimeout(() => {
-      a.remove();
-      try { URL.revokeObjectURL(url); } catch (_) {}
-    }, 1000);
-
-    hideHUD(`Saved as ${ext.toUpperCase()} (${sizeMB} MB)`);
-    activeRecordingFormat = null;
-    activeRecordingFps = null;
   }
 
   function injectRecordButton(playerManager) {

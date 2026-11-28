@@ -141,7 +141,8 @@
 
   const onPlayerStateChange = (e) => {
     if (isKilled) return;
-    const state = e.detail;
+    const state = e?.detail;
+    if (!state) return;
     if (state.video !== lastVideo) {
       if (lastVideo) {
         lastVideo.removeEventListener('play', onUserPlay);

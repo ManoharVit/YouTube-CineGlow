@@ -24,16 +24,23 @@
   let lastNavLocation = typeof window !== 'undefined' ? (window.location?.href || '') : '';
   let navRecoveryTimers = [];
   let qualityResumePending = false;
+  let lastUpdatedPageData = null;
+  let lastUpdatedPageVideoId = null;
   let origJSONParse = null;
+  let wrappedJSONParse = null;
   let origFetch = null;
+  let wrappedFetch = null;
   let origOpen = null;
+  let wrappedOpen = null;
   let origSend = null;
+  let wrappedSend = null;
   let origFnToString = null;
+  let customFnToString = null;
 
   try {
     if (typeof Function !== 'undefined' && Function.prototype && Function.prototype.toString) {
       origFnToString = Function.prototype.toString;
-      const customFnToString = function toString() {
+      customFnToString = function toString() {
         if (this === JSON.parse && origJSONParse) return origJSONParse.toString();
         if (typeof window !== 'undefined' && this === window.fetch && origFetch) return origFetch.toString();
         if (typeof XMLHttpRequest !== 'undefined') {
@@ -127,8 +134,10 @@
     'bannerPromoRenderer'
   ];
 
-  function prunePlayerAds(data) {
+  function prunePlayerAds(data, visited = new WeakSet()) {
     if (isKilled || !adBlockEnabled || !data || typeof data !== 'object') return data;
+    if (visited.has(data)) return data;
+    visited.add(data);
     try {
       for (const key of AD_KEYS_TO_DELETE) {
         if (key in data) {
@@ -141,10 +150,10 @@
       }
 
       if (data.playerResponse && typeof data.playerResponse === 'object') {
-        prunePlayerAds(data.playerResponse);
+        prunePlayerAds(data.playerResponse, visited);
       }
       if (data.raw_player_response && typeof data.raw_player_response === 'object') {
-        prunePlayerAds(data.raw_player_response);
+        prunePlayerAds(data.raw_player_response, visited);
       }
 
       if (data.playerConfig) {
@@ -171,7 +180,7 @@
   try {
     if (typeof JSON !== 'undefined' && typeof JSON.parse === 'function') {
       origJSONParse = JSON.parse;
-      JSON.parse = function parse(...args) {
+      wrappedJSONParse = function parse(...args) {
         if (!adBlockEnabled || (isKilled && origJSONParse)) return origJSONParse.apply(this, args);
         const result = origJSONParse.apply(this, args);
         if (!isKilled && adBlockEnabled && result && typeof result === 'object') {
@@ -179,6 +188,7 @@
         }
         return result;
       };
+      JSON.parse = wrappedJSONParse;
     }
   } catch (_) {}
 
@@ -268,11 +278,14 @@
 
   if (typeof window.fetch === 'function' && typeof Response !== 'undefined') {
     origFetch = window.fetch;
-    window.fetch = function fetch(...args) {
+    wrappedFetch = function fetch(...args) {
       if (isKilled && origFetch) {
         return origFetch.apply(this, args);
       }
-      const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+      const req = args[0];
+      const url = typeof req === 'string'
+        ? req
+        : (req instanceof URL ? req.href : (req?.url || ''));
       if (shouldBlockUrl(url)) {
         return Promise.resolve(
           new Response('{}', {
@@ -284,32 +297,35 @@
       }
       return origFetch.apply(this, args);
     };
+    window.fetch = wrappedFetch;
   }
 
   if (typeof window.XMLHttpRequest !== 'undefined') {
     origOpen = XMLHttpRequest.prototype.open;
     origSend = XMLHttpRequest.prototype.send;
 
-    XMLHttpRequest.prototype.open = function open(method, url, ...rest) {
+    wrappedOpen = function open(method, url, ...rest) {
       if (isKilled && origOpen) {
         return origOpen.call(this, method, url, ...rest);
       }
-      this._cineglowUrl = typeof url === 'string' ? url : String(url);
+      this._cineglowUrl = typeof url === 'string' ? url : (url instanceof URL ? url.href : String(url));
       return origOpen.call(this, method, url, ...rest);
     };
+    XMLHttpRequest.prototype.open = wrappedOpen;
 
-    XMLHttpRequest.prototype.send = function send(...args) {
+    wrappedSend = function send(...args) {
       if (isKilled && origSend) {
         return origSend.apply(this, args);
       }
       if (this._cineglowUrl && shouldBlockUrl(this._cineglowUrl)) {
         try {
           const mockPayload = this.responseType === 'json' ? {} : '{}';
-          Object.defineProperty(this, 'responseText', { value: '{}', writable: false, configurable: true });
-          Object.defineProperty(this, 'response', { value: mockPayload, writable: false, configurable: true });
-          Object.defineProperty(this, 'status', { value: 200, writable: false, configurable: true });
-          Object.defineProperty(this, 'readyState', { value: 4, writable: false, configurable: true });
+          Object.defineProperty(this, 'responseText', { value: '{}', writable: true, configurable: true });
+          Object.defineProperty(this, 'response', { value: mockPayload, writable: true, configurable: true });
+          Object.defineProperty(this, 'status', { value: 200, writable: true, configurable: true });
+          Object.defineProperty(this, 'readyState', { value: 4, writable: true, configurable: true });
           queueMicrotask(() => {
+            if (isKilled || !adBlockEnabled) return;
             this.dispatchEvent(new Event('readystatechange'));
             this.dispatchEvent(new Event('load'));
             this.dispatchEvent(new Event('loadend'));
@@ -319,6 +335,7 @@
       }
       return origSend.apply(this, args);
     };
+    XMLHttpRequest.prototype.send = wrappedSend;
   }
 
   function getPlayerElement() {
@@ -399,7 +416,9 @@
             }
           }
           acceleratedVideo = video;
-          video.playbackRate = 16.0;
+          try {
+            video.playbackRate = 16.0;
+          } catch (_) {}
         }
 
         if (player) {
@@ -577,6 +596,7 @@
 
   function resumePlaybackIfStalled(fromLoadRecovery = false) {
     if (isKilled || document.hidden || userPausedCurrentNav) return;
+    if (document.documentElement?.hasAttribute?.('cineglow-ai-watch-hidden')) return;
     const path = window.location?.pathname || '';
     if (path !== '/watch' && !path.startsWith('/watch') && !path.startsWith('/live/')) return;
     const player = getPlayerElement();
@@ -603,6 +623,171 @@
     }
   }
 
+  /**
+   * Extract active YouTube video ID from the current location URL.
+   * @returns {string|null}
+   */
+  function getCurrentWatchVideoId() {
+    try {
+      const url = new URL(window.location.href);
+      const v = url.searchParams.get('v');
+      if (v) return v;
+      const match = url.pathname.match(/^\/(?:live|shorts)\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  const AI_DISCLOSURE_CONTAINER_KEYS = new Set([
+    'howThisContentWasMade',
+    'howThisContentWasMadeSectionViewModel',
+    'videoAttributesSectionViewModel',
+    'structuredDescriptionContentRenderer',
+    'attributeViewModel',
+    'ytAttributeViewModel',
+    'infoPanelContainerRenderer',
+    'infoPanelContentRenderer',
+    'metadataBadgeRenderer',
+    'playerMicroformatRenderer',
+    'microformatDataRenderer',
+    'syntheticMedia',
+    'alteredOrSyntheticContent',
+    'disclosureStatus'
+  ]);
+
+  const AI_DISCLOSURE_SKIP_KEYS = new Set([
+    'shortDescription',
+    'attributedDescription',
+    'attributedDescriptionBodyRenderer',
+    'description',
+    'descriptionText',
+    'secondaryResults',
+    'relatedVideos',
+    'watchNextSecondaryResultsRenderer',
+    'continuationItems',
+    'commentRenderer',
+    'commentsEntryPointHeaderRenderer',
+    'liveChatRenderer',
+    'transcriptRenderer',
+    'annotations',
+    'streamingData'
+  ]);
+
+  const AI_DISCLOSURE_FLAG_KEYS = new Set([
+    'isAlteredOrSynthetic',
+    'isSyntheticMedia',
+    'containsSyntheticMedia',
+    'hasAlteredOrSyntheticContent'
+  ]);
+
+  const AI_DISCLOSURE_TEXT_RE = /\b(how this content was made|altered or synthetic content|sound or visuals were significantly edited or digitally generated|made with ai)\b/i;
+
+  /**
+   * Traverse structured YouTube disclosure blocks (ignoring descriptions and comments)
+   * with a WeakSet cycle guard and bounded recursion depth.
+   * @param {unknown} node
+   * @param {boolean} inDisclosureScope
+   * @param {number} depth
+   * @param {WeakSet<object>} seen
+   * @returns {string|null}
+   */
+  function findOfficialAiDisclosure(node, inDisclosureScope = false, depth = 0, seen = new WeakSet()) {
+    if (!node || depth > 14) return null;
+    if (typeof node === 'boolean') return null;
+    if (typeof node === 'string') {
+      if (inDisclosureScope && AI_DISCLOSURE_TEXT_RE.test(node)) {
+        return node.trim().slice(0, 120);
+      }
+      return null;
+    }
+    if (typeof node !== 'object') return null;
+    if (seen.has(node)) return null;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      const limit = Math.min(node.length, 40);
+      for (let i = 0; i < limit; i++) {
+        const hit = findOfficialAiDisclosure(node[i], inDisclosureScope, depth + 1, seen);
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    for (const key of Object.keys(node)) {
+      if (AI_DISCLOSURE_SKIP_KEYS.has(key)) continue;
+      const val = node[key];
+      if (AI_DISCLOSURE_FLAG_KEYS.has(key) && val === true) {
+        return 'Altered or synthetic content';
+      }
+      const nextScope = inDisclosureScope || AI_DISCLOSURE_CONTAINER_KEYS.has(key);
+      if (key === 'howThisContentWasMade' || key === 'alteredOrSyntheticContent' || key === 'howThisContentWasMadeSectionViewModel') {
+        const innerHit = findOfficialAiDisclosure(val, true, depth + 1, seen);
+        return innerHit || 'Altered or synthetic content';
+      }
+      const hit = findOfficialAiDisclosure(val, nextScope, depth + 1, seen);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  function extractPayloadVideoId(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return payload?.videoDetails?.videoId ||
+      payload?.currentVideoEndpoint?.watchEndpoint?.videoId ||
+      payload?.playerResponse?.videoDetails?.videoId ||
+      payload?.microformat?.playerMicroformatRenderer?.externalVideoId ||
+      null;
+  }
+
+  function inspectAndEmitAiDisclosure() {
+    if (isKilled) return;
+    const videoId = getCurrentWatchVideoId();
+    if (!videoId) {
+      window.postMessage({ type: 'CINEGLOW_AI_DISCLOSURE_RESPONSE', videoId: null, disclosed: false, reason: null }, window.location.origin);
+      return;
+    }
+
+    const candidates = [];
+    const player = getPlayerElement();
+    try {
+      const pr = typeof player?.getPlayerResponse === 'function' ? player.getPlayerResponse() : null;
+      const prId = extractPayloadVideoId(pr);
+      if (pr && (!prId || prId === videoId)) candidates.push(pr);
+    } catch (_) {}
+
+    try {
+      const flexy = document.querySelector('ytd-watch-flexy');
+      const flexyData = flexy?.data;
+      const flexyVid = flexy?.getAttribute?.('video-id') || extractPayloadVideoId(flexyData);
+      if (flexyData && (!flexyVid || flexyVid === videoId)) candidates.push(flexyData);
+    } catch (_) {}
+
+    if (lastUpdatedPageData && (!lastUpdatedPageVideoId || lastUpdatedPageVideoId === videoId)) {
+      candidates.push(lastUpdatedPageData);
+    }
+
+    try {
+      const initPr = window.ytInitialPlayerResponse;
+      if (initPr && extractPayloadVideoId(initPr) === videoId) candidates.push(initPr);
+      const initData = window.ytInitialData;
+      if (initData && extractPayloadVideoId(initData) === videoId) candidates.push(initData);
+    } catch (_) {}
+
+    let reason = null;
+    for (const candidate of candidates) {
+      reason = findOfficialAiDisclosure(candidate);
+      if (reason) break;
+    }
+
+    window.postMessage({
+      type: 'CINEGLOW_AI_DISCLOSURE_RESPONSE',
+      videoId,
+      disclosed: Boolean(reason),
+      reason
+    }, window.location.origin);
+  }
+
   function handleNavigateStart() {
     if (isKilled) return;
     resetNavPlaybackTracking();
@@ -618,14 +803,21 @@
     skipMainWorldAd();
     syncTheaterState();
     scheduleNavRecovery();
+    inspectAndEmitAiDisclosure();
   }
 
-  function handlePageDataUpdated() {
+  function handlePageDataUpdated(e) {
+    const resp = e?.detail?.response;
+    if (resp && typeof resp === 'object') {
+      lastUpdatedPageData = resp;
+      lastUpdatedPageVideoId = extractPayloadVideoId(resp) || getCurrentWatchVideoId();
+    }
     syncTheaterState();
     if (window.location?.href && window.location.href !== lastNavLocation) {
       resetNavPlaybackTracking();
       scheduleNavRecovery();
     }
+    inspectAndEmitAiDisclosure();
   }
 
   const NON_PAUSE_PLAYER_CONTROLS = [
@@ -692,7 +884,7 @@
         resetNavPlaybackTracking();
       }
       if (e.type === 'canplay' || e.type === 'loadeddata') {
-        if (qualityResumePending && !userPausedCurrentNav && !document.hidden) {
+        if (qualityResumePending && !userPausedCurrentNav && !document.hidden && !document.documentElement?.hasAttribute?.('cineglow-ai-watch-hidden')) {
           qualityResumePending = false;
           if (target.paused && !target.ended && !isAdActive(player)) {
             try {
@@ -881,9 +1073,16 @@
     } catch (_) {}
   }
 
+  function handleAiDisclosureMessage(event) {
+    if (isKilled || !isTrustedSameWindowMessage(event) || event.data?.type !== 'CINEGLOW_CHECK_AI_DISCLOSURE') return;
+    inspectAndEmitAiDisclosure();
+  }
+
   function teardownMainWorld() {
     if (isKilled) return;
     isKilled = true;
+    lastUpdatedPageData = null;
+    lastUpdatedPageVideoId = null;
     clearTimeout(theaterTimer);
     clearNavRecoveryTimers();
     if (mainWorldAdInterval) {
@@ -902,25 +1101,26 @@
 
     restoreVideoAfterAd();
 
-    if (origFetch) {
+    if (origFetch && window.fetch === wrappedFetch) {
       try { window.fetch = origFetch; } catch (_) {}
     }
-    if (origOpen && typeof XMLHttpRequest !== 'undefined') {
+    if (origOpen && typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest.prototype.open === wrappedOpen) {
       try { XMLHttpRequest.prototype.open = origOpen; } catch (_) {}
     }
-    if (origSend && typeof XMLHttpRequest !== 'undefined') {
+    if (origSend && typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest.prototype.send === wrappedSend) {
       try { XMLHttpRequest.prototype.send = origSend; } catch (_) {}
     }
-    if (origJSONParse) {
+    if (origJSONParse && JSON.parse === wrappedJSONParse) {
       try { JSON.parse = origJSONParse; } catch (_) {}
     }
-    if (origFnToString && typeof Function !== 'undefined' && Function.prototype) {
+    if (origFnToString && typeof Function !== 'undefined' && Function.prototype && Function.prototype.toString === customFnToString) {
       try { Function.prototype.toString = origFnToString; } catch (_) {}
     }
 
     document.documentElement?.removeAttribute('data-cineglow-theater');
     window.removeEventListener('message', handleQualityMessage);
     window.removeEventListener('message', handleStatsMessage);
+    window.removeEventListener('message', handleAiDisclosureMessage);
     window.removeEventListener('message', handleForceSkipMessage);
     window.removeEventListener('message', handleAdBlockStateMessage);
     window.removeEventListener('message', handlePreferredSpeedMessage);
@@ -942,6 +1142,7 @@
 
   window.addEventListener('message', handleQualityMessage);
   window.addEventListener('message', handleStatsMessage);
+  window.addEventListener('message', handleAiDisclosureMessage);
   window.addEventListener('message', handleForceSkipMessage);
   window.addEventListener('message', handleAdBlockStateMessage);
   window.addEventListener('message', handlePreferredSpeedMessage);

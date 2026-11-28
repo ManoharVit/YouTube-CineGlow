@@ -2,10 +2,10 @@
 
 ## 1. Executive Overview & Scope
 
-This operational runbook governs the execution, real-time health monitoring, incident triage, and contingency rollback protocols for **Phase 5: Global Production Rollout (Ring 2)** of **CineGlow Pro for YouTube** (`v2.3.0`).
+This operational runbook governs the execution, real-time health monitoring, incident triage, and contingency rollback protocols for **Phase 5: Global Production Rollout (Ring 2)** of **CineGlow Pro for YouTube** (`v3.0.0`).
 
-- **Target Release Package**: `YouTube-CineGlow-v2.4.0.zip`
-- **Package SHA-256 Digest**: `3f5abdff9439feac74568b91b7289fd954905abe19a7ea9059e3b210a50c5cad`
+- **Target Release Package**: `YouTube-CineGlow-v3.0.0.zip`
+- **Package SHA-256 Digest**: `46beeb2d1e19fcd1da8a50802cec0b237f6a324977bcafc29b25cb8391727811`
 - **Lead Architect / Developer**: Giri Manohar Vemula (https://www.linkedin.com/in/manoharv511)
 - **Deployment Strategy**: 20% daily regional increments over 5 consecutive business days via Chrome Enterprise policy (`ExtensionInstallForcelist`).
 

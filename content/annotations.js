@@ -92,14 +92,15 @@
       return secs;
     }
     if (str.includes('h') || str.includes('m') || str.includes('s')) {
-      let result = 0;
-      const hours = str.split('h');
-      const minutes = (hours[1] || str).split('m');
-      const seconds = (minutes[1] || str).split('s');
-      if (hours[0] && hours.length === 2) result += parseFloat(hours[0]) * 3600;
-      if (minutes[0] && minutes.length === 2) result += parseFloat(minutes[0]) * 60;
-      if (seconds[0] && seconds.length === 2) result += parseFloat(seconds[0]);
-      return result;
+      const hmsMatch = str.match(/^(?:(\d+(?:\.\d+)?)h)?(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?$/);
+      if (hmsMatch && (hmsMatch[1] !== undefined || hmsMatch[2] !== undefined || hmsMatch[3] !== undefined)) {
+        return (
+          (hmsMatch[1] ? parseFloat(hmsMatch[1]) * 3600 : 0) +
+          (hmsMatch[2] ? parseFloat(hmsMatch[2]) * 60 : 0) +
+          (hmsMatch[3] ? parseFloat(hmsMatch[3]) : 0)
+        );
+      }
+      return 0;
     }
     return parseFloat(str) || 0;
   }
@@ -115,7 +116,8 @@
     const r = parseInt(hex.slice(0, 2), 16) || 0;
     const g = parseInt(hex.slice(2, 4), 16) || 0;
     const b = parseInt(hex.slice(4, 6), 16) || 0;
-    const a = bgAlpha !== undefined && !isNaN(bgAlpha) ? parseFloat(bgAlpha) : 0.8;
+    const numericAlpha = bgAlpha !== null && bgAlpha !== undefined && bgAlpha !== '' ? Number(bgAlpha) : NaN;
+    const a = Number.isFinite(numericAlpha) ? Math.min(1, Math.max(0, numericAlpha)) : 0.8;
     return `rgba(${r}, ${g}, ${b}, ${a})`;
   }
 
@@ -143,11 +145,15 @@
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlString, 'text/xml');
+      if (doc.querySelector?.('parsererror')) return [];
       const annotationNodes = Array.from(doc.getElementsByTagName('annotation'));
       const parsed = [];
 
       for (const a of annotationNodes) {
-        const id = a.getAttribute('id') || `anno_${crypto.randomUUID().slice(0, 8)}`;
+        const fallbackId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID().slice(0, 8)
+          : Math.random().toString(36).slice(2, 10);
+        const id = a.getAttribute('id') || `anno_${fallbackId}`;
         const type = a.getAttribute('type') || 'text';
         if (type === 'pause' || type === 'timeline' || type === 'marker') continue;
 
@@ -271,7 +277,8 @@
           try {
             if (typeof item.action.url === 'string' && !item.action.url.startsWith('//')) {
               const parsed = new URL(item.action.url, 'https://www.youtube.com');
-              const isYouTube = parsed.hostname === 'www.youtube.com' || parsed.hostname === 'youtube.com' || parsed.hostname === 'youtu.be';
+              const host = parsed.hostname;
+              const isYouTube = host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be';
               if ((parsed.protocol === 'https:' || parsed.protocol === 'http:') && isYouTube) {
                 if (item.action.target === 'new') {
                   window.open(parsed.href, '_blank', 'noopener,noreferrer');

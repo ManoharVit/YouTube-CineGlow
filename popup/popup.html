@@ -17,7 +17,7 @@
       <div class="brand-meta">
         <div class="brand-title-row">
           <h1 class="brand-title">CineGlow</h1>
-          <span class="header-version-pill">v2.4.0</span>
+          <span class="header-version-pill">v3.0.0</span>
         </div>
         <div class="hero-label-row">
           <span class="hero-title" id="heroTitle">Ambient Lighting</span>
@@ -35,36 +35,23 @@
   </header>
 
   <main id="controls">
-    <nav class="category-nav" role="tablist" aria-label="Sections">
-      <button type="button" role="tab" class="nav-pill active" data-target="glowSection" aria-controls="glowSection" aria-selected="true" aria-current="true">
-        <span>Lighting</span>
+    <div class="category-nav" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" id="tab-lighting" class="nav-pill active" data-target="glowSection" aria-controls="glowSection" aria-selected="true">
+        <span>Glow</span>
       </button>
-      <button type="button" role="tab" class="nav-pill" data-target="videoSection" aria-controls="videoSection" aria-selected="false">
+      <button type="button" role="tab" id="tab-video" class="nav-pill" data-target="videoSection" aria-controls="videoSection" aria-selected="false">
         <span>Video</span>
       </button>
-      <button type="button" role="tab" class="nav-pill" data-target="audioSection" aria-controls="audioSection" aria-selected="false">
+      <button type="button" role="tab" id="tab-audio" class="nav-pill" data-target="audioSection" aria-controls="audioSection" aria-selected="false">
         <span>Audio</span>
       </button>
-      <button type="button" role="tab" class="nav-pill" data-target="toolsSection" aria-controls="toolsSection" aria-selected="false">
+      <button type="button" role="tab" id="tab-tools" class="nav-pill" data-target="toolsSection" aria-controls="toolsSection" aria-selected="false">
         <span>Tools</span>
       </button>
-    </nav>
+    </div>
 
     <!-- 1. Lighting -->
-    <details class="modern-card section-dropdown glow-settings" id="glowSection" open>
-      <summary class="section-summary">
-        <div class="section-leading">
-          <span class="section-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          </span>
-          <div class="section-text">
-            <span class="section-title">Lighting</span>
-          </div>
-        </div>
-        <div class="chevron-btn" aria-hidden="true">
-          <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
-        </div>
-      </summary>
+    <section class="modern-card section-dropdown glow-settings" id="glowSection" role="tabpanel" aria-labelledby="tab-lighting">
       <div class="section-body">
         <div class="control-row">
           <div class="row-info">
@@ -96,7 +83,7 @@
           <div class="slider-row">
             <div class="slider-header">
               <label for="opacity" id="opacity-label">Intensity</label>
-              <div class="val-badge"><input type="number" id="opacity-val" min="0" max="100" aria-label="Intensity percentage" aria-labelledby="opacity-label"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="opacity-val" min="0" max="100" aria-label="Intensity percentage"><span>%</span></div>
             </div>
             <input type="range" id="opacity" min="0" max="100" step="1">
           </div>
@@ -104,7 +91,7 @@
           <div class="slider-row">
             <div class="slider-header">
               <label for="spread" id="spread-label">Spread</label>
-              <div class="val-badge"><input type="number" id="spread-val" min="100" max="500" aria-label="Spread percentage" aria-labelledby="spread-label"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="spread-val" min="100" max="500" aria-label="Spread percentage"><span>%</span></div>
             </div>
             <input type="range" id="spread" min="100" max="500" step="1">
           </div>
@@ -112,7 +99,7 @@
           <div class="slider-row">
             <div class="slider-header">
               <label for="smoothness" id="smoothness-label">Smoothness</label>
-              <div class="val-badge"><input type="number" id="smoothness-val" min="0" max="100" aria-label="Smoothness percentage" aria-labelledby="smoothness-label"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="smoothness-val" min="0" max="100" aria-label="Smoothness percentage"><span>%</span></div>
             </div>
             <input type="range" id="smoothness" min="0" max="100" step="1">
           </div>
@@ -144,7 +131,7 @@
             <div class="slider-row">
               <div class="slider-header">
                 <label for="blur" id="blur-label">Blur Radius</label>
-                <div class="val-badge"><input type="number" id="blur-val" min="0" max="150" aria-label="Blur radius in pixels" aria-labelledby="blur-label"><span>px</span></div>
+                <div class="val-badge"><input type="number" id="blur-val" min="0" max="150" aria-label="Blur radius in pixels"><span>px</span></div>
               </div>
               <input type="range" id="blur" min="0" max="150" step="1">
             </div>
@@ -152,7 +139,7 @@
             <div class="slider-row">
               <div class="slider-header">
                 <label for="saturation" id="saturation-label">Saturation</label>
-                <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150" aria-label="Saturation percentage" aria-labelledby="saturation-label"><span>%</span></div>
+                <div class="val-badge"><input type="number" id="saturation-val" min="0" max="150" aria-label="Saturation percentage"><span>%</span></div>
               </div>
               <input type="range" id="saturation" min="0" max="150" step="1">
             </div>
@@ -160,7 +147,7 @@
             <div class="slider-row">
               <div class="slider-header">
                 <label for="contrast" id="contrast-label">Contrast</label>
-                <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200" aria-label="Contrast percentage" aria-labelledby="contrast-label"><span>%</span></div>
+                <div class="val-badge"><input type="number" id="contrast-val" min="0" max="200" aria-label="Contrast percentage"><span>%</span></div>
               </div>
               <input type="range" id="contrast" min="0" max="200" step="1">
             </div>
@@ -168,7 +155,7 @@
             <div class="slider-row">
               <div class="slider-header">
                 <label for="brightness" id="brightness-label">Brightness</label>
-                <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200" aria-label="Brightness percentage" aria-labelledby="brightness-label"><span>%</span></div>
+                <div class="val-badge"><input type="number" id="brightness-val" min="20" max="200" aria-label="Brightness percentage"><span>%</span></div>
               </div>
               <input type="range" id="brightness" min="20" max="200" step="1">
             </div>
@@ -176,7 +163,7 @@
             <div class="slider-row">
               <div class="slider-header">
                 <label for="fadeInDuration" id="fadeInDuration-label">Fade-In</label>
-                <div class="val-badge"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1" aria-label="Fade-in duration in seconds" aria-labelledby="fadeInDuration-label"><span>s</span></div>
+                <div class="val-badge"><input type="number" id="fadeInDuration-val" min="0" max="10" step="0.1" aria-label="Fade-in duration in seconds"><span>s</span></div>
               </div>
               <input type="range" id="fadeInDuration" min="0" max="10" step="0.1">
             </div>
@@ -217,23 +204,10 @@
           </button>
         </div>
       </div>
-    </details>
+    </section>
 
     <!-- 2. Video & Playback -->
-    <details class="modern-card section-dropdown" id="videoSection">
-      <summary class="section-summary">
-        <div class="section-leading">
-          <span class="section-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </span>
-          <div class="section-text">
-            <span class="section-title">Video & Playback</span>
-          </div>
-        </div>
-        <div class="chevron-btn" aria-hidden="true">
-          <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
-        </div>
-      </summary>
+    <section class="modern-card section-dropdown" id="videoSection" role="tabpanel" aria-labelledby="tab-video" hidden>
       <div class="section-body">
         <div class="sub-header">
           <span>Playback &amp; Quality</span>
@@ -250,7 +224,7 @@
         <div class="select-row">
           <label for="preferredQuality">Target Resolution</label>
           <div class="select-container">
-            <select id="preferredQuality" class="modern-select" aria-label="Preferred video resolution">
+            <select id="preferredQuality" class="modern-select">
               <option value="highres">Max (8K / 4K)</option>
               <option value="hd2160">4K (2160p)</option>
               <option value="hd1440">1440p</option>
@@ -263,7 +237,7 @@
         <div class="slider-row">
           <div class="slider-header">
             <label for="preferredSpeed">Default Playback Speed</label>
-            <div class="val-badge text-only"><span id="preferredSpeedVal" title="Click to reset to 1.0×" style="cursor: pointer;">1.0×</span></div>
+            <div class="val-badge text-only"><button type="button" id="preferredSpeedVal" class="speed-reset-btn" title="Click to reset to 1.0×">1.0×</button></div>
           </div>
           <input type="range" id="preferredSpeed" min="0.1" max="2.0" step="0.05" value="1.0">
         </div>
@@ -336,7 +310,7 @@
           <div class="slider-row">
             <div class="slider-header">
               <label for="videoBrightness" id="videoBrightness-label">Brightness</label>
-              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200" aria-label="Video brightness percentage" aria-labelledby="videoBrightness-label"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="videoBrightness-val" min="20" max="200" aria-label="Video brightness percentage"><span>%</span></div>
             </div>
             <input type="range" id="videoBrightness" min="20" max="200" step="1">
           </div>
@@ -344,7 +318,7 @@
           <div class="slider-row">
             <div class="slider-header">
               <label for="videoContrast" id="videoContrast-label">Contrast</label>
-              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200" aria-label="Video contrast percentage" aria-labelledby="videoContrast-label"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="videoContrast-val" min="20" max="200" aria-label="Video contrast percentage"><span>%</span></div>
             </div>
             <input type="range" id="videoContrast" min="20" max="200" step="1">
           </div>
@@ -352,7 +326,7 @@
           <div class="slider-row">
             <div class="slider-header">
               <label for="videoSepia" id="videoSepia-label">Warm Tint</label>
-              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100" aria-label="Warm tint percentage" aria-labelledby="videoSepia-label"><span>%</span></div>
+              <div class="val-badge"><input type="number" id="videoSepia-val" min="0" max="100" aria-label="Warm tint percentage"><span>%</span></div>
             </div>
             <input type="range" id="videoSepia" min="0" max="100" step="1">
           </div>
@@ -398,23 +372,10 @@
           </button>
         </div>
       </div>
-    </details>
+    </section>
 
     <!-- 3. Audio & EQ -->
-    <details class="modern-card section-dropdown" id="audioSection">
-      <summary class="section-summary">
-        <div class="section-leading">
-          <span class="section-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-          </span>
-          <div class="section-text">
-            <span class="section-title">Audio & EQ</span>
-          </div>
-        </div>
-        <div class="chevron-btn" aria-hidden="true">
-          <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
-        </div>
-      </summary>
+    <section class="modern-card section-dropdown" id="audioSection" role="tabpanel" aria-labelledby="tab-audio" hidden>
       <div class="section-body">
         <div class="control-row">
           <div class="row-info">
@@ -506,23 +467,10 @@
           </button>
         </div>
       </div>
-    </details>
+    </section>
 
     <!-- 4. YouTube Tools -->
-    <details class="modern-card section-dropdown" id="toolsSection">
-      <summary class="section-summary">
-        <div class="section-leading">
-          <span class="section-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </span>
-          <div class="section-text">
-            <span class="section-title">YouTube Tools</span>
-          </div>
-        </div>
-        <div class="chevron-btn" aria-hidden="true">
-          <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4l4 4 4-4"/></svg>
-        </div>
-      </summary>
+    <section class="modern-card section-dropdown" id="toolsSection" role="tabpanel" aria-labelledby="tab-tools" hidden>
       <div class="section-body">
         <div class="info-note">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -596,6 +544,17 @@
         </div>
 
         <div class="control-row">
+          <div class="row-info">
+            <span class="row-title" id="hideAiTitle">Hide AI Videos</span>
+            <span class="row-desc">YouTube synthetic content disclosures</span>
+          </div>
+          <label class="switch modern-switch" for="hideAiVideos">
+            <input type="checkbox" id="hideAiVideos" aria-labelledby="hideAiTitle">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-row">
           <span class="row-title" id="endCardsTitle">Hide End Screens</span>
           <label class="switch modern-switch" for="hideEndCards">
             <input type="checkbox" id="hideEndCards" aria-labelledby="endCardsTitle">
@@ -647,7 +606,7 @@
           </button>
         </div>
       </div>
-    </details>
+    </section>
   </main>
 
   <!-- App Footer -->

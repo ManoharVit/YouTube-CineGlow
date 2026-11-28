@@ -109,7 +109,18 @@
         const reelList = (reels && reels.length > 0) ? reels : (document.body?.querySelectorAll ? document.body.querySelectorAll('ytd-reel-video-renderer') : []);
         for (const reel of reelList) {
           const reelVid = reel.getAttribute('data-video-id') || reel.dataset?.videoId || reel.videoId;
-          if (reelVid === activeVideoId || reel.querySelector?.(`a[href*="${activeVideoId}"]`)) {
+          let hasMatchingLink = false;
+          if (reelVid !== activeVideoId && typeof reel.querySelectorAll === 'function') {
+            const links = reel.querySelectorAll('a');
+            for (const link of links) {
+              const href = link.getAttribute?.('href') || link.href || '';
+              if (href.includes(activeVideoId)) {
+                hasMatchingLink = true;
+                break;
+              }
+            }
+          }
+          if (reelVid === activeVideoId || hasMatchingLink) {
             activeReel = reel;
             break;
           }
@@ -260,16 +271,23 @@
           if (!isEnabled || !record) return;
 
           setTimeout(() => {
+            if (isKilled || !isEnabled || (record.id && currentVideoId && record.id !== currentVideoId)) return;
             const isPressed = dislikeBtn.getAttribute('aria-pressed') === 'true';
-            if (isPressed && record.userVote !== -1) {
-              if (record.userVote === 1) record.likes = Math.max(0, record.likes - 1);
-              record.dislikes += 1;
-              record.userVote = -1;
-            } else if (!isPressed && record.userVote === -1) {
-              record.dislikes = Math.max(0, record.dislikes - 1);
-              record.userVote = 0;
+            const updated = { ...record };
+            if (isPressed && updated.userVote !== -1) {
+              if (updated.userVote === 1) updated.likes = Math.max(0, updated.likes - 1);
+              updated.dislikes += 1;
+              updated.userVote = -1;
+            } else if (!isPressed && updated.userVote === -1) {
+              updated.dislikes = Math.max(0, updated.dislikes - 1);
+              updated.userVote = 0;
             }
-            renderDislikes(record);
+            dislikeBtn._currentVoteRecord = updated;
+            if (likeBtn) likeBtn._currentVoteRecord = updated;
+            if (record.id && votesCache.get(record.id) === record) {
+              votesCache.set(record.id, updated);
+            }
+            renderDislikes(updated);
           }, 50);
         };
         dislikeBtn._cineglowDislikeHandler = dislikeHandler;
@@ -286,16 +304,23 @@
           if (!isEnabled || !record) return;
 
           setTimeout(() => {
+            if (isKilled || !isEnabled || (record.id && currentVideoId && record.id !== currentVideoId)) return;
             const isPressed = likeBtn.getAttribute('aria-pressed') === 'true';
-            if (isPressed && record.userVote !== 1) {
-              if (record.userVote === -1) record.dislikes = Math.max(0, record.dislikes - 1);
-              record.likes += 1;
-              record.userVote = 1;
-            } else if (!isPressed && record.userVote === 1) {
-              record.likes = Math.max(0, record.likes - 1);
-              record.userVote = 0;
+            const updated = { ...record };
+            if (isPressed && updated.userVote !== 1) {
+              if (updated.userVote === -1) updated.dislikes = Math.max(0, updated.dislikes - 1);
+              updated.likes += 1;
+              updated.userVote = 1;
+            } else if (!isPressed && updated.userVote === 1) {
+              updated.likes = Math.max(0, updated.likes - 1);
+              updated.userVote = 0;
             }
-            renderDislikes(record);
+            likeBtn._currentVoteRecord = updated;
+            if (dislikeBtn) dislikeBtn._currentVoteRecord = updated;
+            if (record.id && votesCache.get(record.id) === record) {
+              votesCache.set(record.id, updated);
+            }
+            renderDislikes(updated);
           }, 50);
         };
         likeBtn._cineglowLikeHandler = likeHandler;
@@ -540,7 +565,7 @@
 
   if (typeof chrome !== 'undefined' && chrome.storage) {
     chrome.storage.sync?.get({ returnDislikes: false }, (stored) => {
-      if (isKilled) return;
+      if (chrome.runtime?.lastError || isKilled) return;
       isEnabled = Boolean(stored?.returnDislikes);
       if (isEnabled) {
         initialize();

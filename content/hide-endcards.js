@@ -11,6 +11,25 @@
   let mutationObserver = null;
   let currentPlayer = null;
 
+  const CARD_SELECTOR = '.ytp-cards-teaser, .ytp-cards-button';
+
+  function syncDocumentAttr() {
+    const active = Boolean(enabled && !isKilled && !window.CineGlowKilled && !userRevealed);
+    if (document.documentElement) {
+      if (active) {
+        document.documentElement.setAttribute('cineglow-hide-endcards', 'true');
+      } else {
+        document.documentElement.removeAttribute('cineglow-hide-endcards');
+      }
+    }
+  }
+
+  function restoreHiddenOverlays(player, selector) {
+    player?.querySelectorAll(selector).forEach((el) => {
+      if (el.style.display === 'none') el.style.display = '';
+    });
+  }
+
   async function loadSettings() {
     if (isKilled || window.CineGlowKilled) return;
     try {
@@ -28,8 +47,12 @@
       } else if (typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.hideEndCards !== undefined) {
         enabled = Boolean(AURA_DEFAULTS.hideEndCards);
       }
+      syncDocumentAttr();
       if (enabled) {
         checkAndHide();
+      } else {
+        const player = currentPlayer || document.querySelector('#movie_player, .html5-video-player');
+        restoreHiddenOverlays(player, `.ytp-ce-element, ${CARD_SELECTOR}`);
       }
     } catch (err) {
       console.warn('[CineGlow HideEndCards] Could not load settings:', err);
@@ -50,20 +73,32 @@
       enabled = Boolean(changes.hideEndCards.newValue);
       if (enabled) {
         userRevealed = false;
+        syncDocumentAttr();
         checkAndHide();
-      } else if (currentPlayer) {
-        currentPlayer.querySelectorAll('.ytp-ce-element').forEach((el) => {
-          if (el.style.display === 'none') el.style.display = '';
-        });
+      } else {
+        syncDocumentAttr();
+        restoreHiddenOverlays(currentPlayer, `.ytp-ce-element, ${CARD_SELECTOR}`);
       }
     }
   };
   chrome.storage?.onChanged?.addListener(handleStorageChange);
 
+  function hideInfoCards(player) {
+    const cards = player.querySelectorAll(CARD_SELECTOR);
+    for (const el of cards) {
+      if (el.style.display !== 'none') {
+        el.style.display = 'none';
+      }
+    }
+  }
+
   function checkAndHide() {
     if (isKilled || window.CineGlowKilled || !enabled || userRevealed) return;
     const player = currentPlayer || document.querySelector('#movie_player, .html5-video-player');
     if (!player) return;
+
+    syncDocumentAttr();
+    hideInfoCards(player);
 
     const hideBtn = player.querySelector('.ytp-ce-hide-button-container button');
     if (hideBtn) {
@@ -101,8 +136,14 @@
     currentPlayer = player;
     currentPlayer.addEventListener('click', onPlayerClick, true);
 
+    let mutationQueued = false;
     mutationObserver = new MutationObserver(() => {
-      checkAndHide();
+      if (mutationQueued) return;
+      mutationQueued = true;
+      queueMicrotask(() => {
+        mutationQueued = false;
+        checkAndHide();
+      });
     });
     mutationObserver.observe(currentPlayer, {
       childList: true,
@@ -120,11 +161,11 @@
     const wasPressed = btn.getAttribute('aria-pressed') === 'true';
     if (wasPressed) {
       userRevealed = true;
-      currentPlayer?.querySelectorAll('.ytp-ce-element').forEach((el) => {
-        if (el.style.display === 'none') el.style.display = '';
-      });
+      syncDocumentAttr();
+      restoreHiddenOverlays(currentPlayer, `.ytp-ce-element, ${CARD_SELECTOR}`);
     } else {
       userRevealed = false;
+      syncDocumentAttr();
     }
   }
 
@@ -148,12 +189,14 @@
       teardown();
       currentVideoId = null;
       userRevealed = false;
+      syncDocumentAttr();
       return;
     }
 
     if (pm.videoId !== currentVideoId) {
       currentVideoId = pm.videoId;
       userRevealed = false;
+      syncDocumentAttr();
     }
 
     if (pm.player) {
@@ -168,15 +211,14 @@
     isKilled = true;
     enabled = false;
     window.CineGlowKilled = true;
+    syncDocumentAttr();
 
     chrome.storage?.onChanged?.removeListener(handleStorageChange);
     window.CineGlowPlayer?.removeEventListener?.('state-change', onPlayerState);
 
     const player = currentPlayer || document.querySelector('#movie_player, .html5-video-player');
     teardown();
-    player?.querySelectorAll('.ytp-ce-element').forEach((el) => {
-      el.style.display = '';
-    });
+    restoreHiddenOverlays(player, `.ytp-ce-element, ${CARD_SELECTOR}`);
   }
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {

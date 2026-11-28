@@ -717,7 +717,62 @@
 
       currentButton = btn;
       bindVideoListeners(video);
-    } catch (_) {}
+    } catch (err) {
+      console.warn('[CineGlow Speed] Failed to inject speed button:', err);
+    }
+  }
+
+  function handleVideoRateChange(video) {
+    if (isKilled || !checkContextOrTeardown()) return;
+    if (video.playbackRate > 15) {
+      lastAdEndTime = Date.now();
+      return;
+    }
+    if (checkAdActive() || isApplyingSpeed) return;
+
+    const isHoldTo2x = (isPointerDownOnVideo || Boolean(document.querySelector('.ytp-speedmaster-overlay, .ytp-speedmaster-label'))) && video.playbackRate === 2.0 && preferredSpeed !== 2.0;
+    if (isHoldTo2x) return;
+
+    const isHotkeyPress = (Date.now() - lastSpeedKeypressTime) < 600;
+    const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen();
+    const isAdTransition = (Date.now() - lastAdEndTime) < 1500 || checkAdActive();
+    const vid = getCurrentVideoId();
+
+    // Deterministic check: if we haven't enforced preferredSpeed on this video yet, YouTube's
+    // initial rate=1.0 is a load reset rather than a user action (unless user used hotkey/menu).
+    if (video.playbackRate === 1.0 && preferredSpeed !== 1.0) {
+      if (video.readyState !== undefined && video.readyState < 2) {
+        try { video.defaultPlaybackRate = preferredSpeed; } catch (_) {}
+        scheduleSpeedEnforcement(video);
+        return;
+      }
+
+      if ((isAdTransition || enforcedForVideoId !== vid) && !isHotkeyPress && !isNativeSettingsAction) {
+        enforcePlaybackSpeed(video);
+        scheduleSpeedEnforcement(video);
+        return;
+      }
+
+      clearEnforcementTimers();
+      currentSpeed = 1.0;
+      preferredSpeed = 1.0;
+      enforcedForVideoId = vid;
+      updateButtonLabel(1.0);
+      if (activeMenu) syncMenuControls(1.0);
+      safeStorageSet({ preferredSpeed: 1.0 });
+      return;
+    }
+
+    if (isNativeSettingsAction) {
+      clearEnforcementTimers();
+    }
+
+    currentSpeed = video.playbackRate;
+    preferredSpeed = video.playbackRate;
+    enforcedForVideoId = vid;
+    updateButtonLabel(currentSpeed);
+    if (activeMenu) syncMenuControls(currentSpeed);
+    safeStorageSetDebounced({ preferredSpeed: currentSpeed }, SYNC_THROTTLE_MS);
   }
 
   function unbindVideoListeners() {
@@ -739,58 +794,7 @@
     videoAbortController = new AbortController();
     const vSig = videoAbortController.signal;
 
-    const onRateChange = () => {
-      if (isKilled || !checkContextOrTeardown()) return;
-      if (video.playbackRate > 15) {
-        lastAdEndTime = Date.now();
-        return;
-      }
-      if (checkAdActive() || isApplyingSpeed) return;
-
-      const isHoldTo2x = (isPointerDownOnVideo || Boolean(document.querySelector('.ytp-speedmaster-overlay, .ytp-speedmaster-label'))) && video.playbackRate === 2.0 && preferredSpeed !== 2.0;
-      if (isHoldTo2x) return;
-
-      const isHotkeyPress = (Date.now() - lastSpeedKeypressTime) < 600;
-      const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen();
-      const isAdTransition = (Date.now() - lastAdEndTime) < 1500 || checkAdActive();
-      const vid = getCurrentVideoId();
-
-      // Deterministic check: if we haven't enforced preferredSpeed on this video yet, YouTube's
-      // initial rate=1.0 is a load reset rather than a user action (unless user used hotkey/menu).
-      if (video.playbackRate === 1.0 && preferredSpeed !== 1.0) {
-        if (video.readyState !== undefined && video.readyState < 2) {
-          try { video.defaultPlaybackRate = preferredSpeed; } catch (_) {}
-          scheduleSpeedEnforcement(video);
-          return;
-        }
-
-        if ((isAdTransition || enforcedForVideoId !== vid) && !isHotkeyPress && !isNativeSettingsAction) {
-          enforcePlaybackSpeed(video);
-          scheduleSpeedEnforcement(video);
-          return;
-        }
-
-        clearEnforcementTimers();
-        currentSpeed = 1.0;
-        preferredSpeed = 1.0;
-        enforcedForVideoId = vid;
-        updateButtonLabel(1.0);
-        if (activeMenu) syncMenuControls(1.0);
-        safeStorageSet({ preferredSpeed: 1.0 });
-        return;
-      }
-
-      if (isNativeSettingsAction) {
-        clearEnforcementTimers();
-      }
-
-      currentSpeed = video.playbackRate;
-      preferredSpeed = video.playbackRate;
-      enforcedForVideoId = vid;
-      updateButtonLabel(currentSpeed);
-      if (activeMenu) syncMenuControls(currentSpeed);
-      safeStorageSetDebounced({ preferredSpeed: currentSpeed }, SYNC_THROTTLE_MS);
-    };
+    const onRateChange = () => handleVideoRateChange(video);
 
     const onReady = () => {
       if (checkContextOrTeardown() && preferredSpeed !== 1.0) scheduleSpeedEnforcement(video);
@@ -832,48 +836,7 @@
     if (!isMainPlayerVideo(target)) return;
 
     if (e.type === 'ratechange') {
-      if (isApplyingSpeed) return;
-      const isHoldTo2x = (isPointerDownOnVideo || Boolean(document.querySelector('.ytp-speedmaster-overlay, .ytp-speedmaster-label'))) && target.playbackRate === 2.0 && preferredSpeed !== 2.0;
-      if (isHoldTo2x) return;
-
-      const isHotkeyPress = (Date.now() - lastSpeedKeypressTime) < 600;
-      const isNativeSettingsAction = (Date.now() - lastNativeSettingsClickTime) < 1200 || isNativeSpeedMenuOpen();
-      const isAdTransition = (Date.now() - lastAdEndTime) < 1500 || checkAdActive();
-      const vid = getCurrentVideoId();
-
-      if (target.playbackRate === 1.0 && preferredSpeed !== 1.0) {
-        if (target.readyState !== undefined && target.readyState < 2) {
-          try { target.defaultPlaybackRate = preferredSpeed; } catch (_) {}
-          scheduleSpeedEnforcement(target);
-          return;
-        }
-
-        if ((isAdTransition || enforcedForVideoId !== vid) && !isHotkeyPress && !isNativeSettingsAction) {
-          enforcePlaybackSpeed(target);
-          scheduleSpeedEnforcement(target);
-          return;
-        }
-
-        clearEnforcementTimers();
-        currentSpeed = 1.0;
-        preferredSpeed = 1.0;
-        enforcedForVideoId = vid;
-        updateButtonLabel(1.0);
-        if (activeMenu) syncMenuControls(1.0);
-        safeStorageSet({ preferredSpeed: 1.0 });
-        return;
-      }
-
-      if (isNativeSettingsAction) {
-        clearEnforcementTimers();
-      }
-
-      currentSpeed = target.playbackRate;
-      preferredSpeed = target.playbackRate;
-      enforcedForVideoId = vid;
-      updateButtonLabel(currentSpeed);
-      if (activeMenu) syncMenuControls(currentSpeed);
-      safeStorageSetDebounced({ preferredSpeed: currentSpeed }, SYNC_THROTTLE_MS);
+      handleVideoRateChange(target);
     } else {
       if (preferredSpeed !== 1.0) {
         scheduleSpeedEnforcement(target);
@@ -947,7 +910,8 @@
   if (window.CineGlowPlayer) {
     window.CineGlowPlayer.addEventListener('state-change', (e) => {
       if (isKilled || !checkContextOrTeardown()) return;
-      const state = e.detail;
+      const state = e?.detail;
+      if (!state) return;
       if (state.isAdShowing) {
         lastAdEndTime = Date.now();
       } else if (lastWasAdShowing) {
