@@ -29,13 +29,40 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-CHROME_BIN="${CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
-if [[ ! -x "$CHROME_BIN" ]] && command -v google-chrome >/dev/null 2>&1; then
-  CHROME_BIN="$(command -v google-chrome)"
+# Prefer Chromium / Chrome for Testing (branded Chrome 137+ removed --load-extension)
+CHROME_BIN="${CHROME_BIN:-}"
+if [[ -z "$CHROME_BIN" ]]; then
+  for candidate in \
+    "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" \
+    "/Applications/Chromium.app/Contents/MacOS/Chromium" \
+    "$(command -v chromium 2>/dev/null || true)" \
+    "$(command -v chromium-browser 2>/dev/null || true)"; do
+    if [[ -n "$candidate" && -x "$candidate" ]]; then
+      CHROME_BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$CHROME_BIN" ]] && command -v node >/dev/null 2>&1; then
+  PUPPETEER_CHROME="$(node -e "(async()=>{try{const p=require('puppeteer');const e=typeof p.executablePath==='function'?await p.executablePath():'';if(e)process.stdout.write(e);}catch(_){}})()" 2>/dev/null || true)"
+  if [[ -n "$PUPPETEER_CHROME" && -x "$PUPPETEER_CHROME" ]]; then
+    CHROME_BIN="$PUPPETEER_CHROME"
+  fi
+fi
+
+if [[ -z "$CHROME_BIN" ]]; then
+  CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  if [[ ! -x "$CHROME_BIN" ]] && command -v google-chrome >/dev/null 2>&1; then
+    CHROME_BIN="$(command -v google-chrome)"
+  fi
+  if [[ -x "$CHROME_BIN" ]]; then
+    echo "Warning: Falling back to branded Chrome ($CHROME_BIN). Chrome 137+ ignores --load-extension; install Chromium/Chrome for Testing or set CHROME_BIN." >&2
+  fi
 fi
 
 if [[ ! -x "$CHROME_BIN" ]]; then
-  echo "Error: Google Chrome executable not found or not executable at $CHROME_BIN" >&2
+  echo "Error: No Chromium or Chrome executable found. Set CHROME_BIN to a Chromium/Chrome for Testing binary." >&2
   exit 1
 fi
 

@@ -649,11 +649,17 @@
     'infoPanelContainerRenderer',
     'infoPanelContentRenderer',
     'metadataBadgeRenderer',
+    'badgeViewModel',
+    'badgeShape',
     'playerMicroformatRenderer',
     'microformatDataRenderer',
     'syntheticMedia',
     'alteredOrSyntheticContent',
-    'disclosureStatus'
+    'disclosureStatus',
+    // Newer badge-style discriminated AI disclosure keys
+    'aiDisclosureBadge',
+    'aiDisclosureRenderer',
+    'badgeStyleAiDisclosure'
   ]);
 
   const AI_DISCLOSURE_SKIP_KEYS = new Set([
@@ -662,6 +668,13 @@
     'attributedDescriptionBodyRenderer',
     'description',
     'descriptionText',
+    'descriptionSnippet',
+    'detailedMetadataSnippets',
+    'title',
+    'headline',
+    'ownerText',
+    'longBylineText',
+    'shortBylineText',
     'secondaryResults',
     'relatedVideos',
     'watchNextSecondaryResultsRenderer',
@@ -678,13 +691,44 @@
     'isAlteredOrSynthetic',
     'isSyntheticMedia',
     'containsSyntheticMedia',
-    'hasAlteredOrSyntheticContent'
+    'hasAlteredOrSyntheticContent',
+    // Newer flat boolean flag keys
+    'isAiGenerated',
+    'hasAiDisclosure'
+  ]);
+
+  const AI_DISCLOSURE_STYLE_KEYS = new Set([
+    'style',
+    'badgeStyle',
+    'badgeStyleType',
+    'iconType'
   ]);
 
   const AI_DISCLOSURE_TEXT_RE = /\b(how this content was made|altered or synthetic content|sound or visuals were significantly edited or digitally generated|made with ai)\b/i;
 
+  const FEED_CARD_SELECTOR = [
+    'ytd-rich-item-renderer',
+    'ytd-video-renderer',
+    'ytd-compact-video-renderer',
+    'ytd-grid-video-renderer',
+    'ytd-playlist-video-renderer',
+    'yt-lockup-view-model'
+  ].join(', ');
+
+  const FEED_ITEM_RENDERER_KEYS = new Set([
+    'videoRenderer',
+    'compactVideoRenderer',
+    'gridVideoRenderer',
+    'playlistVideoRenderer',
+    'lockupViewModel',
+    'reelItemRenderer',
+    'shortsLockupViewModel'
+  ]);
+
+  const MAX_FEED_DISCLOSED_IDS = 200;
+
   /**
-   * Traverse structured YouTube disclosure blocks (ignoring descriptions and comments)
+   * Traverse structured YouTube disclosure blocks (ignoring descriptions, titles, and comments)
    * with a WeakSet cycle guard and bounded recursion depth.
    * @param {unknown} node
    * @param {boolean} inDisclosureScope
@@ -721,6 +765,9 @@
         return 'Altered or synthetic content';
       }
       const nextScope = inDisclosureScope || AI_DISCLOSURE_CONTAINER_KEYS.has(key);
+      if (typeof val === 'string' && (AI_DISCLOSURE_STYLE_KEYS.has(key) || nextScope) && val.includes('AI_DISCLOSURE')) {
+        return 'Altered or synthetic content';
+      }
       if (key === 'howThisContentWasMade' || key === 'alteredOrSyntheticContent' || key === 'howThisContentWasMadeSectionViewModel') {
         const innerHit = findOfficialAiDisclosure(val, true, depth + 1, seen);
         return innerHit || 'Altered or synthetic content';
@@ -729,6 +776,87 @@
       if (hit) return hit;
     }
     return null;
+  }
+
+  function extractFeedItemVideoId(item) {
+    if (!item || typeof item !== 'object') return null;
+    if (typeof item.videoId === 'string' && item.videoId) return item.videoId;
+    if (typeof item.contentId === 'string' && item.contentId) return item.contentId;
+    const navVid = item?.navigationEndpoint?.watchEndpoint?.videoId ||
+      item?.navigationEndpoint?.reelWatchEndpoint?.videoId ||
+      item?.rendererContext?.commandContext?.onTap?.innertubeCommand?.watchEndpoint?.videoId ||
+      item?.onTap?.innertubeCommand?.watchEndpoint?.videoId;
+    if (typeof navVid === 'string' && navVid) return navVid;
+    if (item.content && typeof item.content === 'object') {
+      for (const k of FEED_ITEM_RENDERER_KEYS) {
+        if (item.content[k]) {
+          const nested = extractFeedItemVideoId(item.content[k]);
+          if (nested) return nested;
+        }
+      }
+    }
+    return null;
+  }
+
+  function collectDisclosedFeedIdsFromTree(node, outSet, depth = 0, seen = new WeakSet()) {
+    if (!node || typeof node !== 'object' || depth > 12 || outSet.size >= MAX_FEED_DISCLOSED_IDS) return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      const limit = Math.min(node.length, 60);
+      for (let i = 0; i < limit && outSet.size < MAX_FEED_DISCLOSED_IDS; i++) {
+        collectDisclosedFeedIdsFromTree(node[i], outSet, depth + 1, seen);
+      }
+      return;
+    }
+
+    for (const key of Object.keys(node)) {
+      if (outSet.size >= MAX_FEED_DISCLOSED_IDS) return;
+      const val = node[key];
+      if (!val || typeof val !== 'object') continue;
+      if (FEED_ITEM_RENDERER_KEYS.has(key)) {
+        const vid = extractFeedItemVideoId(val);
+        if (vid && findOfficialAiDisclosure(val)) {
+          outSet.add(vid);
+        }
+        continue;
+      }
+      if (key === 'streamingData' || key === 'commentRenderer' || key === 'liveChatRenderer') continue;
+      collectDisclosedFeedIdsFromTree(val, outSet, depth + 1, seen);
+    }
+  }
+
+  function inspectAndEmitFeedAiDisclosures() {
+    if (isKilled) return;
+    const disclosedIds = new Set();
+
+    try {
+      if (typeof document.querySelectorAll === 'function') {
+        const cards = document.querySelectorAll(FEED_CARD_SELECTOR);
+        for (const card of cards) {
+          if (disclosedIds.size >= MAX_FEED_DISCLOSED_IDS) break;
+          const data = card?.data;
+          if (!data || typeof data !== 'object') continue;
+          const vid = extractFeedItemVideoId(data);
+          if (vid) {
+            if (findOfficialAiDisclosure(data)) disclosedIds.add(vid);
+          } else {
+            collectDisclosedFeedIdsFromTree(data, disclosedIds);
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      if (lastUpdatedPageData) collectDisclosedFeedIdsFromTree(lastUpdatedPageData, disclosedIds);
+      if (window.ytInitialData) collectDisclosedFeedIdsFromTree(window.ytInitialData, disclosedIds);
+    } catch (_) {}
+
+    window.postMessage({
+      type: 'CINEGLOW_FEED_AI_DISCLOSURES_RESPONSE',
+      videoIds: Array.from(disclosedIds)
+    }, window.location.origin);
   }
 
   function extractPayloadVideoId(payload) {
@@ -804,6 +932,7 @@
     syncTheaterState();
     scheduleNavRecovery();
     inspectAndEmitAiDisclosure();
+    inspectAndEmitFeedAiDisclosures();
   }
 
   function handlePageDataUpdated(e) {
@@ -818,6 +947,7 @@
       scheduleNavRecovery();
     }
     inspectAndEmitAiDisclosure();
+    inspectAndEmitFeedAiDisclosures();
   }
 
   const NON_PAUSE_PLAYER_CONTROLS = [
@@ -1074,8 +1204,12 @@
   }
 
   function handleAiDisclosureMessage(event) {
-    if (isKilled || !isTrustedSameWindowMessage(event) || event.data?.type !== 'CINEGLOW_CHECK_AI_DISCLOSURE') return;
-    inspectAndEmitAiDisclosure();
+    if (isKilled || !isTrustedSameWindowMessage(event)) return;
+    if (event.data?.type === 'CINEGLOW_CHECK_AI_DISCLOSURE') {
+      inspectAndEmitAiDisclosure();
+    } else if (event.data?.type === 'CINEGLOW_CHECK_FEED_AI_DISCLOSURES') {
+      inspectAndEmitFeedAiDisclosures();
+    }
   }
 
   function teardownMainWorld() {

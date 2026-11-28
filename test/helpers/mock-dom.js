@@ -349,6 +349,26 @@ class MockElement extends EventTarget {
       if (this.tagName.toLowerCase() !== tag.toLowerCase()) return false;
       return this.classList.contains(cls);
     }
+    // Attribute selectors: [attr], [attr="val"], [attr*="val"], [attr^="val"], [attr$="val"]
+    const attrMatch = selector.match(/^(?:([a-zA-Z0-9_-]+))?\[([a-zA-Z0-9_-]+)([*^$~|]?=)"?([^"\]]*)"?\]$/);
+    if (attrMatch) {
+      const [, tag, attr, op, val] = attrMatch;
+      if (tag && this.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+      const actual = this.getAttribute?.(attr);
+      if (actual === null || actual === undefined) return false;
+      if (op === '=') return actual === val;
+      if (op === '*=') return actual.includes(val);
+      if (op === '^=') return actual.startsWith(val);
+      if (op === '$=') return actual.endsWith(val);
+      return actual === val;
+    }
+    // Plain attribute selector: [attr] or tag[attr]
+    const plainAttrMatch = selector.match(/^(?:([a-zA-Z0-9_-]+))?\[([a-zA-Z0-9_-]+)\]$/);
+    if (plainAttrMatch) {
+      const [, tag, attr] = plainAttrMatch;
+      if (tag && this.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+      return this.hasAttribute?.(attr);
+    }
     if (selector.toLowerCase() === this.tagName.toLowerCase()) return true;
     return false;
   }

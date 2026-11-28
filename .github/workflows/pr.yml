@@ -1,0 +1,51 @@
+name: PR QA Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Static lint & MV3 safety checks
+        run: npm run lint
+
+      - name: Unit, integration, manifest, & eval gate tests
+        run: npm test
+
+      - name: Hide AI detector evaluation report (Section 6B)
+        run: npm run eval:hide-ai
+
+      - name: Bundle & package size budget check (PERF-05)
+        run: npm run check:size
+
+      - name: Dependency security audit (SEC-06)
+        run: npm audit --audit-level=high
+
+      - name: Real-Chromium E2E smoke test on local SPA fixture
+        if: hashFiles('scripts/e2e-smoke.js') != ''
+        run: xvfb-run --auto-servernum npm run test:e2e
+
+      - name: Upload E2E failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-screenshots
+          path: test-results/e2e-failures
+          if-no-files-found: ignore

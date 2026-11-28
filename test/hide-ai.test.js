@@ -199,6 +199,94 @@ describe('Hide AI Videos (Option 1: YouTube Official Disclosures)', () => {
     assert.strictEqual(env.document.getElementById('cineglow-ai-disclosure-overlay'), null);
   });
 
+  test('hides cards with badge-style AI_DISCLOSURE attribute even without disclosure text', async () => {
+    const aiCard = new MockElement('ytd-rich-item-renderer');
+    const badge = new MockElement('yt-badge-shape');
+    badge.setAttribute('badge-style', 'BADGE_STYLE_TYPE_AI_DISCLOSURE');
+    badge.textContent = '';  // No readable text, just the attribute
+    aiCard.appendChild(badge);
+
+    const normalCard = new MockElement('ytd-rich-item-renderer');
+    const normalBadge = new MockElement('yt-badge-shape');
+    normalBadge.setAttribute('badge-style', 'BADGE_STYLE_TYPE_SIMPLE');
+    normalBadge.textContent = 'New';
+    normalCard.appendChild(normalBadge);
+
+    env.document.body.appendChild(aiCard);
+    env.document.body.appendChild(normalCard);
+
+    env.chrome.storage.sync._data = { hideAiVideos: true };
+    new Function(hideAiCode)();
+    await new Promise(r => setTimeout(r, 15));
+
+    assert.strictEqual(aiCard.getAttribute('data-cineglow-ai-hidden'), 'true',
+      'Card with badge-style AI_DISCLOSURE must be hidden');
+    assert.strictEqual(normalCard.hasAttribute('data-cineglow-ai-hidden'), false,
+      'Card with badge-style SIMPLE must not be hidden');
+  });
+
+  test('main-world.js detects newer isAiGenerated and hasAiDisclosure flag keys', () => {
+    const posted = [];
+    const listeners = [];
+    const flexy = new MockElement('ytd-watch-flexy', { 'video-id': 'flagVid00001' });
+    flexy.data = {
+      currentVideoEndpoint: { watchEndpoint: { videoId: 'flagVid00001' } },
+      engagementPanels: []
+    };
+
+    const player = new MockElement('div', { id: 'movie_player' });
+    player.getPlayerResponse = () => ({
+      videoDetails: { videoId: 'flagVid00001' },
+      microformat: {
+        playerMicroformatRenderer: {
+          externalVideoId: 'flagVid00001',
+          isAiGenerated: true
+        }
+      }
+    });
+
+    const mwWindow = {
+      location: {
+        href: 'https://www.youtube.com/watch?v=flagVid00001',
+        pathname: '/watch',
+        search: '?v=flagVid00001',
+        origin: 'https://www.youtube.com'
+      },
+      ytInitialData: null,
+      ytInitialPlayerResponse: null,
+      addEventListener: (type, fn) => listeners.push({ type, fn }),
+      removeEventListener: () => {},
+      postMessage: (data, origin) => posted.push({ data, origin })
+    };
+
+    const mwDoc = {
+      readyState: 'complete',
+      hidden: false,
+      documentElement: new MockElement('html'),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      getElementById: (id) => (id === 'movie_player' ? player : null),
+      querySelector: (sel) => (sel === 'ytd-watch-flexy' ? flexy : null)
+    };
+
+    const fn = new Function('window', 'document', 'JSON', 'Function', 'setTimeout', 'setInterval', 'clearInterval', mainWorldCode);
+    fn(mwWindow, mwDoc, JSON, Function, setTimeout, setInterval, clearInterval);
+
+    const checkListener = listeners.find(l => l.type === 'message' && l.fn.name === 'handleAiDisclosureMessage');
+    assert.ok(checkListener);
+
+    checkListener.fn({
+      source: mwWindow,
+      origin: mwWindow.location.origin,
+      data: { type: 'CINEGLOW_CHECK_AI_DISCLOSURE' }
+    });
+
+    const msg = posted.find(p => p.data?.type === 'CINEGLOW_AI_DISCLOSURE_RESPONSE');
+    assert.ok(msg, 'Should emit disclosure response');
+    assert.strictEqual(msg.data.videoId, 'flagVid00001');
+    assert.strictEqual(msg.data.disclosed, true, 'isAiGenerated: true must trigger disclosure');
+  });
+
   test('main-world.js inspects howThisContentWasMade structured blocks while ignoring shortDescription and stale payloads', () => {
     const posted = [];
     const listeners = [];

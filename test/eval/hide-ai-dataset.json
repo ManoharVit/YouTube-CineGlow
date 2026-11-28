@@ -1,0 +1,270 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Labeled evaluation corpus for CineGlow Hide AI official disclosure detection (Section 6B).",
+  "policy": {
+    "mode": "official_disclosure_only",
+    "falsePositiveBudget": 0.01,
+    "minRecallOnConfirmedDisclosures": 1.0
+  },
+  "cases": [
+    {
+      "id": "pos-watch-how-made",
+      "category": "confirmed_ai_watch_panel",
+      "surface": "watch",
+      "expected": true,
+      "videoId": "posWatch0001",
+      "flexyData": {
+        "currentVideoEndpoint": { "watchEndpoint": { "videoId": "posWatch0001" } },
+        "engagementPanels": [
+          {
+            "engagementPanelSectionListRenderer": {
+              "content": {
+                "structuredDescriptionContentRenderer": {
+                  "items": [
+                    {
+                      "videoAttributesSectionViewModel": {
+                        "howThisContentWasMade": {
+                          "title": { "content": "How this content was made" },
+                          "subtitle": { "content": "Altered or synthetic content" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "pos-watch-bool-synthetic",
+      "category": "confirmed_ai_boolean_flag",
+      "surface": "watch",
+      "expected": true,
+      "videoId": "posBool00001",
+      "playerResponse": {
+        "videoDetails": { "videoId": "posBool00001" },
+        "microformat": {
+          "playerMicroformatRenderer": {
+            "externalVideoId": "posBool00001",
+            "isAlteredOrSynthetic": true
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-watch-bool-isAiGenerated",
+      "category": "confirmed_ai_boolean_flag",
+      "surface": "watch",
+      "expected": true,
+      "videoId": "posBool00002",
+      "playerResponse": {
+        "videoDetails": { "videoId": "posBool00002" },
+        "microformat": {
+          "playerMicroformatRenderer": {
+            "externalVideoId": "posBool00002",
+            "isAiGenerated": true
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-watch-badge-style-enum",
+      "category": "confirmed_ai_badge_enum",
+      "surface": "watch",
+      "expected": true,
+      "videoId": "posEnum00001",
+      "flexyData": {
+        "currentVideoEndpoint": { "watchEndpoint": { "videoId": "posEnum00001" } },
+        "badges": [
+          {
+            "metadataBadgeRenderer": {
+              "style": "BADGE_STYLE_TYPE_AI_DISCLOSURE"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "pos-feed-rich-item-badge-enum",
+      "category": "confirmed_ai_feed_metadata",
+      "surface": "feed",
+      "expected": true,
+      "videoId": "posFeed00001",
+      "feedCardData": {
+        "content": {
+          "videoRenderer": {
+            "videoId": "posFeed00001",
+            "badges": [
+              {
+                "metadataBadgeRenderer": {
+                  "style": "BADGE_STYLE_TYPE_AI_DISCLOSURE"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-feed-lockup-badge-viewmodel",
+      "category": "confirmed_ai_feed_metadata",
+      "surface": "feed",
+      "expected": true,
+      "videoId": "posFeed00002",
+      "feedCardData": {
+        "contentId": "posFeed00002",
+        "metadata": {
+          "lockupMetadataViewModel": {
+            "badgeViewModel": {
+              "badgeStyle": "BADGE_STYLE_TYPE_AI_DISCLOSURE"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-feed-ytinitialdata-flag",
+      "category": "confirmed_ai_feed_metadata",
+      "surface": "feed",
+      "expected": true,
+      "videoId": "posFeed00003",
+      "ytInitialData": {
+        "contents": [
+          {
+            "videoRenderer": {
+              "videoId": "posFeed00003",
+              "containsSyntheticMedia": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "neg-ai-tutorial-title-desc",
+      "category": "hard_negative_ai_tutorials",
+      "surface": "watch",
+      "expected": false,
+      "videoId": "negTut000001",
+      "playerResponse": {
+        "videoDetails": {
+          "videoId": "negTut000001",
+          "title": "How to detect Altered or synthetic content — Made with AI tools explained",
+          "shortDescription": "In this tutorial we explain YouTube's How this content was made policy and synthetic media labels."
+        }
+      }
+    },
+    {
+      "id": "neg-feed-ai-review-card",
+      "category": "hard_negative_ai_tutorials",
+      "surface": "feed",
+      "expected": false,
+      "videoId": "negTut000002",
+      "feedCardData": {
+        "videoId": "negTut000002",
+        "title": { "runs": [{ "text": "Made with AI? Sora vs Kling Review (How this content was made)" }] },
+        "descriptionSnippet": { "runs": [{ "text": "Testing altered or synthetic content detection" }] },
+        "badges": [{ "metadataBadgeRenderer": { "style": "BADGE_STYLE_TYPE_SIMPLE", "label": "4K" } }]
+      }
+    },
+    {
+      "id": "neg-cgi-vfx-breakdown",
+      "category": "hard_negative_cgi_vfx",
+      "surface": "watch",
+      "expected": false,
+      "videoId": "negVfx000001",
+      "playerResponse": {
+        "videoDetails": {
+          "videoId": "negVfx000001",
+          "title": "Dune 2 VFX & CGI Breakdown — Unreal Engine 5 Compositing",
+          "shortDescription": "Behind the scenes CGI and color grading breakdown."
+        }
+      }
+    },
+    {
+      "id": "neg-vtuber-animation-stream",
+      "category": "hard_negative_vtuber_animation",
+      "surface": "feed",
+      "expected": false,
+      "videoId": "negVtub00001",
+      "feedCardData": {
+        "videoId": "negVtub00001",
+        "title": { "simpleText": "Live 3D VTuber Rig Showcase + Anime Shader Demo" },
+        "badges": [{ "metadataBadgeRenderer": { "style": "BADGE_STYLE_TYPE_LIVE_NOW", "label": "LIVE" } }]
+      }
+    },
+    {
+      "id": "neg-gameplay-screen-recording",
+      "category": "hard_negative_gameplay",
+      "surface": "feed",
+      "expected": false,
+      "videoId": "negGame00001",
+      "feedCardData": {
+        "videoId": "negGame00001",
+        "title": { "simpleText": "Cyberpunk 2077 4K60 Path Tracing Gameplay No Commentary" },
+        "badges": [{ "metadataBadgeRenderer": { "style": "BADGE_STYLE_TYPE_SIMPLE", "label": "4K" } }]
+      }
+    },
+    {
+      "id": "neg-non-english-drone-footage",
+      "category": "hard_negative_non_english_stock",
+      "surface": "watch",
+      "expected": false,
+      "videoId": "negIntl00001",
+      "playerResponse": {
+        "videoDetails": {
+          "videoId": "negIntl00001",
+          "title": "東京 夜景 ドローン 4K HDR — Color Graded Remastered Footage",
+          "shortDescription": "Shot on Mavic 3 Pro in Tokyo, Japan."
+        }
+      }
+    },
+    {
+      "id": "neg-stale-initial-data-mismatch",
+      "category": "hard_negative_stale_payload",
+      "surface": "watch",
+      "expected": false,
+      "videoId": "negCurr00001",
+      "playerResponse": {
+        "videoDetails": { "videoId": "negCurr00001", "title": "Regular Cooking Vlog" }
+      },
+      "ytInitialData": {
+        "currentVideoEndpoint": { "watchEndpoint": { "videoId": "staleOther99" } },
+        "howThisContentWasMade": { "title": "How this content was made" }
+      }
+    },
+    {
+      "id": "neg-comment-mentioning-disclosure",
+      "category": "hard_negative_comments_related",
+      "surface": "watch",
+      "expected": false,
+      "videoId": "negComm00001",
+      "flexyData": {
+        "currentVideoEndpoint": { "watchEndpoint": { "videoId": "negComm00001" } },
+        "commentRenderer": {
+          "contentText": { "simpleText": "Altered or synthetic content badge should be on every AI video" }
+        },
+        "secondaryResults": {
+          "results": [
+            { "compactVideoRenderer": { "videoId": "otherAi99999", "isAlteredOrSynthetic": true } }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ambig-voiceover-description-only",
+      "category": "ambiguous_undisclosed_prose",
+      "surface": "watch",
+      "expected": false,
+      "videoId": "ambig0000001",
+      "playerResponse": {
+        "videoDetails": {
+          "videoId": "ambig0000001",
+          "title": "History Documentary (Real Footage + AI Voiceover)",
+          "shortDescription": "Disclosure: narration uses synthetic voiceover, footage is archival."
+        }
+      }
+    }
+  ]
+}

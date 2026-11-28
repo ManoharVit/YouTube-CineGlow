@@ -21,14 +21,28 @@
     '.badge',
     '.badge-style-type-simple',
     '[class*="badge"]',
-    '[class*="disclosure"]'
+    '[class*="disclosure"]',
+    // YouTube dedicated AI disclosure badge-style attributes (newer Polymer builds)
+    'yt-badge-shape[badge-style="BADGE_STYLE_TYPE_AI_DISCLOSURE"]',
+    'ytd-badge-supported-renderer[badge-style="BADGE_STYLE_TYPE_AI_DISCLOSURE"]',
+    '[badge-style*="AI_DISCLOSURE"]'
   ].join(', ');
 
   const WATCH_DISCLOSURE_SELECTOR = [
     'ytd-video-attributes-renderer',
+    'ytd-how-this-content-was-made-section-renderer',
     'yt-attribute-view-model',
     'ytd-info-panel-content-renderer',
-    '.ytp-disclosure'
+    '.ytp-disclosure',
+    // Newer badge-style attribute on watch page disclosure panels
+    '[badge-style*="AI_DISCLOSURE"]'
+  ].join(', ');
+
+  const DESCRIPTION_EXPANDER_SELECTOR = [
+    'ytd-text-inline-expander',
+    '#description-inline-expander',
+    '#plain-snippet-text',
+    '#attributed-snippet-text'
   ].join(', ');
 
   const HIDDEN_CARD_ATTR = 'data-cineglow-ai-hidden';
@@ -41,6 +55,7 @@
   const WATCH_DETAIL_RE = /\b(altered or synthetic content|made with ai|sound or visuals were significantly edited or digitally generated|synthetic media)\b/i;
 
   const MAX_DISMISSED_IDS = 200;
+  const MAX_KNOWN_DISCLOSED_IDS = 500;
   let hideAiEnabled = typeof AURA_DEFAULTS !== 'undefined' && AURA_DEFAULTS.hideAiVideos !== undefined
     ? Boolean(AURA_DEFAULTS.hideAiVideos)
     : false;
@@ -49,6 +64,7 @@
   let disclosedVideoId = null;
   let disclosureReason = null;
   const dismissedVideoIds = new Set();
+  const knownDisclosedVideoIds = new Set();
 
   function rememberDismissedVideo(videoId) {
     if (!videoId) return;
@@ -57,6 +73,17 @@
       if (oldest !== undefined) dismissedVideoIds.delete(oldest);
     }
     dismissedVideoIds.add(videoId);
+  }
+
+  function rememberKnownDisclosedVideo(videoId) {
+    if (!videoId || typeof videoId !== 'string') return false;
+    if (knownDisclosedVideoIds.has(videoId)) return false;
+    if (knownDisclosedVideoIds.size >= MAX_KNOWN_DISCLOSED_IDS) {
+      const oldest = knownDisclosedVideoIds.values().next().value;
+      if (oldest !== undefined) knownDisclosedVideoIds.delete(oldest);
+    }
+    knownDisclosedVideoIds.add(videoId);
+    return true;
   }
 
   let domObserver = null;
@@ -121,16 +148,53 @@
   function isInsideDescriptionExpander(el) {
     if (!el) return false;
     if (typeof el.closest === 'function') {
-      return Boolean(el.closest('#description, ytd-text-inline-expander'));
+      return Boolean(el.closest(DESCRIPTION_EXPANDER_SELECTOR));
     }
     let curr = el.parentElement || el.parentNode;
     while (curr) {
       const id = (curr.getAttribute?.('id') || curr.id || '').toLowerCase();
       const tag = (curr.tagName || '').toLowerCase();
-      if (id === 'description' || tag === 'ytd-text-inline-expander') return true;
+      if (
+        tag === 'ytd-text-inline-expander' ||
+        id === 'description-inline-expander' ||
+        id === 'plain-snippet-text' ||
+        id === 'attributed-snippet-text'
+      ) return true;
       curr = curr.parentElement || curr.parentNode;
     }
     return false;
+  }
+
+  function extractVideoIdFromHref(href) {
+    if (!href || typeof href !== 'string') return null;
+    try {
+      const base = (typeof window !== 'undefined' && window.location?.origin) || 'https://www.youtube.com';
+      const url = new URL(href, base);
+      const v = url.searchParams?.get?.('v');
+      if (v) return v;
+      const pathMatch = (url.pathname || '').match(/^\/(?:live|shorts|embed)\/([a-zA-Z0-9_-]+)/);
+      if (pathMatch) return pathMatch[1];
+      if ((url.hostname || '').toLowerCase() === 'youtu.be') {
+        const shortMatch = (url.pathname || '').match(/^\/([a-zA-Z0-9_-]+)/);
+        if (shortMatch) return shortMatch[1];
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function getCardVideoId(card) {
+    if (!card) return null;
+    const direct = card.getAttribute?.('data-video-id');
+    if (direct) return direct;
+    if (typeof card.querySelectorAll !== 'function') return null;
+    const links = card.querySelectorAll('a[href]');
+    for (const link of links) {
+      const vid = extractVideoIdFromHref(link.getAttribute?.('href'));
+      if (vid) return vid;
+    }
+    return null;
   }
 
   /**
@@ -161,6 +225,9 @@
     if (!card || typeof card.querySelectorAll !== 'function') return false;
     const badges = card.querySelectorAll(CARD_BADGE_SELECTOR);
     for (const badge of badges) {
+      // Dedicated badge-style attribute is an instant match (no text parsing needed)
+      const badgeStyle = (badge.getAttribute?.('badge-style') || '').trim();
+      if (badgeStyle && badgeStyle.includes('AI_DISCLOSURE')) return true;
       const text = (badge.textContent || '').trim();
       if (text && OFFICIAL_CARD_BADGE_RE.test(text)) return true;
       const aria = (badge.getAttribute?.('aria-label') || '').trim();
@@ -170,7 +237,8 @@
   }
 
   /**
-   * Scan feed and sidebar cards for official YouTube AI disclosure badges.
+   * Scan feed and sidebar cards for official YouTube AI disclosure badges or
+   * MAIN-world confirmed disclosed video IDs.
    */
   function scanFeeds() {
     if (isKilled || window.CineGlowKilled || !isYouTubeContext()) return;
@@ -182,7 +250,10 @@
     if (!root || typeof root.querySelectorAll !== 'function') return;
     const cards = root.querySelectorAll(CARD_SELECTOR);
     for (const card of cards) {
-      if (hasOfficialBadgeDisclosure(card)) {
+      const cardVideoId = getCardVideoId(card);
+      const isDisclosed = hasOfficialBadgeDisclosure(card) ||
+        Boolean(cardVideoId && knownDisclosedVideoIds.has(cardVideoId));
+      if (isDisclosed) {
         if (card.getAttribute(HIDDEN_CARD_ATTR) !== 'true') {
           card.setAttribute(HIDDEN_CARD_ATTR, 'true');
         }
@@ -193,7 +264,7 @@
   }
 
   /**
-   * Detect structured Watch Page official disclosure panels outside free-form descriptions.
+   * Detect structured Watch Page official disclosure panels outside free-form description expanders.
    * @returns {string|null}
    */
   function detectWatchDomDisclosure() {
@@ -203,17 +274,34 @@
     for (const el of nodes) {
       // Never inspect free-form creator descriptions inside expanders
       if (isInsideDescriptionExpander(el)) continue;
+      // Dedicated badge-style attribute is an instant match even without text content
+      const badgeStyle = (el.getAttribute?.('badge-style') || '').trim();
+      if (badgeStyle && badgeStyle.includes('AI_DISCLOSURE')) {
+        const label = (el.textContent || el.getAttribute?.('aria-label') || '').replace(/\s+/g, ' ').trim();
+        return label ? label.slice(0, 120) : 'Altered or synthetic content';
+      }
       const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!text) continue;
-      if (el.tagName?.toLowerCase() === 'ytd-video-attributes-renderer') {
-        if (WATCH_HEADING_RE.test(text) && WATCH_DETAIL_RE.test(text)) {
+      const aria = (el.getAttribute?.('aria-label') || '').replace(/\s+/g, ' ').trim();
+      const candidate = text || aria;
+      if (!candidate) continue;
+      const tag = el.tagName?.toLowerCase();
+      if (tag === 'ytd-video-attributes-renderer') {
+        if (WATCH_HEADING_RE.test(candidate) && WATCH_DETAIL_RE.test(candidate)) {
           return 'Altered or synthetic content';
         }
         continue;
       }
-      if (WATCH_DISCLOSURE_TEXT_RE.test(text) && text.length <= 220) {
-        return WATCH_DETAIL_RE.test(text)
-          ? text.slice(0, 120)
+      if (tag === 'ytd-how-this-content-was-made-section-renderer') {
+        if (WATCH_DISCLOSURE_TEXT_RE.test(candidate)) {
+          return WATCH_DETAIL_RE.test(candidate)
+            ? candidate.slice(0, 120)
+            : 'How this content was made: Altered or synthetic content';
+        }
+        continue;
+      }
+      if (WATCH_DISCLOSURE_TEXT_RE.test(candidate) && candidate.length <= 220) {
+        return WATCH_DETAIL_RE.test(candidate)
+          ? candidate.slice(0, 120)
           : 'How this content was made: Altered or synthetic content';
       }
     }
@@ -351,6 +439,7 @@
     if (typeof window.postMessage === 'function') {
       try {
         window.postMessage({ type: 'CINEGLOW_CHECK_AI_DISCLOSURE' }, window.location.origin);
+        window.postMessage({ type: 'CINEGLOW_CHECK_FEED_AI_DISCLOSURES' }, window.location.origin);
       } catch (_) {}
     }
   }
@@ -372,6 +461,7 @@
     if (domReason) {
       disclosedVideoId = currentVideoId;
       disclosureReason = domReason;
+      rememberKnownDisclosedVideo(currentVideoId);
     }
     syncWatchBlockingUi();
   }
@@ -425,6 +515,17 @@
   function handleWindowMessage(event) {
     if (isKilled || window.CineGlowKilled) return;
     if (!event || event.source !== window || event.origin !== window.location.origin) return;
+
+    if (event.data?.type === 'CINEGLOW_FEED_AI_DISCLOSURES_RESPONSE') {
+      const ids = Array.isArray(event.data.videoIds) ? event.data.videoIds : [];
+      let added = false;
+      for (const id of ids) {
+        if (rememberKnownDisclosedVideo(id)) added = true;
+      }
+      if (added && hideAiEnabled) scanFeeds();
+      return;
+    }
+
     if (event.data?.type !== 'CINEGLOW_AI_DISCLOSURE_RESPONSE') return;
 
     const { videoId, disclosed, reason } = event.data;
@@ -437,6 +538,7 @@
       disclosureReason = typeof reason === 'string' && reason.trim()
         ? reason.trim()
         : 'Altered or synthetic content';
+      rememberKnownDisclosedVideo(videoId);
       syncWatchBlockingUi();
     } else if (disclosedVideoId === videoId && !detectWatchDomDisclosure()) {
       disclosedVideoId = null;
@@ -482,6 +584,7 @@
     disclosedVideoId = null;
     disclosureReason = null;
     dismissedVideoIds.clear();
+    knownDisclosedVideoIds.clear();
     disconnectObserver();
     restoreHiddenCards();
     removeWatchOverlay();

@@ -3,8 +3,12 @@
   "version": "3.0.0",
   "description": "CineGlow Pro for YouTube: Soft ambient lighting, balanced audio with EQ and volume boost, cleaner cinema layouts, and quick playback tools for YouTube.",
   "scripts": {
+    "lint": "node scripts/lint-check.js",
     "test": "node --test test/**/*.test.js",
+    "test:e2e": "node scripts/e2e-smoke.js",
     "test:local": "./tools/test-local.sh",
+    "eval:hide-ai": "node scripts/eval-hide-ai.js",
+    "check:size": "node scripts/bundle-size-check.js",
     "package": "zip -r YouTube-CineGlow-v3.0.0.zip manifest.json managed-schema.json README.md LICENSE background content popup shared icons rules -x '*.DS_Store*'"
   },
   "devDependencies": {

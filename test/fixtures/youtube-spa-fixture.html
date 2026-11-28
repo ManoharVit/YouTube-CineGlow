@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CineGlow Local YouTube SPA Fixture</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #0f0f0f; color: #f1f1f1; }
+    #movie_player { position: relative; width: 640px; height: 360px; background: #000; }
+    video { width: 100%; height: 100%; }
+    .feed { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px; }
+    ytd-rich-item-renderer { display: block; padding: 10px; border: 1px solid #333; }
+  </style>
+</head>
+<body>
+  <ytd-watch-flexy video-id="clean000001">
+    <div id="movie_player" class="html5-video-player">
+      <video class="html5-main-video" muted playsinline></video>
+      <a class="ytp-next-button" href="/watch?v=next0000001">Next</a>
+    </div>
+    <div id="description">
+      <ytd-text-inline-expander id="description-inline-expander">
+        <yt-attribute-view-model>Creator prose discussing Altered or synthetic content policies.</yt-attribute-view-model>
+      </ytd-text-inline-expander>
+      <ytd-structured-description-content-renderer id="structured-slot"></ytd-structured-description-content-renderer>
+    </div>
+  </ytd-watch-flexy>
+
+  <section class="feed" aria-label="Feed cards">
+    <ytd-rich-item-renderer data-testid="card-disclosed-badge">
+      <a href="/watch?v=aiBadge0001" id="video-title">Synthetic Demo</a>
+      <yt-badge-shape badge-style="BADGE_STYLE_TYPE_AI_DISCLOSURE"></yt-badge-shape>
+    </ytd-rich-item-renderer>
+
+    <ytd-rich-item-renderer data-testid="card-disclosed-text">
+      <a href="/watch?v=aiText00001" id="video-title">Generated Short</a>
+      <yt-badge-view-model>Altered or synthetic content</yt-badge-view-model>
+    </ytd-rich-item-renderer>
+
+    <ytd-rich-item-renderer data-testid="card-tutorial-clean">
+      <a href="/watch?v=tutClean001" id="video-title">Build an AI Agent — Made with AI Tools Review</a>
+      <yt-badge-view-model>4K</yt-badge-view-model>
+    </ytd-rich-item-renderer>
+  </section>
+
+  <script>
+    window.fixtureNavigate = function fixtureNavigate(nextPath, opts = {}) {
+      const url = new URL(nextPath, window.location.origin);
+      const vid = url.searchParams.get('v') || '';
+      window.history.pushState({}, '', nextPath);
+      const flexy = document.querySelector('ytd-watch-flexy');
+      if (flexy) {
+        flexy.setAttribute('video-id', vid);
+        flexy.data = {
+          currentVideoEndpoint: { watchEndpoint: { videoId: vid } },
+          engagementPanels: opts.disclosed ? [{
+            engagementPanelSectionListRenderer: {
+              content: {
+                structuredDescriptionContentRenderer: {
+                  items: [{
+                    videoAttributesSectionViewModel: {
+                      howThisContentWasMade: {
+                        title: { content: 'How this content was made' },
+                        subtitle: { content: 'Altered or synthetic content' }
+                      }
+                    }
+                  }]
+                }
+              }
+            }
+          }] : []
+        };
+      }
+      const slot = document.getElementById('structured-slot');
+      if (slot) {
+        slot.innerHTML = '';
+        if (opts.domPanel) {
+          const panel = document.createElement('ytd-video-attributes-renderer');
+          panel.textContent = 'How this content was made · Altered or synthetic content';
+          slot.appendChild(panel);
+        }
+      }
+      document.dispatchEvent(new CustomEvent('yt-navigate-start'));
+      document.dispatchEvent(new CustomEvent('yt-page-data-updated', { detail: { response: flexy?.data || {} } }));
+      document.dispatchEvent(new CustomEvent('yt-navigate-finish'));
+    };
+  </script>
+</body>
+</html>

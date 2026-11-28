@@ -5,7 +5,7 @@
 **Package Archive:** [`YouTube-CineGlow-v3.0.0.zip`](file:///Users/girimanoharv/Downloads/Misc/CineGlow/YouTube-CineGlow-v3.0.0.zip)  
 **Package Size:** `364 KB` (372,741 bytes)  
 **File Count:** 51 entries (44 files, 7 directories)  
-**SHA-256 Checksum:** `46beeb2d1e19fcd1da8a50802cec0b237f6a324977bcafc29b25cb8391727811`  
+**SHA-256 Checksum:** `3ccbedaec10710a24e27bc0de295df2c2372efc3ac63beef2d98f40350ceb5e1`  
 **Last Updated:** November 26, 2026  
 
 ---
